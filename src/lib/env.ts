@@ -12,6 +12,9 @@ export type ManeCombEnv = {
   webPushPublicKey: string | null;
   webPushPrivateKey: string | null;
   webPushSubject: string | null;
+  cloudinaryCloudName: string | null;
+  cloudinaryApiKey: string | null;
+  cloudinaryApiSecret: string | null;
 };
 
 export function getEnv(): ManeCombEnv {
@@ -28,7 +31,10 @@ export function getEnv(): ManeCombEnv {
     mercadoPagoAccessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || null,
     webPushPublicKey: process.env.NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY || null,
     webPushPrivateKey: process.env.WEB_PUSH_VAPID_PRIVATE_KEY || null,
-    webPushSubject: process.env.WEB_PUSH_SUBJECT || null
+    webPushSubject: process.env.WEB_PUSH_SUBJECT || null,
+    cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || null,
+    cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || null,
+    cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || null
   };
 }
 
