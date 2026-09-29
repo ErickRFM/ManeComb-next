@@ -6,12 +6,21 @@ import { User } from "@/src/core/models/User";
 
 export const runtime="nodejs";
 
+type SessionUser={
+  _id:unknown;
+  name:string;
+  email:string;
+  roles:string[];
+  channel:string;
+};
+
 export async function GET(request:Request){
   try{
     const session=await requireApiSession(request);
     await connectDb();
-    const user=await User.findById(session.sub).select("_id name email roles channel");
-    if(!user)throw new Error("UNAUTHORIZED");
+    const userDoc=await User.findOne({_id:session.sub}).select("_id name email roles channel");
+    if(!userDoc)throw new Error("UNAUTHORIZED");
+    const user=userDoc as SessionUser;
     return NextResponse.json({
       user:{
         id:String(user._id),
