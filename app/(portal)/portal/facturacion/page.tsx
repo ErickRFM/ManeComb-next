@@ -1,0 +1,2 @@
+import { ModuleShell } from "@/src/components/module-shell";
+export default function BillingPage(){return <ModuleShell eyebrow="FACTURACIÓN" title="Plan y pagos" description="Estado de suscripción, recibos, Mercado Pago y comprobantes manuales bajo una sola autoridad de servidor."><div className="card"><p className="muted">El webhook de Mercado Pago ya cuenta con verificación HMAC e idempotencia por provider + eventId.</p></div></ModuleShell>}

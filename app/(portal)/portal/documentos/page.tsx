@@ -1,0 +1,2 @@
+import { ModuleShell } from "@/src/components/module-shell";
+export default function DocumentsPage(){return <ModuleShell eyebrow="DOCUMENTOS" title="Validación documental" description="Licencias, circulación, seguros y documentos con vigencia, estado y revisión."><div className="card"><p className="muted">El almacenamiento binario debe conectarse a un proveedor S3/Cloudinary; MongoDB conserva metadatos, vigencia y auditoría.</p></div></ModuleShell>}
