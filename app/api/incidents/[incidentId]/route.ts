@@ -6,6 +6,7 @@ import { apiError } from "@/src/lib/http";
 import { Incident } from "@/src/core/models/Incident";
 import { writeAudit } from "@/src/core/services/audit";
 import { emitToOrganization } from "@/src/realtime/runtime";
+import { assertPermission } from "@/src/core/domain/permissions";
 
 const Patch=z.object({status:z.enum(["acknowledged","resolved"])});
 export const runtime="nodejs";
@@ -14,6 +15,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{incidentId
   try{
     const session=await requireApiSession(request,["company_portal"]);
     if(!session.organizationId) throw new Error("FORBIDDEN");
+    assertPermission(session.roles,"manage_incidents");
     const {incidentId}=await params;
     const {status}=Patch.parse(await request.json());
     await connectDb();
