@@ -17,7 +17,8 @@
     "native:add": "cap add android",
     "native:sync": "cap sync android",
     "native:open": "cap open android",
-    "bootstrap:platform-admin": "tsx scripts/bootstrap-platform-admin.ts"
+    "bootstrap:platform-admin": "tsx scripts/bootstrap-platform-admin.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
