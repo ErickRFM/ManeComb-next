@@ -7,6 +7,7 @@ export type ManeCombEnv = {
   resendApiKey: string | null;
   emailFrom: string;
   mercadoPagoWebhookSecret: string | null;
+  mercadoPagoAccessToken: string | null;
 };
 
 export function getEnv(): ManeCombEnv {
@@ -18,7 +19,8 @@ export function getEnv(): ManeCombEnv {
     mapboxToken: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || null,
     resendApiKey: process.env.RESEND_API_KEY || null,
     emailFrom: process.env.EMAIL_FROM || "ManeComb <no-reply@example.com>",
-    mercadoPagoWebhookSecret: process.env.MERCADO_PAGO_WEBHOOK_SECRET || null
+    mercadoPagoWebhookSecret: process.env.MERCADO_PAGO_WEBHOOK_SECRET || null,
+    mercadoPagoAccessToken: process.env.MERCADOPAGO_ACCESS_TOKEN || null
   };
 }
 
