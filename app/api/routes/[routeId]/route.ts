@@ -5,6 +5,7 @@ import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Route } from "@/src/core/models/Route";
 import { writeAudit } from "@/src/core/services/audit";
+import { assertAnyPermission, assertPermission } from "@/src/core/domain/permissions";
 
 const Point = z.object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) });
 const Stop = Point.extend({ name: z.string().min(1), order: z.number().int().min(0), radiusM: z.number().min(10).max(1000).default(50) });
@@ -24,6 +25,7 @@ export async function GET(request:Request,{params}:{params:Promise<{routeId:stri
   try{
     const session=await requireApiSession(request,["company_portal"]);
     if(!session.organizationId) throw new Error("FORBIDDEN");
+    assertAnyPermission(session.roles,["manage_routes","view_analytics"]);
     const {routeId}=await params;
     await connectDb();
     const route=await Route.findOne({_id:routeId,organizationId:session.organizationId}).lean();
@@ -36,6 +38,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{routeId:st
   try{
     const session=await requireApiSession(request,["company_portal"]);
     if(!session.organizationId) throw new Error("FORBIDDEN");
+    assertPermission(session.roles,"manage_routes");
     const {routeId}=await params;
     const patch=RoutePatch.parse(await request.json());
     await connectDb();
