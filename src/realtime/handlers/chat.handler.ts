@@ -1,6 +1,7 @@
 import type { Server, Socket } from "socket.io";
 import { ChatJoinSchema, ChatMessageSchema } from "@/src/core/contracts/realtime";
 import { hasPermission } from "@/src/core/domain/permissions";
+import { allowSocketEvent } from "@/src/realtime/socket-rate-limit";
 import { connectDb } from "@/src/lib/db";
 import { Message } from "@/src/core/models/Message";
 import { User } from "@/src/core/models/User";
@@ -37,6 +38,7 @@ export function registerChatHandler(io: Server, socket: Socket) {
 
   socket.on("chat:message", async (payload, ack) => {
     try {
+      if(!allowSocketEvent(socket,"chat:message",60,60_000)) throw new Error("RATE_LIMITED");
       const session = socket.data.session;
       if (!session?.organizationId || !hasPermission(session.roles, "access_chat")) throw new Error("FORBIDDEN");
       const input = ChatMessageSchema.parse(payload);
