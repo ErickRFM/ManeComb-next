@@ -19,13 +19,19 @@ export function RadioConsole(){
   const streamRef=useRef<MediaStream|null>(null);
 
   useEffect(()=>{
-    const play=({chunk}:{chunk:string})=>{
+    socket.emit("radio:subscribe",{channelId},(ack:any)=>{
+      if(!ack?.ok)setState(ack?.reason||"No se pudo entrar al canal");
+      else setState("Escuchando");
+    });
+
+    const play=({channelId:incomingChannel,chunk}:{channelId:string;chunk:string})=>{
+      if(incomingChannel!==channelId)return;
       const audio=new Audio(chunk);
       void audio.play().catch(()=>undefined);
     };
     socket.on("radio:audio",play);
     return()=>{socket.off("radio:audio",play)}
-  },[socket]);
+  },[socket,channelId]);
 
   async function press(){
     if(recorderRef.current)return;
@@ -62,9 +68,9 @@ export function RadioConsole(){
   }
 
   return <div className="card grid">
-    <input className="input" value={channelId} onChange={(e)=>setChannelId(e.target.value)} placeholder="Canal"/>
+    <input className="input" value={channelId} onChange={(e)=>setChannelId(e.target.value)} maxLength={80} placeholder="Canal"/>
     <button className="btn" style={{minHeight:140,fontSize:28,touchAction:"none"}} onPointerDown={()=>void press()} onPointerUp={release} onPointerCancel={release}>MANTÉN PARA HABLAR</button>
     <strong>{state}</strong>
-    <p className="muted">Audio Opus en chunks cortos, control de piso central y reproducción inmediata a los demás miembros del tenant.</p>
+    <p className="muted">Audio Opus en chunks cortos, control de piso central y aislamiento por canal dentro del tenant.</p>
   </div>
 }
