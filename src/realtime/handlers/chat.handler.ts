@@ -4,6 +4,7 @@ import { connectDb } from "@/src/lib/db";
 import { Message } from "@/src/core/models/Message";
 import { assertManagedAssetReference } from "@/src/lib/managed-assets";
 import { hasPermission } from "@/src/core/domain/permissions";
+import { rtcRoom } from "@/src/realtime/rooms";
 
 export function registerChatHandler(io: Server, socket: Socket) {
   socket.on("chat:message", async (payload, ack) => {
@@ -40,7 +41,7 @@ export function registerChatHandler(io: Server, socket: Socket) {
         },
         { upsert: true, new: true }
       ).lean();
-      io.to("org:" + session.organizationId).emit("chat:message", message);
+      io.to(rtcRoom(session.organizationId)).emit("chat:message", message);
       ack?.({ ok: true, message });
     } catch (error) {
       ack?.({ ok: false, error: error instanceof Error ? error.message : "CHAT_ERROR" });
