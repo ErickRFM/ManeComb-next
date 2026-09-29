@@ -1,0 +1,2 @@
+import { ModuleShell } from "@/src/components/module-shell";
+export default function RecoverPage(){return <ModuleShell eyebrow="SEGURIDAD" title="Recuperar acceso" description="La recuperación se entrega por el worker transaccional y registra el evento en auditoría."><div className="card grid" style={{maxWidth:520}}><input className="input" type="email" placeholder="Correo"/><button className="btn">Enviar enlace</button></div></ModuleShell>}

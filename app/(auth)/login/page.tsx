@@ -1,0 +1,2 @@
+import Link from "next/link"; import { ModuleShell } from "@/src/components/module-shell"; import { AuthForm } from "@/src/components/auth-form";
+export default function LoginPage(){return <ModuleShell eyebrow="ACCESO" title="Entrar a ManeComb" description="Una sesión, permisos por canal y aislamiento por organización."><AuthForm mode="login"/><p className="muted">¿No tienes cuenta? <Link className="brand" href="/registro">Registra tu empresa</Link></p></ModuleShell>}
