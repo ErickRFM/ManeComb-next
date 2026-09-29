@@ -12,6 +12,6 @@ export async function GET(request: Request) {
     if (!session.organizationId) throw new Error("FORBIDDEN");
     await connectDb();
     const vehicles = await Vehicle.find({ organizationId: session.organizationId, status: { $ne: "archived" } }).lean();
-    return NextResponse.json({ units: vehicles.map(vehicleToSnapshot) });
+    return NextResponse.json({ units: vehicles.map((vehicle) => vehicleToSnapshot(vehicle)) });
   } catch (error) { return apiError(error); }
 }
