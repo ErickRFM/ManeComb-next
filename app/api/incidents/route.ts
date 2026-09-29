@@ -5,6 +5,7 @@ import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Incident } from "@/src/core/models/Incident";
 import { emitToOrganization } from "@/src/realtime/runtime";
+import { enqueueOutboxEvent } from "@/src/core/services/outbox";
 
 const IncidentInput = z.object({
   vehicleId: z.string().optional(),
@@ -30,8 +31,18 @@ export async function POST(request: Request) {
     if (!session.organizationId) throw new Error("FORBIDDEN");
     const input = IncidentInput.parse(await request.json());
     await connectDb();
-    const incident = await Incident.create({ organizationId: session.organizationId, driverId: session.channel === "mobile_operations" ? session.sub : null, ...input });
+    const incident = await Incident.create({
+      organizationId: session.organizationId,
+      driverId: session.channel === "mobile_operations" ? session.sub : null,
+      ...input
+    });
     emitToOrganization(session.organizationId, "incident:new", incident.toObject());
+    await enqueueOutboxEvent("push.send", {
+      title: input.type === "sos" ? "SOS ManeComb" : "Nueva incidencia",
+      body: input.message || ("Incidencia " + input.type + " reportada"),
+      url: "/portal/incidencias",
+      tag: "incident-" + String(incident._id)
+    }, session.organizationId);
     return NextResponse.json({ incident }, { status: 201 });
   } catch (error) { return apiError(error); }
 }
