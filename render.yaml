@@ -17,8 +17,22 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      - key: NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY
+        sync: false
+      - key: WEB_PUSH_VAPID_PRIVATE_KEY
+        sync: false
+      - key: WEB_PUSH_SUBJECT
+        value: mailto:soporte@manecomb.com
       - key: MERCADO_PAGO_WEBHOOK_SECRET
         sync: false
+      - key: MERCADOPAGO_ACCESS_TOKEN
+        sync: false
+      - key: NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY
+        sync: false
+      - key: WEB_PUSH_VAPID_PRIVATE_KEY
+        sync: false
+      - key: WEB_PUSH_SUBJECT
+        value: mailto:soporte@manecomb.com
   - type: worker
     name: manecomb-communication-worker
     runtime: docker
