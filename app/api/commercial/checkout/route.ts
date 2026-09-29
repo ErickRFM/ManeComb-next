@@ -29,7 +29,7 @@ export async function POST(request:Request){
 
     await connectDb();
     const key=idempotencyKey||randomUUID();
-    const existing=await CheckoutIdempotency.findOne({organizationId:session.organizationId,key}).lean();
+    const existing=await CheckoutIdempotency.findOne({organizationId:session.organizationId,key});
     if(existing?.initPoint) return NextResponse.json({checkoutId:String(existing._id),initPoint:existing.initPoint,reused:true});
 
     const user=await User.findById(session.sub).lean();
