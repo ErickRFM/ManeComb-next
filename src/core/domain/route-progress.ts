@@ -85,10 +85,18 @@ export function resolveRouteState(input:{
   return {routeState:(confirmed?"OFF_ROUTE_CONFIRMED":"POSSIBLE_DEVIATION") as RouteState,deviationStartedAt:started.toISOString(),deviationDurationSeconds:duration};
 }
 export function nextRouteStop(stops:any[],geometry:GeoPoint[],distanceAlongM:number){
-  const projected=(Array.isArray(stops)?stops:[]).map(stop=>{
-    if(!valid(stop))return null;
-    const p=projectPointOnRoute({latitude:Number(stop.latitude),longitude:Number(stop.longitude)},geometry);
-    return p?{name:String(stop.name||"Parada"),order:Number(stop.order||0),distanceAlongM:p.distanceAlongM,latitude:Number(stop.latitude),longitude:Number(stop.longitude)}:null;
+  const projected=(Array.isArray(stops)?stops:[]).map((stop:any)=>{
+    const latitude=Number(stop?.latitude);
+    const longitude=Number(stop?.longitude);
+    if(!Number.isFinite(latitude)||!Number.isFinite(longitude))return null;
+    const p=projectPointOnRoute({latitude,longitude},geometry);
+    return p?{
+      name:String(stop?.name||"Parada"),
+      order:Number(stop?.order||0),
+      distanceAlongM:p.distanceAlongM,
+      latitude,
+      longitude
+    }:null;
   }).filter(Boolean) as Array<{name:string;order:number;distanceAlongM:number;latitude:number;longitude:number}>;
   return projected.filter(stop=>stop.distanceAlongM+20>=distanceAlongM).sort((a,b)=>a.distanceAlongM-b.distanceAlongM||a.order-b.order)[0]||null;
 }
