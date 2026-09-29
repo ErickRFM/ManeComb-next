@@ -1,5 +1,6 @@
 import type { JourneyAction, JourneyState } from "@/src/core/contracts/journey";
 import { transitionJourney } from "@/src/core/domain/journey-lifecycle";
+import { DeviceSession } from "@/src/core/models/DeviceSession";
 import { Journey } from "@/src/core/models/Journey";
 import { Vehicle } from "@/src/core/models/Vehicle";
 import { writeAudit } from "@/src/core/services/audit";
@@ -59,10 +60,16 @@ export async function applyJourneyAction(input: {
       { $set: { status: "running", driverId: journey.driverId, ...(journey.routeId ? { routeId: journey.routeId } : {}) } }
     );
   } else if (next === "FINISHED" || next === "CANCELLED") {
-    await Vehicle.updateOne(
-      { _id: journey.vehicleId, organizationId: input.organizationId },
-      { $set: { status: "active" }, $unset: { driverId: 1 } }
-    );
+    await Promise.all([
+      Vehicle.updateOne(
+        { _id: journey.vehicleId, organizationId: input.organizationId },
+        { $set: { status: "active" }, $unset: { driverId: 1 } }
+      ),
+      DeviceSession.updateMany(
+        { journeyId: journey._id, revokedAt: null },
+        { $set: { revokedAt: new Date() } }
+      )
+    ]);
   }
 
   await writeAudit({
