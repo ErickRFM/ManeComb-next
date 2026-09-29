@@ -4,6 +4,8 @@ import { requireApiSession } from "@/src/lib/auth";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Route } from "@/src/core/models/Route";
+import { assertAnyPermission, assertPermission } from "@/src/core/domain/permissions";
+import { writeAudit } from "@/src/core/services/audit";
 
 const Point = z.object({ latitude: z.number().min(-90).max(90), longitude: z.number().min(-180).max(180) });
 const Stop = Point.extend({ name: z.string().min(1), order: z.number().int().min(0), radiusM: z.number().min(10).max(1000).default(50) });
@@ -21,6 +23,8 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     const session = await requireApiSession(request, ["company_portal"]);
+    if (!session.organizationId) throw new Error("FORBIDDEN");
+    assertAnyPermission(session.roles, ["manage_routes","view_analytics"]);
     await connectDb();
     const routes = await Route.find({ organizationId: session.organizationId }).sort({ updatedAt: -1 }).lean();
     return NextResponse.json({ routes });
@@ -31,9 +35,17 @@ export async function POST(request: Request) {
   try {
     const session = await requireApiSession(request, ["company_portal"]);
     if (!session.organizationId) throw new Error("FORBIDDEN");
+    assertPermission(session.roles, "manage_routes");
     const input = RouteInput.parse(await request.json());
     await connectDb();
     const route = await Route.create({ organizationId: session.organizationId, ...input });
+    await writeAudit({
+      organizationId: session.organizationId,
+      actorUserId: session.sub,
+      action: "route.create",
+      entityType: "Route",
+      entityId: String(route._id)
+    });
     return NextResponse.json({ route }, { status: 201 });
   } catch (error) { return apiError(error); }
 }
