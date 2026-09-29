@@ -1,0 +1,2 @@
+import { ModuleShell } from "@/src/components/module-shell";
+export default function ContactPage(){return <ModuleShell eyebrow="CONTACTO" title="Hablemos de tu operación" description="Cuéntanos cuántas unidades administras y qué necesitas mejorar."><form className="card grid" style={{maxWidth:620}}><input className="input" placeholder="Nombre"/><input className="input" type="email" placeholder="Correo"/><textarea className="input" rows={5} placeholder="Mensaje"/><button className="btn" type="button">Enviar</button></form></ModuleShell>}
