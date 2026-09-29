@@ -1,6 +1,16 @@
 "use client";
+import type { ManeCombUploadKind } from "@/src/lib/cloudinary";
 
-export async function uploadManeCombFile(file: File, kind: "document" | "chat") {
+const MAX_BYTES:Record<ManeCombUploadKind,number>={
+  document:10*1024*1024,
+  payment:10*1024*1024,
+  chat:8*1024*1024
+};
+
+export async function uploadManeCombFile(file: File, kind: ManeCombUploadKind) {
+  if(file.size<=0)throw new Error("Archivo vacío");
+  if(file.size>MAX_BYTES[kind])throw new Error("El archivo excede el límite permitido");
+
   const signatureResponse = await fetch("/api/uploads/cloudinary/signature", {
     method: "POST",
     headers: { "content-type": "application/json" },

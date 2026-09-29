@@ -22,8 +22,8 @@ export function AdminManualPayments(){
 
   return <div className="grid"><span className="muted">{state}</span>
     {items.length===0?<div className="card muted">No hay pagos pendientes.</div>:items.map(item=><div className="card" key={item._id}>
-      <div className="status-row"><strong>{Number(item.amountMxn).toFixed(2)} MXN</strong><span className="badge">pending</span></div>
-      <p><a className="brand" href={item.receiptUrl} target="_blank" rel="noreferrer">Abrir comprobante</a></p>
+      <div className="status-row"><strong>{item.planCode} · {Number(item.amountMxn).toFixed(2)} MXN</strong><span className="badge">pending</span></div>
+      <p><a className="brand" href={"/api/manual-payments/"+item._id+"/receipt"} target="_blank" rel="noreferrer">Abrir comprobante</a></p>
       <div style={{display:"flex",gap:8}}><button className="btn" onClick={()=>void review(item._id,"approved")}>Aprobar</button><button className="btn secondary" onClick={()=>void review(item._id,"rejected")}>Rechazar</button></div>
     </div>)}
   </div>
