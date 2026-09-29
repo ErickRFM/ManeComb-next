@@ -11,8 +11,11 @@ await connectDb();
 const passwordHash=await hash(password,12);
 const user=await User.findOneAndUpdate(
   {email},
-  {$set:{name,passwordHash,organizationId:null,roles:["owner","admin"],channel:"platform_admin",active:true}},
+  {
+    $set:{name,passwordHash,organizationId:null,roles:["owner","admin"],channel:"platform_admin",active:true},
+    $setOnInsert:{mfaEnabled:false}
+  },
   {upsert:true,new:true,setDefaultsOnInsert:true}
 );
-console.log("Platform admin ready:",user.email,String(user._id));
+console.log("Platform admin ready:",user.email,String(user._id),"MFA:",user.mfaEnabled?"enabled":"setup required");
 process.exit(0);
