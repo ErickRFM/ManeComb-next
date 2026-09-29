@@ -5,6 +5,7 @@ import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Document } from "@/src/core/models/Document";
 import { writeAudit } from "@/src/core/services/audit";
+import { hasPermission } from "@/src/core/domain/permissions";
 
 const Review = z.object({
   status: z.enum(["approved", "rejected"]),
@@ -19,6 +20,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ do
   try {
     const session = await requireApiSession(request, ["company_portal"]);
     if (!session.organizationId) throw new Error("FORBIDDEN");
+    if (!hasPermission(session.roles, "manage_documents")) throw new Error("FORBIDDEN");
     const { documentId } = await params;
     const input = Review.parse(await request.json());
     await connectDb();
