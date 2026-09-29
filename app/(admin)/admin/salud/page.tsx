@@ -1,2 +1,5 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default function HealthPage(){return <ModuleShell eyebrow="SISTEMA" title="Salud de plataforma" description="MongoDB, Redis, integraciones, realtime y readiness."><div className="card grid"><code>GET /api/health</code><p className="muted">El healthcheck responde degraded cuando MongoDB/Redis o integraciones necesarias no están configuradas.</p></div></ModuleShell>}
+import { HealthPanel } from "@/src/components/health-panel";
+export default function HealthPage(){
+  return <ModuleShell eyebrow="SISTEMA" title="Salud de plataforma" description="Estado real de MongoDB, Redis e integraciones del runtime."><HealthPanel/></ModuleShell>
+}

@@ -3,18 +3,43 @@ import { transitionJourney } from "@/src/core/domain/journey-lifecycle";
 import { Journey } from "@/src/core/models/Journey";
 import { writeAudit } from "@/src/core/services/audit";
 
+type ChecklistInput = {
+  brakes: boolean;
+  tires: boolean;
+  lights: boolean;
+  fuel: boolean;
+  cleanliness: boolean;
+  odometerStartKm: number;
+};
+
 export async function applyJourneyAction(input: {
   organizationId: string;
   journeyId: string;
   actorUserId: string;
+  requiredDriverId?: string;
   action: JourneyAction;
+  checklist?: ChecklistInput;
   cancelReason?: string;
   finalOdometerKm?: number;
 }) {
-  const journey = await Journey.findOne({ _id: input.journeyId, organizationId: input.organizationId });
+  const query: Record<string, unknown> = { _id: input.journeyId, organizationId: input.organizationId };
+  if (input.requiredDriverId) query.driverId = input.requiredDriverId;
+
+  const journey = await Journey.findOne(query);
   if (!journey) throw new Error("Journey not found");
-  const next = transitionJourney(journey.state as JourneyState, input.action);
+
+  if (input.action === "ready") {
+    const checklist = input.checklist;
+    if (!checklist || !checklist.brakes || !checklist.tires || !checklist.lights || !checklist.fuel || !checklist.cleanliness) {
+      throw new Error("Checklist must be completed before READY");
+    }
+    journey.checklist = checklist;
+  }
+
+  const previous = journey.state as JourneyState;
+  const next = transitionJourney(previous, input.action);
   journey.state = next;
+
   if (next === "RUNNING" && !journey.startedAt) journey.startedAt = new Date();
   if (next === "FINISHED") {
     journey.finishedAt = new Date();
@@ -24,6 +49,7 @@ export async function applyJourneyAction(input: {
     journey.finishedAt = new Date();
     journey.cancelReason = input.cancelReason || "unspecified";
   }
+
   await journey.save();
   await writeAudit({
     organizationId: input.organizationId,
@@ -31,7 +57,7 @@ export async function applyJourneyAction(input: {
     action: "journey." + input.action,
     entityType: "Journey",
     entityId: String(journey._id),
-    metadata: { from: journey.modifiedPaths().includes("state"), to: next }
+    metadata: { from: previous, to: next }
   });
   return journey;
 }

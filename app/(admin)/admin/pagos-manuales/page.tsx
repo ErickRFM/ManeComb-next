@@ -1,2 +1,5 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default function ManualPaymentsPage(){return <ModuleShell eyebrow="FINANZAS" title="Pagos manuales" description="Bandeja para revisión y conciliación de transferencias con trazabilidad."><div className="card"><p className="muted">La aprobación debe ser idempotente y registrar actor, empresa, importe y comprobante.</p></div></ModuleShell>}
+import { AdminManualPayments } from "@/src/components/admin-manual-payments";
+export default function ManualPaymentsPage(){
+  return <ModuleShell eyebrow="FINANZAS" title="Pagos manuales" description="Revisión y conciliación idempotente de comprobantes con activación de suscripción y auditoría."><AdminManualPayments/></ModuleShell>
+}
