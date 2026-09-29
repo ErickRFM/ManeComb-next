@@ -18,7 +18,7 @@ export function PortalDashboardOverview(){
     let active=true;
     void Promise.all([
       fetch("/api/locations/live").then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudo cargar la flota");return d.units||[]}),
-      fetch("/api/incidents").then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudieron cargar incidencias");return d.incidents||[]}),
+      fetch("/api/incidents").then(async r=>{const d=await r.json();if(r.status===403)return [];if(!r.ok)throw new Error(d.error||"No se pudieron cargar incidencias");return d.incidents||[]}),
       fetch("/api/journeys").then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error||"No se pudieron cargar jornadas");return d.journeys||[]})
     ]).then(([fleet,alerts,ops])=>{
       if(!active)return;
