@@ -1,6 +1,7 @@
 import type { JourneyAction, JourneyState } from "@/src/core/contracts/journey";
 import { transitionJourney } from "@/src/core/domain/journey-lifecycle";
 import { Journey } from "@/src/core/models/Journey";
+import { Vehicle } from "@/src/core/models/Vehicle";
 import { writeAudit } from "@/src/core/services/audit";
 
 type ChecklistInput = {
@@ -51,6 +52,19 @@ export async function applyJourneyAction(input: {
   }
 
   await journey.save();
+
+  if (next === "RUNNING" || next === "PAUSED") {
+    await Vehicle.updateOne(
+      { _id: journey.vehicleId, organizationId: input.organizationId },
+      { $set: { status: "running", driverId: journey.driverId, ...(journey.routeId ? { routeId: journey.routeId } : {}) } }
+    );
+  } else if (next === "FINISHED" || next === "CANCELLED") {
+    await Vehicle.updateOne(
+      { _id: journey.vehicleId, organizationId: input.organizationId },
+      { $set: { status: "active" }, $unset: { driverId: 1 } }
+    );
+  }
+
   await writeAudit({
     organizationId: input.organizationId,
     actorUserId: input.actorUserId,
