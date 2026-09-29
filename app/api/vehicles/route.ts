@@ -5,6 +5,7 @@ import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Vehicle } from "@/src/core/models/Vehicle";
 import { writeAudit } from "@/src/core/services/audit";
+import { assertAnyPermission, assertPermission } from "@/src/core/domain/permissions";
 
 const VehicleInput = z.object({
   economicNumber: z.string().min(1).max(40),
@@ -17,6 +18,8 @@ export const runtime = "nodejs";
 export async function GET(request: Request) {
   try {
     const session = await requireApiSession(request, ["company_portal"]);
+    if (!session.organizationId) throw new Error("FORBIDDEN");
+    assertAnyPermission(session.roles, ["manage_vehicles","view_analytics"]);
     await connectDb();
     const vehicles = await Vehicle.find({ organizationId: session.organizationId }).sort({ economicNumber: 1 }).lean();
     return NextResponse.json({ vehicles });
@@ -27,6 +30,7 @@ export async function POST(request: Request) {
   try {
     const session = await requireApiSession(request, ["company_portal"]);
     if (!session.organizationId) throw new Error("FORBIDDEN");
+    assertPermission(session.roles, "manage_vehicles");
     const input = VehicleInput.parse(await request.json());
     await connectDb();
     const vehicle = await Vehicle.create({ organizationId: session.organizationId, ...input });
