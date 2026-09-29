@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { TelemetrySchema } from "@/src/core/contracts/telemetry";
 
+const ChannelIdSchema = z.string().trim().min(1).max(80);
+
 const ChatAttachmentSchema = z.object({
   url: z.string().url(),
   publicId: z.string().min(1).max(500),
@@ -12,7 +14,7 @@ const ChatAttachmentSchema = z.object({
 
 export const SocketTelemetrySchema = TelemetrySchema.extend({ recordedAt: z.coerce.date().optional() });
 export const ChatMessageSchema = z.object({
-  channelId: z.string().min(1).max(120),
+  channelId: ChannelIdSchema,
   clientMessageId: z.string().min(1).max(120),
   recipientUserId: z.string().min(1).optional(),
   kind: z.enum(["text", "image"]).default("text"),
@@ -26,6 +28,6 @@ export const ChatMessageSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["attachment"], message: "Image attachment is required" });
   }
 });
-export const RadioFloorSchema = z.object({ channelId: z.string().min(1) });
-export const RadioAudioSchema = z.object({ channelId: z.string().min(1), chunk: z.string().min(1).max(512_000) });
+export const RadioFloorSchema = z.object({ channelId: ChannelIdSchema });
+export const RadioAudioSchema = z.object({ channelId: ChannelIdSchema, chunk: z.string().min(1).max(512_000) });
 export const RtcSignalSchema = z.object({ targetUserId: z.string().min(1), signal: z.unknown() });
