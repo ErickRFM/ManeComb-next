@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiSession } from "@/src/lib/auth";
+import { assertPermission } from "@/src/lib/authorization";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Route } from "@/src/core/models/Route";
@@ -22,7 +23,7 @@ export const runtime="nodejs";
 
 export async function GET(request:Request,{params}:{params:Promise<{routeId:string}>}){
   try{
-    const session=await requireApiSession(request,["company_portal"]);
+    const session=assertPermission(await requireApiSession(request,["company_portal"]),"view_analytics");
     if(!session.organizationId) throw new Error("FORBIDDEN");
     const {routeId}=await params;
     await connectDb();
@@ -34,28 +35,18 @@ export async function GET(request:Request,{params}:{params:Promise<{routeId:stri
 
 export async function PATCH(request:Request,{params}:{params:Promise<{routeId:string}>}){
   try{
-    const session=await requireApiSession(request,["company_portal"]);
+    const session=assertPermission(await requireApiSession(request,["company_portal"]),"manage_routes");
     if(!session.organizationId) throw new Error("FORBIDDEN");
     const {routeId}=await params;
     const patch=RoutePatch.parse(await request.json());
     await connectDb();
     const current=await Route.findOne({_id:routeId,organizationId:session.organizationId});
     if(!current) return NextResponse.json({error:"Route not found"},{status:404});
-
     const previousRevision=current.revision || 1;
     Object.assign(current,patch);
     current.revision=previousRevision+1;
     await current.save();
-
-    await writeAudit({
-      organizationId:session.organizationId,
-      actorUserId:session.sub,
-      action:"route.update",
-      entityType:"Route",
-      entityId:String(current._id),
-      metadata:{revision:current.revision,fields:Object.keys(patch)}
-    });
-
+    await writeAudit({organizationId:session.organizationId,actorUserId:session.sub,action:"route.update",entityType:"Route",entityId:String(current._id),metadata:{revision:current.revision,fields:Object.keys(patch)}});
     return NextResponse.json({route:current});
   }catch(error){return apiError(error)}
 }

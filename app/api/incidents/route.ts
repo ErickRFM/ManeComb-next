@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiSession } from "@/src/lib/auth";
+import { assertPermission } from "@/src/lib/authorization";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Incident } from "@/src/core/models/Incident";
@@ -18,7 +19,7 @@ export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    const session = await requireApiSession(request, ["company_portal"]);
+    const session = assertPermission(await requireApiSession(request, ["company_portal"]), "manage_incidents");
     await connectDb();
     const incidents = await Incident.find({ organizationId: session.organizationId }).sort({ createdAt: -1 }).limit(200).lean();
     return NextResponse.json({ incidents });
@@ -29,13 +30,10 @@ export async function POST(request: Request) {
   try {
     const session = await requireApiSession(request, ["company_portal","mobile_operations"]);
     if (!session.organizationId) throw new Error("FORBIDDEN");
+    if (session.channel === "company_portal") assertPermission(session, "manage_incidents");
     const input = IncidentInput.parse(await request.json());
     await connectDb();
-    const incident = await Incident.create({
-      organizationId: session.organizationId,
-      driverId: session.channel === "mobile_operations" ? session.sub : null,
-      ...input
-    });
+    const incident = await Incident.create({organizationId: session.organizationId,driverId: session.channel === "mobile_operations" ? session.sub : null,...input});
     emitToOrganization(session.organizationId, "incident:new", incident.toObject());
     await enqueueOutboxEvent("push.send", {
       title: input.type === "sos" ? "SOS ManeComb" : "Nueva incidencia",
