@@ -57,5 +57,8 @@
     "vitest": "^3.2.0",
     "@types/web-push": "^3.6.4"
   },
-  "type": "module"
+  "type": "module",
+  "overrides": {
+    "postcss": "8.5.28"
+  }
 }
