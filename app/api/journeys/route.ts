@@ -8,8 +8,11 @@ import { applyJourneyAction } from "@/src/core/services/journeys";
 import { Journey } from "@/src/core/models/Journey";
 import { User } from "@/src/core/models/User";
 import { Vehicle } from "@/src/core/models/Vehicle";
+import { Route } from "@/src/core/models/Route";
 import { enqueueOutboxEvent } from "@/src/core/services/outbox";
 import { emitToOrganization } from "@/src/realtime/runtime";
+import { assertAnyPermission, assertPermission } from "@/src/core/domain/permissions";
+import { writeAudit } from "@/src/core/services/audit";
 
 const ChecklistSchema = z.object({
   brakes: z.boolean(), tires: z.boolean(), lights: z.boolean(), fuel: z.boolean(),
@@ -34,6 +37,9 @@ export async function GET(request: Request) {
   try {
     const session = await requireApiSession(request, ["company_portal", "mobile_operations"]);
     if (!session.organizationId) throw new Error("FORBIDDEN");
+    if (session.channel === "company_portal") {
+      assertAnyPermission(session.roles, ["manage_vehicles","view_analytics"]);
+    }
     await connectDb();
     const query: Record<string, unknown> = { organizationId: session.organizationId };
     if (session.channel === "mobile_operations") {
@@ -49,12 +55,14 @@ export async function PUT(request: Request) {
   try {
     const session = await requireApiSession(request, ["company_portal"]);
     if (!session.organizationId) throw new Error("FORBIDDEN");
+    assertPermission(session.roles, "manage_vehicles");
     const input = AssignmentSchema.parse(await request.json());
     await connectDb();
 
-    const [driver, vehicle, active] = await Promise.all([
+    const [driver, vehicle, route, active] = await Promise.all([
       User.exists({ _id: input.driverId, organizationId: session.organizationId, channel: "mobile_operations", active: true }),
       Vehicle.exists({ _id: input.vehicleId, organizationId: session.organizationId, status: { $ne: "archived" } }),
+      input.routeId ? Route.exists({ _id: input.routeId, organizationId: session.organizationId, status: { $ne: "archived" } }) : Promise.resolve(true),
       Journey.exists({
         organizationId: session.organizationId,
         $or: [{ driverId: input.driverId }, { vehicleId: input.vehicleId }],
@@ -64,6 +72,7 @@ export async function PUT(request: Request) {
 
     if (!driver) throw new Error("Driver not found");
     if (!vehicle) throw new Error("Vehicle not found");
+    if (!route) throw new Error("Route not found");
     if (active) throw new Error("Driver or vehicle already has an active journey");
 
     const journey = await Journey.create({
@@ -78,6 +87,15 @@ export async function PUT(request: Request) {
       { _id: input.vehicleId, organizationId: session.organizationId },
       { $set: { driverId: input.driverId, ...(input.routeId ? { routeId: input.routeId } : {}) } }
     );
+
+    await writeAudit({
+      organizationId: session.organizationId,
+      actorUserId: session.sub,
+      action: "journey.assign",
+      entityType: "Journey",
+      entityId: String(journey._id),
+      metadata: { vehicleId: input.vehicleId, driverId: input.driverId, routeId: input.routeId || null }
+    });
 
     emitToOrganization(session.organizationId, "journey:update", journey.toObject());
     await enqueueOutboxEvent("push.send", {
@@ -96,6 +114,7 @@ export async function POST(request: Request) {
   try {
     const session = await requireApiSession(request, ["company_portal", "mobile_operations"]);
     if (!session.organizationId) throw new Error("FORBIDDEN");
+    if (session.channel === "company_portal") assertPermission(session.roles, "manage_vehicles");
     const input = ActionSchema.parse(await request.json());
     await connectDb();
     const journey = await applyJourneyAction({
