@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { getEnv } from "@/src/lib/env";
+import { managedUploadFolder, UPLOAD_POLICY, type UploadKind } from "@/src/core/domain/upload-policy";
 
 export function createCloudinaryUploadSignature(input: {
   organizationId: string;
-  kind: "document" | "chat";
+  kind: UploadKind;
 }) {
   const env = getEnv();
   if (!env.cloudinaryCloudName || !env.cloudinaryApiKey || !env.cloudinaryApiSecret) {
@@ -11,8 +12,18 @@ export function createCloudinaryUploadSignature(input: {
   }
 
   const timestamp = Math.floor(Date.now() / 1000);
-  const folder = "manecomb/" + sanitize(input.organizationId) + "/" + input.kind;
-  const paramsToSign = "folder=" + folder + "&timestamp=" + timestamp;
+  const folder = managedUploadFolder(input.organizationId, input.kind);
+  const policy = UPLOAD_POLICY[input.kind];
+  const allowedFormats = [...policy.formats];
+  const params = {
+    allowed_formats: allowedFormats.join(","),
+    folder,
+    timestamp: String(timestamp)
+  };
+  const paramsToSign = Object.entries(params)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => key + "=" + value)
+    .join("&");
   const signature = createHash("sha1")
     .update(paramsToSign + env.cloudinaryApiSecret)
     .digest("hex");
@@ -22,10 +33,9 @@ export function createCloudinaryUploadSignature(input: {
     apiKey: env.cloudinaryApiKey,
     timestamp,
     folder,
-    signature
+    signature,
+    allowedFormats,
+    maxBytes: policy.maxBytes,
+    mimeTypes: [...policy.mimeTypes]
   };
-}
-
-function sanitize(value: string) {
-  return value.replace(/[^a-zA-Z0-9_-]/g, "");
 }
