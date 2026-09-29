@@ -1,2 +1,5 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default function IncidentsPage(){return <ModuleShell eyebrow="INCIDENCIAS" title="Centro de alertas" description="Recepción de tráfico, fallas mecánicas, accidentes, operativos, robos, emergencias médicas y SOS."><div className="card"><p className="muted">API activa: GET/POST /api/incidents. Los eventos críticos pueden emitirse por Socket.IO a la sala de la organización.</p></div></ModuleShell>}
+import { IncidentManager } from "@/src/components/incident-manager";
+export default function IncidentsPage(){
+  return <ModuleShell eyebrow="INCIDENCIAS" title="Centro de alertas" description="Tráfico, fallas, accidentes, operativos, robos, emergencias médicas y SOS con seguimiento de estado."><IncidentManager/></ModuleShell>
+}
