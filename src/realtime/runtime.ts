@@ -1,15 +1,17 @@
 import type { Server } from "socket.io";
 
-let realtimeServer: Server | null = null;
+const runtime = globalThis as typeof globalThis & {
+  __manecombRealtimeServer?: Server | null;
+};
 
 export function setRealtimeServer(io: Server | null) {
-  realtimeServer = io;
+  runtime.__manecombRealtimeServer = io;
 }
 
 export function emitToOrganization(organizationId: string, event: string, payload: unknown) {
-  realtimeServer?.to("org:" + organizationId).emit(event, payload);
+  runtime.__manecombRealtimeServer?.to("org:" + organizationId).emit(event, payload);
 }
 
 export function emitToUser(userId: string, event: string, payload: unknown) {
-  realtimeServer?.to("user:" + userId).emit(event, payload);
+  runtime.__manecombRealtimeServer?.to("user:" + userId).emit(event, payload);
 }
