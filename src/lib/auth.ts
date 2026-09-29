@@ -66,19 +66,33 @@ export async function createSessionForUser(
   return { token, expiresAt };
 }
 
+export async function assertSessionActive(session: SessionToken) {
+  await connectDb();
+  const [stored, user] = await Promise.all([
+    Session.findOne({ jti: session.jti, userId: session.sub, revokedAt: null, expiresAt: { $gt: new Date() } }).lean(),
+    User.findOne({ _id: session.sub, active: true }).lean()
+  ]);
+  if (!stored || !user) throw new Error("UNAUTHORIZED");
+
+  const currentOrganizationId = user.organizationId ? String(user.organizationId) : null;
+  if (String(user.channel) !== session.channel || currentOrganizationId !== session.organizationId) {
+    throw new Error("UNAUTHORIZED");
+  }
+
+  const tokenRoles = [...session.roles].sort().join(",");
+  const currentRoles = (user.roles || []).map((role) => String(role)).sort().join(",");
+  if (tokenRoles !== currentRoles) throw new Error("UNAUTHORIZED");
+
+  return session;
+}
+
 export async function requireApiSession(request: Request, allowedChannels?: Channel[]) {
   const token = extractRequestToken(request);
   if (!token) throw new Error("UNAUTHORIZED");
   const session = await verifySessionToken(token);
   if (session.channel === "platform_admin" && !session.mfaVerified) throw new Error("UNAUTHORIZED");
   if (allowedChannels && !allowedChannels.includes(session.channel)) throw new Error("FORBIDDEN");
-  await connectDb();
-  const [stored, user] = await Promise.all([
-    Session.findOne({ jti: session.jti, revokedAt: null, expiresAt: { $gt: new Date() } }).lean(),
-    User.findOne({ _id: session.sub, active: true }).lean()
-  ]);
-  if (!stored || !user) throw new Error("UNAUTHORIZED");
-  return session;
+  return assertSessionActive(session);
 }
 
 export async function revokeSession(jti: string) {
