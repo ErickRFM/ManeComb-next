@@ -25,7 +25,7 @@ npm run dev
 
 La app completa queda en `http://localhost:3000`. Socket.IO comparte el mismo servidor HTTP persistente.
 
-## Validación
+## Validación de código
 
 ```bash
 npm run typecheck
@@ -35,6 +35,18 @@ npm run build
 
 GitHub Actions ejecuta las tres compuertas en cada PR.
 
+## Certificación de release
+
+El repositorio incluye runners para los gates que requieren un entorno real:
+
+```bash
+npm run validate:prod-env
+npm run test:load:gps
+npm run test:e2e:operations
+```
+
+Las variables y el formato de evidencia están en `docs/quality/VALIDATION_LOG.md`. La prueba de GPS con pantalla bloqueada está documentada en `native/android/README.md`.
+
 ## Admin global
 
 Configura `PLATFORM_ADMIN_EMAIL` y `PLATFORM_ADMIN_PASSWORD` y ejecuta:
@@ -43,11 +55,17 @@ Configura `PLATFORM_ADMIN_EMAIL` y `PLATFORM_ADMIN_PASSWORD` y ejecuta:
 npm run bootstrap:platform-admin
 ```
 
+Los administradores de plataforma completan TOTP antes de recibir una sesión con `mfaVerified=true`.
+
 ## Operación móvil
 
 La PWA usa Geolocation + Wake Lock cuando está al frente. El servidor sólo acepta telemetría cuando el usuario autenticado es el conductor asignado y existe una jornada `RUNNING` para esa unidad.
 
 Para jornadas con pantalla bloqueada, el wrapper Capacitor reutiliza la misma UI Next.js y el `ManeCombLocationService` de Kotlin incluido en `native/android`. Kotlin no replica reglas de negocio: sólo mantiene el servicio nativo de ubicación y envía el mismo contrato a `/api/locations/telemetry`.
+
+## Archivos administrados
+
+Documentos e imágenes de chat se cargan a Cloudinary mediante firmas generadas en servidor. Los assets quedan aislados por `organizationId` y tipo, con límites de MIME/tamaño y validación del namespace antes de persistir referencias.
 
 ## Servicios externos
 
@@ -59,5 +77,6 @@ Variables documentadas en `.env.example`:
 - Resend
 - Mercado Pago
 - Web Push VAPID
+- Cloudinary
 
-Consulta `docs/architecture/ARCHITECTURE.md` y `docs/quality/ACCEPTANCE.md` para decisiones, invariantes y gates de producción.
+Consulta `docs/architecture/ARCHITECTURE.md`, `docs/quality/ACCEPTANCE.md` y `docs/quality/VALIDATION_LOG.md` para decisiones, invariantes y gates de producción.
