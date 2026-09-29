@@ -3,12 +3,13 @@ import { ChatMessageSchema } from "@/src/core/contracts/realtime";
 import { connectDb } from "@/src/lib/db";
 import { Message } from "@/src/core/models/Message";
 import { assertManagedAssetReference } from "@/src/lib/managed-assets";
+import { hasPermission } from "@/src/core/domain/permissions";
 
 export function registerChatHandler(io: Server, socket: Socket) {
   socket.on("chat:message", async (payload, ack) => {
     try {
       const session = socket.data.session;
-      if (!session?.organizationId) throw new Error("FORBIDDEN");
+      if (!session?.organizationId || !hasPermission(session.roles, "access_rtc")) throw new Error("FORBIDDEN");
       const input = ChatMessageSchema.parse(payload);
 
       if (input.kind === "image" && input.attachment) {
