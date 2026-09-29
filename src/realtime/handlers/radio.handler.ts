@@ -1,5 +1,7 @@
 import type { Server, Socket } from "socket.io";
 import { RadioAudioSchema, RadioFloorSchema } from "@/src/core/contracts/realtime";
+import { hasPermission } from "@/src/core/domain/permissions";
+import { allowSocketEvent } from "@/src/realtime/socket-rate-limit";
 import {
   acquireRadioFloor,
   radioRoom,
@@ -13,7 +15,7 @@ export function registerRadioHandler(io: Server, socket: Socket) {
 
   function sessionContext() {
     const session = socket.data.session;
-    if (!session?.organizationId) throw new Error("FORBIDDEN");
+    if (!session?.organizationId || !hasPermission(session.roles,"access_radio")) throw new Error("FORBIDDEN");
     return session;
   }
 
@@ -44,6 +46,7 @@ export function registerRadioHandler(io: Server, socket: Socket) {
 
   socket.on("radio:request-floor", async (payload, ack) => {
     try {
+      if(!allowSocketEvent(socket,"radio:floor",20,60_000)) return ack?.({ok:false,reason:"RATE_LIMITED"});
       const session = sessionContext();
       const { channelId } = RadioFloorSchema.parse(payload);
       const owner = socket.id + ":" + session.sub;
@@ -64,6 +67,7 @@ export function registerRadioHandler(io: Server, socket: Socket) {
   });
 
   socket.on("radio:audio", async (payload) => {
+    if(!allowSocketEvent(socket,"radio:audio",40,10_000)) return;
     const parsed = RadioAudioSchema.safeParse(payload);
     if (!parsed.success) return;
     try {
