@@ -1,15 +1,24 @@
 # Android native location bridge
 
-This directory contains the native source that complements the Next.js/PWA driver surface when ManeComb must continue transmitting GPS with the screen locked.
+La UI del conductor sigue viviendo en Next.js/PWA. Kotlin sólo mantiene la capacidad que el navegador no puede garantizar: GPS con pantalla bloqueada.
 
-## Integration
+## Garantías restauradas desde ManeComb original
 
-1. Run `npm run native:add` once to generate Capacitor's `android/` project.
-2. Copy the Kotlin files from this directory into `android/app/src/main/java/com/manecomb/location/`.
-3. Merge the permissions/service declarations from `AndroidManifest.snippet.xml` into the generated manifest.
-4. Register `ManeCombLocationPlugin` in `MainActivity`.
-5. Set `CAPACITOR_SERVER_URL=https://<production-host>` and run `npm run native:sync`.
+- Foreground Service.
+- Token nativo limitado a telemetría, ligado a conductor/unidad/jornada RUNNING.
+- Cola persistente SQLite para no perder puntos sin red.
+- packetId idempotente para reintentos seguros.
+- retry exponencial y flush automático al volver la conectividad.
+- persistencia de configuración para reinicio de proceso.
+- notificación con cantidad de paquetes pendientes.
+- HTTPS obligatorio fuera de localhost/emulador.
 
-The plugin reads the HttpOnly ManeComb session cookie from Android WebView CookieManager and passes it only to the foreground service. JavaScript never receives the cookie. The service posts telemetry directly to `/api/locations/telemetry`, so WebView suspension does not stop tracking.
+## Integración
 
-Production must use HTTPS. The PWA path remains available as a fallback, but reliable locked-screen tracking uses this foreground service.
+1. Ejecuta `npm run native:add` una vez para generar `android/`.
+2. Copia `ManeCombLocationPlugin.kt`, `ManeCombLocationService.kt` y `ManeCombLocationStore.kt` a `android/app/src/main/java/com/manecomb/location/`.
+3. Fusiona `AndroidManifest.snippet.xml`.
+4. Registra `ManeCombLocationPlugin` en `MainActivity`.
+5. Configura `CAPACITOR_SERVER_URL` y ejecuta `npm run native:sync`.
+
+El token de dispositivo dura lo suficiente para una jornada operativa y no sirve para Portal, Chat, Radio ni otras APIs. La autoridad de negocio sigue siendo el servidor.
