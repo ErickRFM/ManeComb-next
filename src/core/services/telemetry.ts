@@ -1,11 +1,33 @@
 import type { TelemetryInput, OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
 import { getGpsFreshness } from "@/src/core/domain/gps-freshness";
 import { Vehicle } from "@/src/core/models/Vehicle";
+import { Journey } from "@/src/core/models/Journey";
 import { RouteSessionPosition } from "@/src/core/models/RouteSessionPosition";
 
-export async function recordTelemetry(organizationId: string, input: TelemetryInput): Promise<OperationalUnitSnapshot> {
-  const vehicle = await Vehicle.findOne({ _id: input.vehicleId, organizationId });
-  if (!vehicle) throw new Error("Vehicle not found for organization");
+export async function recordTelemetry(
+  organizationId: string,
+  input: TelemetryInput,
+  context?: { driverId?: string }
+): Promise<OperationalUnitSnapshot> {
+  const vehicleQuery: Record<string, unknown> = { _id: input.vehicleId, organizationId };
+  if (context?.driverId) vehicleQuery.driverId = context.driverId;
+
+  const vehicle = await Vehicle.findOne(vehicleQuery);
+  if (!vehicle) throw new Error("Vehicle not assigned to authenticated driver");
+
+  let canonicalJourneyId: string | null = input.journeyId || null;
+  if (context?.driverId) {
+    const journeyQuery: Record<string, unknown> = {
+      organizationId,
+      vehicleId: vehicle._id,
+      driverId: context.driverId,
+      state: "RUNNING"
+    };
+    if (input.journeyId) journeyQuery._id = input.journeyId;
+    const journey = await Journey.findOne(journeyQuery).select("_id");
+    if (!journey) throw new Error("A RUNNING journey is required for telemetry");
+    canonicalJourneyId = String(journey._id);
+  }
 
   const recordedAt = input.recordedAt instanceof Date ? input.recordedAt : new Date(input.recordedAt);
 
@@ -13,7 +35,7 @@ export async function recordTelemetry(organizationId: string, input: TelemetryIn
     RouteSessionPosition.create({
       organizationId,
       vehicleId: vehicle._id,
-      journeyId: input.journeyId || null,
+      journeyId: canonicalJourneyId,
       latitude: input.latitude,
       longitude: input.longitude,
       speedMps: input.speedMps || 0,

@@ -7,13 +7,14 @@ export function registerLocationHandler(io: Server, socket: Socket) {
   socket.on("location:update", async (payload, ack) => {
     try {
       const session = socket.data.session;
-      if (!session?.organizationId) throw new Error("FORBIDDEN");
+      if (!session?.organizationId || session.channel !== "mobile_operations") throw new Error("FORBIDDEN");
       const input = SocketTelemetrySchema.parse(payload);
       await connectDb();
-      const snapshot = await recordTelemetry(session.organizationId, {
-        ...input,
-        recordedAt: input.recordedAt || new Date()
-      });
+      const snapshot = await recordTelemetry(
+        session.organizationId,
+        { ...input, recordedAt: input.recordedAt || new Date() },
+        { driverId: session.sub }
+      );
       io.to("org:" + session.organizationId).emit("location:snapshot", snapshot);
       ack?.({ ok: true, snapshot });
     } catch (error) {

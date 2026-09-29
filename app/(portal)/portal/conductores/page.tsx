@@ -1,2 +1,5 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default function DriversPage(){return <ModuleShell eyebrow="CHOFERES" title="Conductores y activación" description="Administración de cuentas operativas, vigencias documentales y llaves de enrolamiento."><div className="card"><p className="muted">El canal mobile_operations queda aislado del portal empresarial y recibe únicamente permisos operativos.</p></div></ModuleShell>}
+import { DriverManager } from "@/src/components/driver-manager";
+export default function DriversPage(){
+  return <ModuleShell eyebrow="CHOFERES" title="Conductores, activación y jornadas" description="Altas operativas, llaves de enrolamiento, asignación de unidad/ruta y estado de jornadas."><DriverManager/></ModuleShell>
+}

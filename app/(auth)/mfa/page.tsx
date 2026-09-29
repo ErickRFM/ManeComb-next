@@ -1,2 +1,6 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default function MfaPage(){return <ModuleShell eyebrow="MFA" title="Verificación de administrador" description="Segundo factor obligatorio para cuentas de plataforma."><div className="card grid" style={{maxWidth:420}}><input className="input" inputMode="numeric" placeholder="000000"/><button className="btn">Verificar</button></div></ModuleShell>}
+import { MfaForm } from "@/src/components/mfa-form";
+
+export default function MfaPage() {
+  return <ModuleShell eyebrow="MFA" title="Verificación de administrador" description="Las cuentas de plataforma requieren un segundo factor TOTP antes de crear una sesión administrativa."><MfaForm /></ModuleShell>;
+}

@@ -1,2 +1,5 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default function VehiclesPage(){return <ModuleShell eyebrow="FLOTA" title="Unidades" description="CRUD multitenant de combis, asignación de conductor, ruta y estado operativo."><div className="card"><p className="muted">API activa: GET/POST /api/vehicles. La siguiente iteración conecta esta vista al formulario y tabla de flota.</p></div></ModuleShell>}
+import { VehicleManager } from "@/src/components/vehicle-manager";
+export default function VehiclesPage(){
+  return <ModuleShell eyebrow="FLOTA" title="Unidades" description="Alta y consulta de unidades con aislamiento multitenant y auditoría de creación."><VehicleManager/></ModuleShell>
+}

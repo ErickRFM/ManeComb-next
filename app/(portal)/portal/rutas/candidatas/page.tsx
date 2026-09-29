@@ -1,2 +1,5 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default function CandidatesPage(){return <ModuleShell eyebrow="AUTO-ROUTE" title="Rutas aprendidas" description="Espacio de revisión para candidatos detectados a partir de sesiones GPS; ninguna geometría se publica sin aprobación humana."><div className="card"><p className="muted">Pendiente de alimentar con el motor de clustering de trazas conservando revision y auditoría.</p></div></ModuleShell>}
+import { RouteCandidates } from "@/src/components/route-candidates";
+export default function CandidatesPage(){
+  return <ModuleShell eyebrow="AUTO-ROUTE" title="Rutas aprendidas" description="ManeComb analiza jornadas terminadas, simplifica una traza representativa y exige aprobación humana antes de cambiar la ruta activa."><RouteCandidates/></ModuleShell>
+}

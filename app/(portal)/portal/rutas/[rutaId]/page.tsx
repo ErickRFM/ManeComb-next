@@ -1,2 +1,6 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default async function RouteEditorPage({params}:{params:Promise<{rutaId:string}>}){const {rutaId}=await params;const creating=rutaId==="nueva";return <ModuleShell eyebrow="EDITOR" title={creating?"Nueva ruta":"Editar ruta"} description="La edición se guarda como geometría versionada; la API exige al menos dos puntos válidos."><div className="card grid"><input className="input" placeholder="Nombre de ruta"/><textarea className="input" rows={8} placeholder={'[{"latitude":19.3,"longitude":-98.2},{"latitude":19.31,"longitude":-98.21}]'}/><button className="btn">{creating?"Crear ruta":"Guardar revisión"}</button></div></ModuleShell>}
+import { RouteEditor } from "@/src/components/route-editor";
+export default async function RouteEditorPage({params}:{params:Promise<{rutaId:string}>}){
+  const {rutaId}=await params;
+  return <ModuleShell eyebrow="EDITOR" title={rutaId==="nueva"?"Nueva ruta":"Editar ruta"} description="La ruta se valida en servidor, queda aislada por organización y cada guardado incrementa revision."><RouteEditor routeId={rutaId}/></ModuleShell>
+}

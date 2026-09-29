@@ -5,20 +5,25 @@ import { isNativeLocationAvailable, startNativeLocation, stopNativeLocation } fr
 export function DriverConsole() {
   const watchRef = useRef<number | null>(null);
   const wakeLockRef = useRef<any>(null);
+  const trackingRef = useRef({ vehicleId: "", journeyId: "" });
   const [vehicleId, setVehicleId] = useState("");
   const [journeyId, setJourneyId] = useState("");
   const [status, setStatus] = useState("Detenido");
   const [speed, setSpeed] = useState<number | null>(null);
 
   useEffect(() => {
-    const enrolled = localStorage.getItem("manecomb.vehicleId");
-    if (enrolled) setVehicleId(enrolled);
+    const enrolled = localStorage.getItem("manecomb.vehicleId") || "";
+    const activeJourney = localStorage.getItem("manecomb.journeyId") || "";
+    setVehicleId(enrolled);
+    setJourneyId(activeJourney);
+    trackingRef.current = { vehicleId: enrolled, journeyId: activeJourney };
   }, []);
 
   async function send(position: GeolocationPosition) {
+    const current = trackingRef.current;
     const payload = {
-      vehicleId,
-      journeyId: journeyId || undefined,
+      vehicleId: current.vehicleId,
+      journeyId: current.journeyId || undefined,
       latitude: position.coords.latitude,
       longitude: position.coords.longitude,
       speedMps: Math.max(0, position.coords.speed || 0),
@@ -32,14 +37,26 @@ export function DriverConsole() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload)
     });
-    if (!response.ok) setStatus("Telemetría rechazada por el servidor");
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setStatus(data.error || "Telemetría rechazada por el servidor");
+    }
   }
 
   async function start() {
-    if (!vehicleId) return setStatus("Ingresa el ID de la unidad");
-    localStorage.setItem("manecomb.vehicleId", vehicleId);
+    const effectiveVehicleId = vehicleId || localStorage.getItem("manecomb.vehicleId") || "";
+    const effectiveJourneyId = journeyId || localStorage.getItem("manecomb.journeyId") || "";
+    if (!effectiveVehicleId) return setStatus("No hay unidad asignada");
+    if (!effectiveJourneyId) return setStatus("No hay jornada activa");
+
+    setVehicleId(effectiveVehicleId);
+    setJourneyId(effectiveJourneyId);
+    trackingRef.current = { vehicleId: effectiveVehicleId, journeyId: effectiveJourneyId };
+    localStorage.setItem("manecomb.vehicleId", effectiveVehicleId);
+    localStorage.setItem("manecomb.journeyId", effectiveJourneyId);
+
     if (isNativeLocationAvailable()) {
-      await startNativeLocation({ serverUrl: window.location.origin, vehicleId, journeyId: journeyId || undefined });
+      await startNativeLocation({ serverUrl: window.location.origin, vehicleId: effectiveVehicleId, journeyId: effectiveJourneyId });
       setStatus("GPS nativo en segundo plano");
       return;
     }
@@ -64,10 +81,10 @@ export function DriverConsole() {
   }
 
   return <div className="driver-panel grid">
-    <div><span className="badge">OPERACIÓN</span><h1 className="module-title" style={{marginTop:12}}>Jornada del conductor</h1><p className="muted">PWA por defecto y servicio Android nativo dentro del wrapper para continuidad con pantalla bloqueada.</p></div>
+    <div><span className="badge">TELEMETRÍA</span><h2 style={{margin:"10px 0 0"}}>Seguimiento GPS</h2><p className="muted">El servidor sólo acepta ubicación de la unidad asignada durante una jornada RUNNING.</p></div>
     <div className="card grid">
-      <input className="input" value={vehicleId} onChange={(e)=>setVehicleId(e.target.value)} placeholder="ID de unidad"/>
-      <input className="input" value={journeyId} onChange={(e)=>setJourneyId(e.target.value)} placeholder="ID de jornada (opcional)"/>
+      <input className="input" value={vehicleId} readOnly placeholder="Unidad asignada"/>
+      <input className="input" value={journeyId} readOnly placeholder="Jornada activa"/>
       <div className="status-row"><span>Estado</span><strong>{status}</strong></div>
       {speed !== null ? <div className="status-row"><span>Velocidad</span><span className="kpi">{speed.toFixed(0)} km/h</span></div> : null}
       <div style={{display:"flex",gap:10}}><button className="btn" onClick={()=>void start()}>Iniciar GPS</button><button className="btn secondary" onClick={()=>void stop()}>Detener</button></div>

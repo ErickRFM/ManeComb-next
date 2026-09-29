@@ -38,7 +38,8 @@
     "socket.io-client": "^4.8.1",
     "zod": "^3.25.0",
     "zustand": "^5.0.0",
-    "tsx": "^4.20.0"
+    "tsx": "^4.20.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",
@@ -51,7 +52,8 @@
     "eslint-config-next": "^15.2.4",
     "tailwindcss": "^4.1.0",
     "typescript": "^5.7.0",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.0",
+    "@types/web-push": "^3.6.4"
   },
   "type": "module"
 }
