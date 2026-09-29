@@ -1,0 +1,2 @@
+import { ModuleShell } from "@/src/components/module-shell";
+export default function GovernancePage(){return <ModuleShell eyebrow="AUDITORÍA" title="Gobernanza y seguridad" description="Eventos críticos, sesiones, cambios de configuración y acciones administrativas."><div className="card"><p className="muted">AuditLog es append-only desde la aplicación y se asocia al actor y tenant cuando corresponda.</p></div></ModuleShell>}
