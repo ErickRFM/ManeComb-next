@@ -16,7 +16,8 @@
     "worker": "tsx worker.ts",
     "native:add": "cap add android",
     "native:sync": "cap sync android",
-    "native:open": "cap open android"
+    "native:open": "cap open android",
+    "bootstrap:platform-admin": "tsx scripts/bootstrap-platform-admin.ts"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
@@ -36,7 +37,8 @@
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "zod": "^3.25.0",
-    "zustand": "^5.0.0"
+    "zustand": "^5.0.0",
+    "tsx": "^4.20.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0",
@@ -48,8 +50,8 @@
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.2.4",
     "tailwindcss": "^4.1.0",
-    "tsx": "^4.20.0",
     "typescript": "^5.7.0",
     "vitest": "^3.2.0"
-  }
+  },
+  "type": "module"
 }
