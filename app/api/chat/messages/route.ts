@@ -28,7 +28,12 @@ export async function GET(request: Request) {
     await connectDb();
     const messages = await Message.find({
       organizationId: session.organizationId,
-      channelId: input.channelId
+      channelId: input.channelId,
+      $or: [
+        { recipientUserId: null },
+        { recipientUserId: session.sub },
+        { senderUserId: session.sub, recipientUserId: { $ne: null } }
+      ]
     }).sort({ createdAt: -1 }).limit(input.limit).lean();
 
     return NextResponse.json({ messages: messages.reverse() });
