@@ -55,10 +55,11 @@ export async function createSessionForUser(
   await Session.create({ jti, userId: user._id, expiresAt });
   const channel = user.channel as Channel;
   const mfaVerified = channel !== "platform_admin" || options?.mfaVerified === true;
+  const roles = Array.from(user.roles || [], (role) => String(role)) as SessionToken["roles"];
   const token = await signSessionToken({
     sub: String(user._id),
     organizationId: user.organizationId ? String(user.organizationId) : null,
-    roles: user.roles as SessionToken["roles"],
+    roles,
     channel,
     jti,
     mfaVerified
