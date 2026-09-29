@@ -65,7 +65,7 @@ export function registerChatHandler(io: Server, socket: Socket) {
           }
         },
         { upsert: true, new: true }
-      ).lean();
+      );
 
       if (input.recipientUserId) {
         io.to("user:" + session.sub).to("user:" + input.recipientUserId).emit("chat:message", message);
