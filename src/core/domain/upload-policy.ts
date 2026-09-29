@@ -1,4 +1,4 @@
-export type UploadKind = "document" | "chat";
+export type UploadKind = "document" | "chat" | "payment";
 
 export const UPLOAD_POLICY = {
   document: {
@@ -10,6 +10,11 @@ export const UPLOAD_POLICY = {
     maxBytes: 8 * 1024 * 1024,
     mimeTypes: ["image/jpeg", "image/png", "image/webp"] as const,
     formats: ["jpg", "jpeg", "png", "webp"] as const
+  },
+  payment: {
+    maxBytes: 15 * 1024 * 1024,
+    mimeTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"] as const,
+    formats: ["jpg", "jpeg", "png", "webp", "pdf"] as const
   }
 } as const;
 
