@@ -21,7 +21,8 @@ export async function signSessionToken(payload: SessionToken) {
     organizationId: payload.organizationId,
     roles: payload.roles,
     channel: payload.channel,
-    jti: payload.jti
+    jti: payload.jti,
+    mfaVerified: payload.mfaVerified
   }).setProtectedHeader({ alg: "HS256" }).setSubject(payload.sub).setIssuedAt().setExpirationTime("8h").sign(authKey());
 }
 
@@ -32,7 +33,8 @@ export async function verifySessionToken(token: string) {
     organizationId: payload.organizationId ?? null,
     roles: payload.roles,
     channel: payload.channel,
-    jti: payload.jti
+    jti: payload.jti,
+    mfaVerified: payload.mfaVerified ?? false
   });
 }
 
@@ -43,17 +45,23 @@ export function extractRequestToken(request: Request) {
   return cookies[cookieName] || null;
 }
 
-export async function createSessionForUser(user: { _id: unknown; organizationId?: unknown; roles: string[]; channel: string }) {
+export async function createSessionForUser(
+  user: { _id: unknown; organizationId?: unknown; roles: string[]; channel: string },
+  options?: { mfaVerified?: boolean }
+) {
   await connectDb();
   const jti = randomUUID();
   const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
   await Session.create({ jti, userId: user._id, expiresAt });
+  const channel = user.channel as Channel;
+  const mfaVerified = channel !== "platform_admin" || options?.mfaVerified === true;
   const token = await signSessionToken({
     sub: String(user._id),
     organizationId: user.organizationId ? String(user.organizationId) : null,
     roles: user.roles as SessionToken["roles"],
-    channel: user.channel as Channel,
-    jti
+    channel,
+    jti,
+    mfaVerified
   });
   return { token, expiresAt };
 }
@@ -62,6 +70,7 @@ export async function requireApiSession(request: Request, allowedChannels?: Chan
   const token = extractRequestToken(request);
   if (!token) throw new Error("UNAUTHORIZED");
   const session = await verifySessionToken(token);
+  if (session.channel === "platform_admin" && !session.mfaVerified) throw new Error("UNAUTHORIZED");
   if (allowedChannels && !allowedChannels.includes(session.channel)) throw new Error("FORBIDDEN");
   await connectDb();
   const [stored, user] = await Promise.all([
