@@ -13,6 +13,7 @@ export const SessionTokenSchema = z.object({
   organizationId: z.string().nullable(),
   roles: z.array(AppRoleSchema),
   channel: ChannelSchema,
-  jti: z.string().min(1)
+  jti: z.string().min(1),
+  mfaVerified: z.boolean().default(false)
 });
 export type SessionToken = z.infer<typeof SessionTokenSchema>;
