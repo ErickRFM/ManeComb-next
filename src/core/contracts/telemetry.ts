@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const TelemetrySchema = z.object({
+  packetId: z.string().uuid().optional(),
   vehicleId: z.string().min(1),
   journeyId: z.string().min(1).optional(),
   latitude: z.number().min(-90).max(90),
