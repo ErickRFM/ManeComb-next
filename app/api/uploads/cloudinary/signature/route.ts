@@ -5,7 +5,7 @@ import { apiError } from "@/src/lib/http";
 import { createCloudinaryUploadSignature } from "@/src/lib/cloudinary";
 import { hasPermission } from "@/src/core/domain/permissions";
 
-const Input = z.object({ kind: z.enum(["document", "chat"]) });
+const Input = z.object({ kind: z.enum(["document", "chat", "payment"]) });
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
@@ -18,6 +18,9 @@ export async function POST(request: Request) {
       throw new Error("FORBIDDEN");
     }
     if (kind === "chat" && !hasPermission(session.roles, "access_rtc")) {
+      throw new Error("FORBIDDEN");
+    }
+    if (kind === "payment" && (session.channel !== "company_portal" || !hasPermission(session.roles, "manage_billing"))) {
       throw new Error("FORBIDDEN");
     }
 
