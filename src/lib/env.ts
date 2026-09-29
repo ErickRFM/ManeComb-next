@@ -15,7 +15,16 @@ export type ManeCombEnv = {
   cloudinaryCloudName: string | null;
   cloudinaryApiKey: string | null;
   cloudinaryApiSecret: string | null;
+  rtcStunUrls: string[];
+  rtcTurnUrls: string[];
+  rtcTurnUsername: string | null;
+  rtcTurnCredential: string | null;
+  rtcTurnSecret: string | null;
 };
+
+function urls(value:string|undefined){
+  return String(value||"").split(",").map(item=>item.trim()).filter(Boolean);
+}
 
 export function getEnv(): ManeCombEnv {
   return {
@@ -34,7 +43,12 @@ export function getEnv(): ManeCombEnv {
     webPushSubject: process.env.WEB_PUSH_SUBJECT || null,
     cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || null,
     cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || null,
-    cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || null
+    cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || null,
+    rtcStunUrls: urls(process.env.RTC_STUN_URLS),
+    rtcTurnUrls: urls(process.env.RTC_TURN_URLS),
+    rtcTurnUsername: process.env.RTC_TURN_USERNAME || null,
+    rtcTurnCredential: process.env.RTC_TURN_CREDENTIAL || null,
+    rtcTurnSecret: process.env.RTC_TURN_SECRET || null
   };
 }
 
