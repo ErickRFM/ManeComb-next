@@ -4,6 +4,7 @@ import { requireApiSession } from "@/src/lib/auth";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { reviewRouteCandidate } from "@/src/core/services/route-learning";
+import { assertPermission } from "@/src/core/domain/permissions";
 
 export const runtime="nodejs";
 
@@ -11,6 +12,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{candidateI
   try{
     const session=await requireApiSession(request,["company_portal"]);
     if(!session.organizationId)throw new Error("FORBIDDEN");
+    assertPermission(session.roles,"manage_routes");
     const {candidateId}=await params;
     const {action}=z.object({action:z.enum(["approved","rejected"])}).parse(await request.json());
     await connectDb();
