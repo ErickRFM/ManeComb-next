@@ -3,6 +3,7 @@ import { RtcSignalSchema } from "@/src/core/contracts/realtime";
 import { connectDb } from "@/src/lib/db";
 import { User } from "@/src/core/models/User";
 import { hasPermission } from "@/src/core/domain/permissions";
+import { userRoom } from "@/src/realtime/rooms";
 
 export function registerRtcHandler(io: Server, socket: Socket) {
   socket.on("rtc:signal", async (payload, ack) => {
@@ -18,7 +19,7 @@ export function registerRtcHandler(io: Server, socket: Socket) {
         roles: { $in: ["owner","admin","dispatcher","supervisor","driver"] }
       });
       if (!target) throw new Error("RTC_TARGET_NOT_FOUND");
-      io.to("user:" + input.targetUserId).emit("rtc:signal", { fromUserId: session.sub, signal: input.signal });
+      io.to(userRoom(input.targetUserId)).emit("rtc:signal", { fromUserId: session.sub, signal: input.signal });
       ack?.({ ok: true });
     } catch (error) {
       ack?.({ ok: false, error: error instanceof Error ? error.message : "RTC_ERROR" });
