@@ -2,18 +2,16 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 export function AuthForm({mode}:{mode:"login"|"register"}) {
-  const router=useRouter();
-  const [error,setError]=useState("");
-  const [busy,setBusy]=useState(false);
+  const router=useRouter(); const [error,setError]=useState(""); const [busy,setBusy]=useState(false);
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault(); setBusy(true); setError("");
-    const form=new FormData(event.currentTarget);
-    const body=Object.fromEntries(form.entries());
+    const body=Object.fromEntries(new FormData(event.currentTarget).entries());
     const response=await fetch("/api/auth/"+mode,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});
-    const result=await response.json().catch(()=>({}));
-    setBusy(false);
+    const result=await response.json().catch(()=>({})); setBusy(false);
     if(!response.ok) return setError(result.error||"No fue posible completar la operación");
-    router.push("/portal/dashboard"); router.refresh();
+    const channel=result.user?.channel;
+    router.push(channel==="mobile_operations"?"/operacion":channel==="platform_admin"?"/admin/salud":"/portal/dashboard");
+    router.refresh();
   }
   return <form onSubmit={submit} className="card grid" style={{maxWidth:520}}>
     {mode==="register"?<><input className="input" name="organizationName" placeholder="Empresa / línea" required/><input className="input" name="name" placeholder="Nombre del responsable" required/></>:null}
