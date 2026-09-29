@@ -1,6 +1,7 @@
 import type { Server, Socket } from "socket.io";
 import { RadioAudioSchema, RadioFloorSchema } from "@/src/core/contracts/realtime";
 import { hasPermission } from "@/src/core/domain/permissions";
+import { rtcRoom } from "@/src/realtime/rooms";
 
 const floors = new Map<string, string>();
 
@@ -23,7 +24,7 @@ export function registerRadioHandler(io: Server, socket: Socket) {
       const holder = floors.get(key);
       if (holder && holder !== socket.id) return ack?.({ ok: false, reason: "busy" });
       floors.set(key, socket.id);
-      io.to("org:" + session.organizationId).emit("radio:floor", { channelId, userId: session.sub, active: true });
+      io.to(rtcRoom(session.organizationId)).emit("radio:floor", { channelId, userId: session.sub, active: true });
       ack?.({ ok: true });
     } catch (error) {
       ack?.({ ok: false, reason: error instanceof Error ? error.message : "RADIO_ERROR" });
@@ -37,7 +38,7 @@ export function registerRadioHandler(io: Server, socket: Socket) {
     if (!parsed.success) return;
     const key = floorKey(session.organizationId, parsed.data.channelId);
     if (floors.get(key) !== socket.id) return;
-    socket.to("org:" + session.organizationId).emit("radio:audio", {
+    socket.to(rtcRoom(session.organizationId)).emit("radio:audio", {
       channelId: parsed.data.channelId,
       userId: session.sub,
       chunk: parsed.data.chunk
@@ -52,7 +53,7 @@ export function registerRadioHandler(io: Server, socket: Socket) {
       const key = floorKey(session.organizationId, parsed.data.channelId);
       if (floors.get(key) === socket.id) {
         floors.delete(key);
-        io.to("org:" + session.organizationId).emit("radio:floor", { channelId: parsed.data.channelId, userId: session.sub, active: false });
+        io.to(rtcRoom(session.organizationId)).emit("radio:floor", { channelId: parsed.data.channelId, userId: session.sub, active: false });
       }
     } else {
       for (const [key, holder] of floors.entries()) if (holder === socket.id) floors.delete(key);
