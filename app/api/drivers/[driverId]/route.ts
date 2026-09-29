@@ -5,6 +5,7 @@ import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { User } from "@/src/core/models/User";
 import { writeAudit } from "@/src/core/services/audit";
+import { assertPermission } from "@/src/core/domain/permissions";
 
 const Patch=z.object({active:z.boolean()});
 export const runtime="nodejs";
@@ -13,6 +14,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{driverId:s
   try{
     const session=await requireApiSession(request,["company_portal"]);
     if(!session.organizationId)throw new Error("FORBIDDEN");
+    assertPermission(session.roles,"manage_users");
     const {driverId}=await params;
     const input=Patch.parse(await request.json());
     await connectDb();
