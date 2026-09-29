@@ -5,20 +5,17 @@ import { getCommercialPlan } from "@/src/core/domain/commercial-plans";
 import { CheckoutIdempotency } from "@/src/core/models/CheckoutIdempotency";
 import { User } from "@/src/core/models/User";
 import { requireApiSession } from "@/src/lib/auth";
+import { assertPermission } from "@/src/lib/authorization";
 import { connectDb } from "@/src/lib/db";
 import { getEnv } from "@/src/lib/env";
 import { apiError } from "@/src/lib/http";
 
-const Input=z.object({
-  planId:z.string().min(1),
-  idempotencyKey:z.string().min(8).max(200).optional()
-});
-
+const Input=z.object({planId:z.string().min(1),idempotencyKey:z.string().min(8).max(200).optional()});
 export const runtime="nodejs";
 
 export async function POST(request:Request){
   try{
-    const session=await requireApiSession(request,["company_portal"]);
+    const session=assertPermission(await requireApiSession(request,["company_portal"]),"manage_billing");
     if(!session.organizationId) throw new Error("FORBIDDEN");
     const {planId,idempotencyKey}=Input.parse(await request.json());
     const plan=getCommercialPlan(planId);
@@ -39,22 +36,13 @@ export async function POST(request:Request){
     const externalReference=["manecomb",session.organizationId,plan.code].join("|");
     const response=await fetch("https://api.mercadopago.com/preapproval",{
       method:"POST",
-      headers:{
-        "content-type":"application/json",
-        authorization:"Bearer "+env.mercadoPagoAccessToken,
-        "X-Idempotency-Key":key
-      },
+      headers:{"content-type":"application/json",authorization:"Bearer "+env.mercadoPagoAccessToken,"X-Idempotency-Key":key},
       body:JSON.stringify({
         reason:"ManeComb "+plan.label,
         payer_email:email,
         external_reference:externalReference,
         back_url:env.appUrl+"/portal/facturacion",
-        auto_recurring:{
-          frequency:1,
-          frequency_type:"months",
-          transaction_amount:plan.monthlyMxn,
-          currency_id:"MXN"
-        }
+        auto_recurring:{frequency:1,frequency_type:"months",transaction_amount:plan.monthlyMxn,currency_id:"MXN"}
       })
     });
 
@@ -66,7 +54,6 @@ export async function POST(request:Request){
       {$setOnInsert:{organizationId:session.organizationId,key,planCode:plan.code},$set:{providerSubscriptionId:provider.id,initPoint:provider.init_point,status:"pending"}},
       {upsert:true,new:true}
     );
-
     return NextResponse.json({checkoutId:String(checkout._id),initPoint:provider.init_point});
   }catch(error){return apiError(error)}
 }
