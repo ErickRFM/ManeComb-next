@@ -15,7 +15,7 @@ export async function requireDeviceTelemetrySession(request: Request) {
     tokenHash: hashDeviceToken(token),
     revokedAt: null,
     expiresAt: { $gt: new Date() }
-  }).lean();
+  });
   if (!session) throw new Error("UNAUTHORIZED");
   return {
     id: String(session._id),
