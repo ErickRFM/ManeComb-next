@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import next from "next";
 import { createRealtimeServer } from "@/src/realtime/socket-server";
+import { startFreshnessSweeper } from "@/src/realtime/services/freshness-sweeper";
 
 const dev = process.env.NODE_ENV !== "production";
 const port = Number(process.env.PORT || 3000);
@@ -11,6 +12,7 @@ const handler = app.getRequestHandler();
 await app.prepare();
 const httpServer = createServer((req, res) => handler(req, res));
 const realtime = await createRealtimeServer(httpServer);
+const stopFreshnessSweeper=startFreshnessSweeper(realtime);
 
 httpServer.listen(port, hostname, () => {
   console.log("[manecomb] listening on http://" + hostname + ":" + port);
@@ -18,6 +20,7 @@ httpServer.listen(port, hostname, () => {
 
 const shutdown = (signal: string) => {
   console.log("[manecomb] received " + signal);
+  stopFreshnessSweeper();
   realtime.close();
   httpServer.close(() => process.exit(0));
 };
