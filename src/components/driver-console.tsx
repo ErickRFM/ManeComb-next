@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { isNativeLocationAvailable, startNativeLocation, stopNativeLocation } from "@/src/lib/native-location";
 
 export function DriverConsole() {
@@ -9,6 +9,11 @@ export function DriverConsole() {
   const [journeyId, setJourneyId] = useState("");
   const [status, setStatus] = useState("Detenido");
   const [speed, setSpeed] = useState<number | null>(null);
+
+  useEffect(() => {
+    const enrolled = localStorage.getItem("manecomb.vehicleId");
+    if (enrolled) setVehicleId(enrolled);
+  }, []);
 
   async function send(position: GeolocationPosition) {
     const payload = {
@@ -32,6 +37,7 @@ export function DriverConsole() {
 
   async function start() {
     if (!vehicleId) return setStatus("Ingresa el ID de la unidad");
+    localStorage.setItem("manecomb.vehicleId", vehicleId);
     if (isNativeLocationAvailable()) {
       await startNativeLocation({ serverUrl: window.location.origin, vehicleId, journeyId: journeyId || undefined });
       setStatus("GPS nativo en segundo plano");
