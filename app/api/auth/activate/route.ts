@@ -3,6 +3,7 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
+import { enforceRateLimit } from "@/src/lib/rate-limit";
 import { createSessionForUser, SESSION_COOKIE } from "@/src/lib/auth";
 import { ActivationKey } from "@/src/core/models/ActivationKey";
 import { User } from "@/src/core/models/User";
@@ -10,6 +11,7 @@ const Input=z.object({code:z.string().min(12).max(128)});
 export const runtime="nodejs";
 export async function POST(request:Request){
   try{
+    await enforceRateLimit(request,"auth:activate",{limit:10,windowSeconds:600});
     const {code}=Input.parse(await request.json());
     const codeHash=createHash("sha256").update(code.trim().toUpperCase()).digest("hex");
     await connectDb();
