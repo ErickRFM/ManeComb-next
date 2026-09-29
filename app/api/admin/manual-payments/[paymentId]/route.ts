@@ -28,7 +28,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{paymentId:
     await payment.save();
 
     if(input.status==="approved"){
-      const organization=await Organization.findById(payment.organizationId).lean();
+      const organization=await Organization.findById(payment.organizationId);
       await Subscription.findOneAndUpdate(
         {organizationId:payment.organizationId},
         {$set:{
