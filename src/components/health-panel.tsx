@@ -10,7 +10,8 @@ export function HealthPanel(){
   if(error) return <div className="card" style={{color:"#fb7185"}}>{error}</div>;
   if(!health) return <div className="card muted">Consultando salud...</div>;
   return <div className="grid grid-3">
-    <div className="card"><h3>Estado</h3><div className="kpi">{health.status}</div><p className="muted">{health.timestamp}</p></div>
+    <div className="card"><h3>Runtime</h3><div className="kpi">{health.status}</div><p className="muted">{health.timestamp}</p></div>
+    <div className="card"><h3>Readiness</h3><div className="kpi">{health.readiness||"unknown"}</div><p className="muted">Incluye integraciones requeridas para producción.</p></div>
     <div className="card"><h3>MongoDB</h3><div className="kpi">{health.database?.ok?"OK":"DOWN"}</div><p className="muted">{health.database?.error||"Conectado"}</p></div>
     <div className="card"><h3>Redis</h3><div className="kpi">{health.redis?.ok?"OK":"DOWN"}</div><p className="muted">{health.redis?.error||"Conectado"}</p></div>
     <div className="card"><h3>Integraciones</h3><pre style={{whiteSpace:"pre-wrap"}}>{JSON.stringify(health.integrations,null,2)}</pre></div>
