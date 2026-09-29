@@ -18,7 +18,8 @@
     "native:sync": "cap sync android",
     "native:open": "cap open android",
     "bootstrap:platform-admin": "tsx scripts/bootstrap-platform-admin.ts",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "native:prepare": "node scripts/prepare-native-android.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
