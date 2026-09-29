@@ -12,10 +12,20 @@ export function RtcConsole(){
   const socket=useSocket();
   const [targetUserId,setTargetUserId]=useState("");
   const [state,setState]=useState("Sin llamada");
+  const [iceServers,setIceServers]=useState<RTCIceServer[]>([{urls:"stun:stun.l.google.com:19302"}]);
   const peerRef=useRef<RTCPeerConnection|null>(null);
   const streamRef=useRef<MediaStream|null>(null);
   const remoteAudioRef=useRef<HTMLAudioElement|null>(null);
   const peerUserRef=useRef("");
+
+  useEffect(()=>{
+    fetch("/api/rtc/config").then(async response=>{
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"RTC_CONFIG_ERROR");
+      if(Array.isArray(data.iceServers)&&data.iceServers.length)setIceServers(data.iceServers);
+      if(!data.turnEnabled)setState("RTC disponible · TURN no configurado");
+    }).catch(()=>setState("No se pudo cargar configuración RTC"));
+  },[]);
 
   async function ensureMedia(){
     if(streamRef.current)return streamRef.current;
@@ -26,7 +36,7 @@ export function RtcConsole(){
 
   async function createPeer(remoteUserId:string){
     peerRef.current?.close();
-    const peer=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+    const peer=new RTCPeerConnection({iceServers});
     peerRef.current=peer;
     peerUserRef.current=remoteUserId;
     const stream=await ensureMedia();
@@ -85,7 +95,7 @@ export function RtcConsole(){
     };
     socket.on("rtc:signal",handler);
     return()=>{socket.off("rtc:signal",handler);peerRef.current?.close();streamRef.current?.getTracks().forEach(track=>track.stop())}
-  },[socket]);
+  },[socket,iceServers]);
 
   return <div className="card grid">
     <strong>Llamada WebRTC</strong>
