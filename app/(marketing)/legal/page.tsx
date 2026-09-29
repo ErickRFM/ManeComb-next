@@ -1,0 +1,2 @@
+import { ModuleShell } from "@/src/components/module-shell";
+export default function LegalPage(){return <ModuleShell eyebrow="LEGAL" title="Privacidad y términos" description="ManeComb separa datos por organización y conserva auditoría de mutaciones críticas."><div className="card"><p className="muted">Los textos legales definitivos deben publicarse antes de producción y alinearse con el tratamiento real de geolocalización, documentos y comunicaciones.</p></div></ModuleShell>}

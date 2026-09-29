@@ -1,0 +1,3 @@
+import Link from "next/link";
+import { ModuleShell } from "@/src/components/module-shell";
+export default function RoutesPage(){return <ModuleShell eyebrow="RUTAS" title="Rutas y paradas" description="Geometría versionada, paradas ordenadas, geocercas y estado de publicación."><div className="grid grid-3"><Link className="card" href="/portal/rutas/nueva"><h3>Nueva ruta</h3><p className="muted">Trazar y validar geometría.</p></Link><Link className="card" href="/portal/rutas/candidatas"><h3>Rutas aprendidas</h3><p className="muted">Revisar candidatas provenientes de trazas GPS.</p></Link></div></ModuleShell>}

@@ -1,0 +1,2 @@
+import { ModuleShell } from "@/src/components/module-shell";
+export default function CandidatesPage(){return <ModuleShell eyebrow="AUTO-ROUTE" title="Rutas aprendidas" description="Espacio de revisión para candidatos detectados a partir de sesiones GPS; ninguna geometría se publica sin aprobación humana."><div className="card"><p className="muted">Pendiente de alimentar con el motor de clustering de trazas conservando revision y auditoría.</p></div></ModuleShell>}
