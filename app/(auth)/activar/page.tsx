@@ -1,2 +1,5 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default function ActivatePage(){return <ModuleShell eyebrow="CHOFER" title="Activar dispositivo" description="La llave de activación vincula el conductor y la unidad sin compartir contraseñas."><div className="card grid" style={{maxWidth:520}}><input className="input" placeholder="Llave de activación"/><button className="btn">Activar</button><p className="muted">El endpoint de activación valida vigencia, organización y uso único.</p></div></ModuleShell>}
+import { ActivationForm } from "@/src/components/activation-form";
+export default function ActivatePage(){
+  return <ModuleShell eyebrow="CHOFER" title="Activar dispositivo" description="La llave vincula el conductor y la unidad sin compartir contraseñas."><ActivationForm/></ModuleShell>
+}
