@@ -7,7 +7,31 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    services:
+      mongo:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      MONGODB_URI: mongodb://127.0.0.1:27017/manecomb_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      AUTH_SECRET: ci-auth-secret-abcdefghijklmnopqrstuvwxyz-0123456789
+      MFA_ENCRYPTION_KEY: ci-mfa-secret-abcdefghijklmnopqrstuvwxyz-0123456789
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,4 +40,5 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
       - run: npm test
+      - run: npm run test:integration
       - run: npm run build
