@@ -3,7 +3,7 @@ import { parse } from "cookie";
 import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { ensureRedis } from "@/src/lib/redis";
-import { verifySessionToken } from "@/src/lib/auth";
+import { assertSessionActive, verifySessionToken } from "@/src/lib/auth";
 import { registerLocationHandler } from "@/src/realtime/handlers/location.handler";
 import { registerChatHandler } from "@/src/realtime/handlers/chat.handler";
 import { registerRadioHandler } from "@/src/realtime/handlers/radio.handler";
@@ -30,7 +30,9 @@ export async function createRealtimeServer(httpServer: HttpServer) {
       const cookies = parse(socket.handshake.headers.cookie || "");
       const token = String(socket.handshake.auth?.token || cookies.manecomb_session || "");
       if (!token) return next(new Error("UNAUTHORIZED"));
-      socket.data.session = await verifySessionToken(token);
+      const session = await verifySessionToken(token);
+      if (session.channel === "platform_admin" && !session.mfaVerified) return next(new Error("UNAUTHORIZED"));
+      socket.data.session = await assertSessionActive(session);
       next();
     } catch {
       next(new Error("UNAUTHORIZED"));
