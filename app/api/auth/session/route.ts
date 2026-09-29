@@ -10,7 +10,7 @@ export async function GET(request:Request){
   try{
     const session=await requireApiSession(request);
     await connectDb();
-    const user=await User.findById(session.sub).select("_id name email roles channel").lean();
+    const user=await User.findById(session.sub).select("_id name email roles channel");
     if(!user)throw new Error("UNAUTHORIZED");
     return NextResponse.json({
       user:{
