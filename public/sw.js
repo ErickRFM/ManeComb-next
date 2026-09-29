@@ -1,5 +1,5 @@
-const CACHE = "manecomb-shell-v2";
-const SHELL = ["/", "/operacion", "/login"];
+const CACHE = "manecomb-shell-v3";
+const SHELL = ["/", "/login"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -14,7 +14,11 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  event.respondWith(fetch(event.request).catch(() => caches.match(event.request).then((response) => response || caches.match("/"))));
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
+  if (event.request.mode === "navigate") {
+    event.respondWith(fetch(event.request).catch(() => caches.match("/")));
+  }
 });
 
 self.addEventListener("push", (event) => {
