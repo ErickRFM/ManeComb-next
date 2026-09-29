@@ -1,10 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 
+const plans=["fleet-2","fleet-4","fleet-6","fleet-8","fleet-12"];
+
 export function OrganizationManager(){
   const [organizations,setOrganizations]=useState<any[]>([]);
   const [state,setState]=useState("Cargando...");
-
   const load=useCallback(async()=>{
     const response=await fetch("/api/admin/organizations");
     const data=await response.json();
@@ -12,7 +13,6 @@ export function OrganizationManager(){
     setOrganizations(data.organizations||[]);
     setState((data.organizations||[]).length+" empresas");
   },[]);
-
   useEffect(()=>{void load().catch(e=>setState(e.message))},[load]);
 
   async function update(id:string,patch:Record<string,string>){
@@ -26,7 +26,7 @@ export function OrganizationManager(){
     {organizations.map(org=><div className="card grid" key={org._id}>
       <div><h3 style={{marginTop:0}}>{org.name}</h3><p className="muted">{org.slug}</p></div>
       <label>Estado<select className="input" value={org.status} onChange={(e)=>void update(org._id,{status:e.target.value})}><option value="active">Activa</option><option value="paused">Pausada</option><option value="suspended">Suspendida</option></select></label>
-      <label>Plan<select className="input" value={org.planCode||"starter"} onChange={(e)=>void update(org._id,{planCode:e.target.value})}><option value="starter">starter</option><option value="pro">pro</option><option value="enterprise">enterprise</option></select></label>
+      <label>Plan<select className="input" value={plans.includes(org.planCode)?org.planCode:""} onChange={(e)=>e.target.value&&void update(org._id,{planCode:e.target.value})}><option value="">Sin plan / legado</option>{plans.map(plan=><option value={plan} key={plan}>{plan}</option>)}</select></label>
     </div>)}
   </div></div>
 }

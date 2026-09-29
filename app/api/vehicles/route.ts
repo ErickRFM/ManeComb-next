@@ -6,6 +6,7 @@ import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Vehicle } from "@/src/core/models/Vehicle";
 import { writeAudit } from "@/src/core/services/audit";
+import { requireVehicleCapacity } from "@/src/core/services/subscription-access";
 
 const VehicleInput = z.object({
   economicNumber: z.string().min(1).max(40),
@@ -30,8 +31,16 @@ export async function POST(request: Request) {
     if (!session.organizationId) throw new Error("FORBIDDEN");
     const input = VehicleInput.parse(await request.json());
     await connectDb();
+    const capacity = await requireVehicleCapacity(session.organizationId);
     const vehicle = await Vehicle.create({ organizationId: session.organizationId, ...input });
-    await writeAudit({ organizationId: session.organizationId, actorUserId: session.sub, action: "vehicle.create", entityType: "Vehicle", entityId: String(vehicle._id) });
-    return NextResponse.json({ vehicle }, { status: 201 });
+    await writeAudit({
+      organizationId: session.organizationId,
+      actorUserId: session.sub,
+      action: "vehicle.create",
+      entityType: "Vehicle",
+      entityId: String(vehicle._id),
+      metadata: { usedBefore: capacity.used, vehicleLimit: capacity.limit, planCode: capacity.plan.code }
+    });
+    return NextResponse.json({ vehicle, entitlement: { used: capacity.used + 1, limit: capacity.limit, planCode: capacity.plan.code } }, { status: 201 });
   } catch (error) { return apiError(error); }
 }
