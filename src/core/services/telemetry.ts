@@ -30,36 +30,46 @@ export async function recordTelemetry(
   }
 
   const recordedAt = input.recordedAt instanceof Date ? input.recordedAt : new Date(input.recordedAt);
+  const position = {
+    organizationId,
+    vehicleId: vehicle._id,
+    journeyId: canonicalJourneyId,
+    packetId: input.packetId || null,
+    latitude: input.latitude,
+    longitude: input.longitude,
+    speedMps: input.speedMps || 0,
+    heading: input.heading,
+    accuracy: input.accuracy,
+    recordedAt
+  };
 
-  await Promise.all([
-    RouteSessionPosition.create({
-      organizationId,
-      vehicleId: vehicle._id,
-      journeyId: canonicalJourneyId,
-      latitude: input.latitude,
-      longitude: input.longitude,
-      speedMps: input.speedMps || 0,
-      heading: input.heading,
-      accuracy: input.accuracy,
-      recordedAt
-    }),
-    Vehicle.updateOne(
+  if (input.packetId) {
+    await RouteSessionPosition.updateOne(
+      { organizationId, packetId: input.packetId },
+      { $setOnInsert: position },
+      { upsert: true }
+    );
+  } else {
+    await RouteSessionPosition.create(position);
+  }
+
+  const existingRecordedAt = vehicle.lastLocation?.recordedAt ? new Date(vehicle.lastLocation.recordedAt) : null;
+  if (!existingRecordedAt || recordedAt >= existingRecordedAt) {
+    await Vehicle.updateOne(
       { _id: vehicle._id, organizationId },
-      {
-        $set: {
-          status: "running",
-          lastLocation: {
-            latitude: input.latitude,
-            longitude: input.longitude,
-            speedMps: input.speedMps || 0,
-            heading: input.heading,
-            accuracy: input.accuracy,
-            recordedAt
-          }
+      { $set: {
+        status: "running",
+        lastLocation: {
+          latitude: input.latitude,
+          longitude: input.longitude,
+          speedMps: input.speedMps || 0,
+          heading: input.heading,
+          accuracy: input.accuracy,
+          recordedAt
         }
-      }
-    )
-  ]);
+      }}
+    );
+  }
 
   return {
     vehicleId: String(vehicle._id),
