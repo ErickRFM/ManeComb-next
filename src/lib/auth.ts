@@ -68,10 +68,11 @@ export async function createSessionForUser(
 
 export async function assertSessionActive(session: SessionToken) {
   await connectDb();
-  const [stored, user] = await Promise.all([
+  const [stored, rawUser] = await Promise.all([
     Session.findOne({ jti: session.jti, userId: session.sub, revokedAt: null, expiresAt: { $gt: new Date() } }).lean(),
     User.findOne({ _id: session.sub, active: true }).lean()
   ]);
+  const user = rawUser as { organizationId?: unknown; channel?: unknown; roles?: unknown[] } | null;
   if (!stored || !user) throw new Error("UNAUTHORIZED");
 
   const currentOrganizationId = user.organizationId ? String(user.organizationId) : null;
@@ -80,7 +81,7 @@ export async function assertSessionActive(session: SessionToken) {
   }
 
   const tokenRoles = [...session.roles].sort().join(",");
-  const currentRoles = (user.roles || []).map((role) => String(role)).sort().join(",");
+  const currentRoles = (Array.isArray(user.roles) ? user.roles : []).map((role: unknown) => String(role)).sort().join(",");
   if (tokenRoles !== currentRoles) throw new Error("UNAUTHORIZED");
 
   return session;
