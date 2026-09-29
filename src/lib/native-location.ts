@@ -5,6 +5,7 @@ type NativeLocationPlugin = {
   start(options:{serverUrl:string;vehicleId:string;journeyId:string;deviceToken:string}):Promise<{started:boolean}>;
   stop():Promise<{stopped:boolean}>;
   status():Promise<{running:boolean;pendingPackets:number}>;
+  appInfo():Promise<{versionName:string;versionCode:number}>;
 };
 
 const NativeLocation = registerPlugin<NativeLocationPlugin>("ManeCombLocation");
@@ -30,3 +31,4 @@ export async function startNativeLocation(options:{serverUrl:string;vehicleId:st
 
 export async function stopNativeLocation(){ return NativeLocation.stop(); }
 export async function getNativeLocationStatus(){ return NativeLocation.status(); }
+export async function getNativeAppInfo(){ return NativeLocation.appInfo(); }

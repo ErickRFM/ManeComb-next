@@ -1,5 +1,6 @@
 import type { TelemetryInput, OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
 import { getGpsFreshness } from "@/src/core/domain/gps-freshness";
+import { observeDuration } from "@/src/lib/metrics";
 import { Vehicle } from "@/src/core/models/Vehicle";
 import { Journey } from "@/src/core/models/Journey";
 import { RouteSessionPosition } from "@/src/core/models/RouteSessionPosition";
@@ -25,6 +26,8 @@ export async function recordTelemetry(
   }
 
   const recordedAt = input.recordedAt instanceof Date ? input.recordedAt : new Date(input.recordedAt);
+  observeDuration("telemetry_capture_to_ingest_ms", Math.max(0, Date.now() - recordedAt.getTime()));
+
   const position = {
     organizationId, vehicleId: vehicle._id, journeyId: canonicalJourneyId,
     packetId: input.packetId || null, latitude: input.latitude, longitude: input.longitude,

@@ -51,4 +51,25 @@ class ManeCombLocationPlugin : Plugin() {
                 .put("pendingPackets", ManeCombLocationService.pendingCount)
         )
     }
+
+    @com.getcapacitor.PluginMethod
+    fun appInfo(call: PluginCall) {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            val versionCode =
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    packageInfo.longVersionCode
+                } else {
+                    @Suppress("DEPRECATION")
+                    packageInfo.versionCode.toLong()
+                }
+            call.resolve(
+                JSObject()
+                    .put("versionName", packageInfo.versionName ?: "0.0.0")
+                    .put("versionCode", versionCode)
+            )
+        } catch (error: Exception) {
+            call.reject("Could not read app version", error)
+        }
+    }
 }
