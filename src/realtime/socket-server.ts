@@ -13,7 +13,6 @@ import { registerPresenceHandler } from "@/src/realtime/handlers/presence.handle
 export async function createRealtimeServer(httpServer: HttpServer) {
   const io = new Server(httpServer, {
     path: "/socket.io",
-    cors: false,
     transports: ["websocket", "polling"],
     maxHttpBufferSize: 1024 * 1024
   });
