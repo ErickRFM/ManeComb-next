@@ -9,6 +9,7 @@ import { registerChatHandler } from "@/src/realtime/handlers/chat.handler";
 import { registerRadioHandler } from "@/src/realtime/handlers/radio.handler";
 import { registerRtcHandler } from "@/src/realtime/handlers/rtc.handler";
 import { registerPresenceHandler } from "@/src/realtime/handlers/presence.handler";
+import { setRealtimeServer } from "@/src/realtime/runtime";
 
 export async function createRealtimeServer(httpServer: HttpServer) {
   const io = new Server(httpServer, {
@@ -44,5 +45,7 @@ export async function createRealtimeServer(httpServer: HttpServer) {
     registerRtcHandler(io, socket);
   });
 
+  setRealtimeServer(io);
+  io.on("close", () => setRealtimeServer(null));
   return io;
 }

@@ -1,2 +1,6 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default function RadioPage(){return <ModuleShell eyebrow="COMUNICACIÓN" title="Despachador de Radio PTT" description="Socket.IO mantiene control de piso por canal y WebRTC usa señalización autorizada por organización."><div className="grid grid-3"><div className="card"><h3>PTT</h3><p className="muted">request-floor → audio → release-floor.</p></div><div className="card"><h3>WebRTC</h3><p className="muted">Señalización directa sólo entre usuarios del mismo tenant.</p></div><div className="card"><h3>Chat</h3><p className="muted">Mensajes idempotentes con clientMessageId.</p></div></div></ModuleShell>}
+import { RadioConsole } from "@/src/components/radio-console";
+import { RtcConsole } from "@/src/components/rtc-console";
+export default function RadioPage(){
+  return <ModuleShell eyebrow="COMUNICACIÓN" title="Despachador de Radio y llamadas" description="PTT con control de piso y llamadas WebRTC señalizadas sólo entre usuarios del mismo tenant."><div className="grid grid-3"><RadioConsole/><RtcConsole/><div className="card"><h3>Chat</h3><p className="muted">Mensajes persistentes e idempotentes con entrega por Socket.IO.</p></div></div></ModuleShell>
+}

@@ -4,6 +4,7 @@ import { requireApiSession } from "@/src/lib/auth";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Incident } from "@/src/core/models/Incident";
+import { emitToOrganization } from "@/src/realtime/runtime";
 
 const IncidentInput = z.object({
   vehicleId: z.string().optional(),
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     const input = IncidentInput.parse(await request.json());
     await connectDb();
     const incident = await Incident.create({ organizationId: session.organizationId, driverId: session.channel === "mobile_operations" ? session.sub : null, ...input });
+    emitToOrganization(session.organizationId, "incident:new", incident.toObject());
     return NextResponse.json({ incident }, { status: 201 });
   } catch (error) { return apiError(error); }
 }
