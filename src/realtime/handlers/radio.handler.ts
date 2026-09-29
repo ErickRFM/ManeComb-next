@@ -1,5 +1,6 @@
 import type { Server, Socket } from "socket.io";
 import { RadioAudioSchema, RadioFloorSchema } from "@/src/core/contracts/realtime";
+import { hasPermission } from "@/src/core/domain/permissions";
 
 const floors = new Map<string, string>();
 
@@ -7,11 +8,16 @@ function floorKey(organizationId: string, channelId: string) {
   return organizationId + ":" + channelId;
 }
 
+function canUseRadio(socket: Socket) {
+  const session = socket.data.session;
+  return Boolean(session?.organizationId && hasPermission(session.roles, "access_rtc"));
+}
+
 export function registerRadioHandler(io: Server, socket: Socket) {
   socket.on("radio:request-floor", (payload, ack) => {
     try {
       const session = socket.data.session;
-      if (!session?.organizationId) throw new Error("FORBIDDEN");
+      if (!canUseRadio(socket)) throw new Error("FORBIDDEN");
       const { channelId } = RadioFloorSchema.parse(payload);
       const key = floorKey(session.organizationId, channelId);
       const holder = floors.get(key);
@@ -26,7 +32,7 @@ export function registerRadioHandler(io: Server, socket: Socket) {
 
   socket.on("radio:audio", (payload) => {
     const session = socket.data.session;
-    if (!session?.organizationId) return;
+    if (!canUseRadio(socket)) return;
     const parsed = RadioAudioSchema.safeParse(payload);
     if (!parsed.success) return;
     const key = floorKey(session.organizationId, parsed.data.channelId);
