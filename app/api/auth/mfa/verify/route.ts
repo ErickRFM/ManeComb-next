@@ -42,6 +42,9 @@ export async function POST(request: Request) {
       encryptedSecret = user.mfaSecretEncrypted;
     }
 
+    if (!encryptedSecret) {
+      return NextResponse.json({ error: "MFA secret unavailable" }, { status: 400 });
+    }
     const secret = decryptMfaSecret(encryptedSecret);
     if (!verifyTotp(secret, code)) {
       return NextResponse.json({ error: "Código MFA inválido" }, { status: 401 });
