@@ -30,18 +30,8 @@
 @media (max-width:920px){
   .communications-layout{grid-template-columns:1fr}
   .communications-side{grid-template-columns:1fr 1fr}
-  .chat-shell{grid-template-columns:230px minmax(0,1fr)}
 }
 @media (max-width:700px){
-  .chat-shell{grid-template-columns:1fr;min-height:68dvh}
-  .chat-directory{border-right:0;border-bottom:1px solid var(--border);padding:7px;max-height:126px}
-  .chat-directory-head{display:none}
-  .conversation-divider{display:none}
-  .conversation-list{display:flex;overflow:auto}
-  .conversation-row{min-width:170px;min-height:50px}
-  .chat-directory>.conversation-row{min-width:auto}
-  .chat-conversation{min-height:54dvh}
-  .message-row{max-width:90%}
   .communications-side{grid-template-columns:1fr}
   .ptt-stage{min-height:300px}
   .ptt-orbit{width:205px;height:205px}

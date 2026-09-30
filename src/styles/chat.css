@@ -45,4 +45,18 @@
 .chat-composer>input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
 .composer-send{height:40px;border:0;border-radius:12px;background:var(--brand);color:white;padding:0 14px;font-size:11px;font-weight:900;cursor:pointer}
 .composer-send:disabled{opacity:.45;cursor:not-allowed}
+.composer-action,.composer-send{min-width:44px;min-height:44px}
+.chat-back{display:none}
+@media(max-width:920px){.chat-shell{grid-template-columns:230px minmax(0,1fr)}}
+@media(max-width:700px){
+  .chat-shell{grid-template-columns:1fr;min-height:68dvh}
+  .chat-directory{border-right:0;max-height:none}
+  .chat-conversation{display:none;min-height:68dvh}
+  .chat-shell.conversation-open .chat-directory{display:none}
+  .chat-shell.conversation-open .chat-conversation{display:grid}
+  .chat-back{display:grid;flex-shrink:0}
+  .chat-header{height:auto;min-height:64px;flex-wrap:wrap;padding:8px;gap:6px}
+  .chat-state{max-width:100%;overflow-wrap:anywhere}
+  .message-row{max-width:90%}
+}
 
