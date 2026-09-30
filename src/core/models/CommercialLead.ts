@@ -1,4 +1,6 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+
+const { Schema } = mongoose;
 const CommercialLeadSchema=new Schema({
   name:{type:String,required:true},
   email:{type:String,required:true,lowercase:true,index:true},
@@ -8,4 +10,4 @@ const CommercialLeadSchema=new Schema({
   source:{type:String,default:"web"},
   status:{type:String,enum:["new","contacted","qualified","won","lost"],default:"new",index:true}
 },{timestamps:true});
-export const CommercialLead=models.CommercialLead||model("CommercialLead",CommercialLeadSchema);
+export const CommercialLead=mongoose.models.CommercialLead||mongoose.model("CommercialLead",CommercialLeadSchema);
