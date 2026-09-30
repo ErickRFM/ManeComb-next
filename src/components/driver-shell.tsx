@@ -19,7 +19,7 @@ export function DriverShell({children}:{children:React.ReactNode}){
       <Link href="/operacion" className="driver-brand"><span className="brand-mark compact">MC</span><span><strong>ManeComb</strong><small>Operación</small></span></Link>
       <div className="driver-top-actions"><span className="driver-connection"><span className="live-dot"/>En línea</span><ThemeToggle/></div>
     </header>
-    <main className="driver-workspace">{children}</main>
+    <main id="main-content" className="driver-workspace" tabIndex={-1}>{children}</main>
     <nav className="driver-tabbar" aria-label="Navegación de operación">
       {tabs.map(tab=>{
         const active=tab.exact?pathname===tab.href:pathname.startsWith(tab.href);
