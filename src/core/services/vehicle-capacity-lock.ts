@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getRedis } from "@/src/lib/redis";
+import { redisKey } from "@/src/lib/runtime-namespace";
 
 const RELEASE="if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end";
 const RENEW="if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('pexpire',KEYS[1],ARGV[2]) else return 0 end";
@@ -11,7 +12,7 @@ export async function withVehicleCapacityLock<T>(organizationId:string,operation
   if(!source)throw new Error("VEHICLE_CAPACITY_UNAVAILABLE");
   const redis=source.duplicate({lazyConnect:true,maxRetriesPerRequest:1,commandTimeout:2_000,connectTimeout:2_000,enableOfflineQueue:false,retryStrategy:()=>null});
   redis.on("error",()=>undefined);
-  const key="manecomb:vehicle-capacity:"+organizationId;
+  const key=redisKey("vehicle-capacity", organizationId);
   const token=randomUUID();
   let timer:ReturnType<typeof setInterval>|undefined;
   let acquired=false;

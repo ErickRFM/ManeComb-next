@@ -9,6 +9,6 @@ if (!authority || !process.env.REDIS_URL) throw new Error("MongoDB and Redis are
 const database = "manecomb_qa_" + randomUUID().replaceAll("-", "").slice(0, 20);
 const result = spawnSync(process.execPath, [fileURLToPath(new URL("../node_modules/vitest/vitest.mjs", import.meta.url)), "run", "--config", "vitest.integration.config.ts"], {
   stdio: "inherit",
-  env: { ...process.env, MONGODB_URI: authority[1] + "/" + database + (authority[2] || ""), AUTH_SECRET: process.env.AUTH_SECRET || randomUUID().repeat(2) }
+  env: { ...process.env, REDIS_NAMESPACE: database, MONGODB_URI: authority[1] + "/" + database + (authority[2] || ""), AUTH_SECRET: process.env.AUTH_SECRET || randomUUID().repeat(2) }
 });
 process.exit(result.status ?? 1);

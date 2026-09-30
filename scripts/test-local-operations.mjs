@@ -18,9 +18,9 @@ const options = new URLSearchParams((source[3] || '').replace(/^\?/, ''));
 // Preserve the original authentication database when Mongo defaults authSource to the URI database.
 if (source[1].includes('@') && !options.has('authSource')) options.set('authSource', source[2] || 'admin');
 const uri = source[1] + '/' + database + (options.size ? '?' + options.toString() : '');
-const redisEnabled = process.env.QA_REDIS === '1';
+const redisEnabled = true;
 if (redisEnabled && (!existsSync(new URL('../src/lib/runtime-namespace.ts', import.meta.url)) || !process.env.REDIS_URL)) {
-  throw new Error('QA_REDIS=1 requires Redis configuration and the runtime namespace implementation from PR #5');
+  throw new Error('Operational QA requires Redis configuration and runtime namespace isolation');
 }
 const port = await new Promise((accept, reject) => {
   const probe = createServer();
@@ -84,8 +84,13 @@ try {
     redis.on('error', () => {});
     try {
       await redis.connect();
-      const [, existing] = await redis.scan('0', 'MATCH', namespace + ':*', 'COUNT', 100);
-      if (existing.length || await redis.set(namespace + ':qa-owner', owner, 'EX', 7200, 'NX') !== 'OK') throw new Error('Namespace not empty');
+      let cursor = '0';
+      do {
+        const [next, existing] = await redis.scan(cursor, 'MATCH', namespace + ':*', 'COUNT', 100);
+        if (existing.length) throw new Error('Namespace not empty');
+        cursor = next;
+      } while (cursor !== '0');
+      if (await redis.set(namespace + ':qa-owner', owner, 'EX', 7200, 'NX') !== 'OK') throw new Error('Namespace not empty');
       redisOwned = true;
     } catch { throw new Error('Could not reserve isolated QA Redis namespace'); }
   }

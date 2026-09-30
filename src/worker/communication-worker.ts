@@ -7,8 +7,9 @@ import { OutboxEvent } from "@/src/core/models/OutboxEvent";
 import { PushSubscription } from "@/src/core/models/PushSubscription";
 import { sendTransactionalEmail } from "@/src/lib/email";
 import { getEnv } from "@/src/lib/env";
+import { communicationQueueName, communicationQueuePrefix } from "@/src/lib/runtime-namespace";
 
-async function flushOutbox() {
+export async function flushOutbox() {
   await connectDb();
   const pending = await OutboxEvent.find({ status: "pending" }).sort({ createdAt: 1 }).limit(25);
   if (!pending.length) return;
@@ -27,8 +28,8 @@ async function flushOutbox() {
         backoff: { type: "exponential", delay: 2000 }
       }
     );
-    event.status = "queued";
-    await event.save();
+    // A fast worker may already have completed the job. Never overwrite it.
+    await OutboxEvent.updateOne({ _id: event._id, status: "pending" }, { $set: { status: "queued" } });
   }
 }
 
@@ -74,10 +75,10 @@ export async function startCommunicationWorker() {
     return null;
   }
 
-  const worker = new Worker("manecomb-communication", async (job) => {
+  const worker = new Worker(communicationQueueName(), async (job) => {
     await connectDb();
     const event = await OutboxEvent.findById(job.data.outboxId);
-    if (!event) return;
+    if (!event || event.status === "processed") return;
 
     try {
       if (job.name === "email.send") {
@@ -101,10 +102,11 @@ export async function startCommunicationWorker() {
       await event.save();
       throw error;
     }
-  }, { connection: redis, concurrency: 10 });
+  }, { connection: redis, prefix: communicationQueuePrefix(), concurrency: 10 });
 
   const timer = setInterval(() => void flushOutbox().catch((error) => console.error("[outbox]", error)), 2000);
   timer.unref();
+  worker.once("closed", () => clearInterval(timer));
   await flushOutbox().catch((error) => console.error("[outbox]", error));
   return worker;
 }

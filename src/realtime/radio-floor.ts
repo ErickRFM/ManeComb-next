@@ -1,14 +1,14 @@
 import { ensureRedis } from "@/src/lib/redis";
+import { redisKey } from "@/src/lib/runtime-namespace";
 
 const FLOOR_TTL_MS = 10_000;
-const FLOOR_PREFIX = "manecomb:radio:floor:";
 const localFloors = new Map<string, string>();
 
 const REFRESH_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('pexpire', KEYS[1], ARGV[2]) else return 0 end";
 const RELEASE_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
 
 function key(organizationId: string, channelId: string) {
-  return FLOOR_PREFIX + organizationId + ":" + channelId;
+  return redisKey("radio", "floor", organizationId, channelId);
 }
 
 async function redisOrDevFallback() {

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { ensureRedis } from "@/src/lib/redis";
+import { redisKey } from "@/src/lib/runtime-namespace";
 
 type Options = { limit: number; windowSeconds: number; identity?: string };
 type LocalEntry = { count: number; resetAt: number };
@@ -22,7 +23,7 @@ function digest(value: string) {
 
 export async function enforceRateLimit(request: Request, scope: string, options: Options) {
   const identity = options.identity?.trim().toLowerCase() || "";
-  const key = "manecomb:rate:" + scope + ":" + digest(clientAddress(request) + ":" + identity);
+  const key = redisKey("rate", scope, digest(clientAddress(request) + ":" + identity));
   const redis = await ensureRedis().catch(() => null);
 
   let count = 0;

@@ -2,6 +2,7 @@ import type { Server as HttpServer } from "node:http";
 import { parse } from "cookie";
 import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
+import { socketAdapterKey } from "@/src/lib/runtime-namespace";
 import { ensureRedis } from "@/src/lib/redis";
 import { assertStoredSessionActive, requireRealtimeSession } from "@/src/lib/auth";
 import { setGauge } from "@/src/lib/metrics";
@@ -25,7 +26,7 @@ export async function createRealtimeServer(httpServer: HttpServer) {
   if (redis) {
     const subscriber = redis.duplicate();
     if (subscriber.status === "wait") await subscriber.connect();
-    io.adapter(createAdapter(redis, subscriber));
+    io.adapter(createAdapter(redis, subscriber, { key: socketAdapterKey() }));
   }
 
   io.use(async (socket, next) => {

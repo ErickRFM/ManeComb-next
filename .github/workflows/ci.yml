@@ -30,6 +30,7 @@ jobs:
     env:
       MONGODB_URI: mongodb://127.0.0.1:27017/manecomb_ci
       REDIS_URL: redis://127.0.0.1:6379
+      REDIS_NAMESPACE: manecomb_ci
       AUTH_SECRET: ci-auth-secret-abcdefghijklmnopqrstuvwxyz-0123456789
       MFA_ENCRYPTION_KEY: ci-mfa-secret-abcdefghijklmnopqrstuvwxyz-0123456789
     steps:
