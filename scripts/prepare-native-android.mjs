@@ -25,6 +25,32 @@ function runCap(...args){
 if(!existsSync(androidDir))runCap("add","android");
 runCap("sync","android");
 
+const rootGradlePath=join(androidDir,"build.gradle");
+if(existsSync(rootGradlePath)){
+  let rootGradle=readFileSync(rootGradlePath,"utf8");
+  if(!rootGradle.includes("org.jetbrains.kotlin:kotlin-gradle-plugin")){
+    const androidPlugin=/classpath\s+['"]com\.android\.tools\.build:gradle:[^'"]+['"]/;
+    if(!androidPlugin.test(rootGradle))throw new Error("Could not locate Android Gradle plugin classpath.");
+    rootGradle=rootGradle.replace(androidPlugin,(line)=>line+"\n        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.20'");
+    writeFileSync(rootGradlePath,rootGradle);
+  }
+}
+
+const appGradlePath=join(androidDir,"app","build.gradle");
+if(existsSync(appGradlePath)){
+  let appGradle=readFileSync(appGradlePath,"utf8");
+  if(!appGradle.includes("kotlin-android")&&!appGradle.includes("org.jetbrains.kotlin.android")){
+    appGradle=appGradle.replace(
+      /apply plugin:\s*['"]com\.android\.application['"]/,
+      (line)=>line+"\napply plugin: 'org.jetbrains.kotlin.android'"
+    );
+  }
+  if(!appGradle.includes("kotlinOptions")){
+    appGradle+="\nandroid {\n    kotlinOptions {\n        jvmTarget = '21'\n    }\n}\n";
+  }
+  writeFileSync(appGradlePath,appGradle);
+}
+
 const sourceDir=join(root,"native","android");
 const kotlinDir=join(androidDir,"app","src","main","java","com","manecomb","location");
 mkdirSync(kotlinDir,{recursive:true});
