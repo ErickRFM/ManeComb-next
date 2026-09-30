@@ -1,4 +1,5 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+const { Schema } = mongoose;
 
 const AppReleaseSchema=new Schema({
   platform:{type:String,enum:["android"],required:true,unique:true,index:true},
@@ -13,4 +14,4 @@ const AppReleaseSchema=new Schema({
   updatedBy:{type:Schema.Types.ObjectId,ref:"User",default:null}
 },{timestamps:true});
 
-export const AppRelease=models.AppRelease||model("AppRelease",AppReleaseSchema);
+export const AppRelease=mongoose.models.AppRelease||mongoose.model("AppRelease",AppReleaseSchema);
