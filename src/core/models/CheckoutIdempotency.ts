@@ -14,6 +14,6 @@ const CheckoutIdempotencySchema = new Schema({
 }, { timestamps: true });
 
 CheckoutIdempotencySchema.index({ organizationId: 1, key: 1 }, { unique: true });
-CheckoutIdempotencySchema.index({ organizationId: 1, planCode: 1 }, { unique: true, partialFilterExpression: { activeIntent: true } });
+CheckoutIdempotencySchema.index({ organizationId: 1 }, { name:"one_active_checkout_per_org", unique: true, partialFilterExpression: { activeIntent: true } });
 
 export const CheckoutIdempotency = mongoose.models.CheckoutIdempotency || mongoose.model("CheckoutIdempotency", CheckoutIdempotencySchema);

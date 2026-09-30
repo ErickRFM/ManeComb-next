@@ -97,6 +97,40 @@ it("rejects stale signed replay and unsigned requests", async () => {
   unsigned.headers.delete("x-signature");
   expect((await webhook(unsigned)).status).toBe(401);
 });
+
+function paymentRequest(type="payment"){
+  const requestId=randomUUID();const ts=String(Date.now());const dataId="payment-current";
+  const v1=createHmac("sha256",secret).update(`id:${dataId};request-id:${requestId};ts:${ts};`).digest("hex");
+  return new Request("http://localhost/api/webhooks/mercadopago?data.id="+dataId,{method:"POST",headers:{"x-request-id":requestId,"x-signature":`ts=${ts},v1=${v1}`,"content-type":"application/json"},body:JSON.stringify({type,data:{id:dataId}})});
+}
+function paymentProvider(payment:any){
+  vi.stubGlobal("fetch",vi.fn(async(url:string)=>Response.json(url.includes("payments/")?payment:provider)));
+}
+it("rejects a payment response whose ID differs from the signed resource",async()=>{
+  paymentProvider({id:"other-payment",preapproval_id:provider.id,status:"approved",date_last_updated:"2026-09-30T01:00:00Z",currency_id:"MXN",transaction_amount:plan.monthlyMxn});
+  expect((await webhook(paymentRequest())).status).toBe(502);
+  expect(await Subscription.countDocuments({organizationId:org._id})).toBe(0);
+});
+it("uses authorized-invoice currency and amount to recover a paid subscription",async()=>{
+  await Subscription.create({organizationId:org._id,planCode:"fleet-2",provider:"mercadopago",providerSubscriptionId:provider.id,status:"past_due"});
+  paymentProvider({id:"payment-current",preapproval_id:provider.id,last_modified:"2026-09-30T01:00:00Z",currency_id:"MXN",transaction_amount:String(plan.monthlyMxn),payment:{id:"charge-current",status:"approved"}});
+  expect((await webhook(paymentRequest("subscription_authorized_payment"))).status).toBe(200);
+  expect((await Subscription.findOne({organizationId:org._id}))!.status).toBe("active");
+});
+it("marks failed charges past due without a later preapproval erasing failure",async()=>{
+  await Subscription.create({organizationId:org._id,planCode:"fleet-2",provider:"mercadopago",providerSubscriptionId:provider.id,status:"active"});
+  paymentProvider({id:"payment-current",preapproval_id:provider.id,status:"rejected",date_last_updated:"2026-09-30T01:00:00Z"});
+  expect((await webhook(paymentRequest())).status).toBe(200);
+  vi.stubGlobal("fetch",vi.fn(async()=>Response.json(provider)));
+  expect((await webhook(request())).status).toBe(200);
+  expect((await Subscription.findOne({organizationId:org._id}))!.status).toBe("past_due");
+});
+it("does not recover past due from an old successful charge",async()=>{
+  await Subscription.create({organizationId:org._id,planCode:"fleet-2",provider:"mercadopago",providerSubscriptionId:provider.id,status:"past_due",lastPaymentAt:new Date("2026-09-30T02:00:00Z")});
+  paymentProvider({id:"payment-current",preapproval_id:provider.id,status:"approved",date_last_updated:"2026-09-30T01:00:00Z",currency_id:"MXN",transaction_amount:plan.monthlyMxn});
+  expect((await webhook(paymentRequest())).status).toBe(200);
+  expect((await Subscription.findOne({organizationId:org._id}))!.status).toBe("past_due");
+});
 it.each([400, 500])("returns retryable reconciliation failure on provider HTTP %s without activating", async status => {
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({ status: "authorized" }, { status })));
   expect((await webhook(request())).status).toBe(502);
@@ -126,22 +160,22 @@ it("cannot regress a newer provider snapshot when an old webhook arrives", async
   expect((await Subscription.findOne({ organizationId: org._id }))!.status).toBe("active");
 });
 it("rolls back a manual approval if its audit fails, then approves once with a calendar month", async () => {
-  vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2025-01-31T12:30:00Z"));
-  adminToken = (await createSessionForUser(adminUser, { mfaVerified: true })).token;
+  // Keep the real clock for driver sessions, JWT and Mongo TTL. The paid expiry
+  // selects a deterministic calendar boundary without mocking infrastructure time.
+  const previousEnd=new Date("2030-01-31T12:30:00Z");
+  await Subscription.create({organizationId:org._id,planCode:plan.code,provider:"manual",status:"active",currentPeriodEnd:previousEnd});
   const payment = await ManualPayment.create({ organizationId: org._id, planCode: plan.code, amountMxn: plan.monthlyMxn, expectedAmountMxn: plan.monthlyMxn, receiptUrl: "https://example.invalid/receipt", receiptPublicId: "qa-receipt", receiptResourceType: "image", receiptBytes: 1024, idempotencyKey: randomUUID() });
   const review = () => reviewPayment(new Request("http://localhost/api/admin/manual-payments/" + payment._id, { method: "PATCH", headers: { authorization: "Bearer " + adminToken }, body: JSON.stringify({ status: "approved" }) }), { params: Promise.resolve({ paymentId: String(payment._id) }) });
-  try {
     faults.audit = true;
     expect((await review()).status).toBe(400);
     expect((await ManualPayment.findById(payment._id))!.status).toBe("pending");
-    expect(await Subscription.countDocuments({ organizationId: org._id })).toBe(0);
+    expect((await Subscription.findOne({organizationId:org._id}))!.currentPeriodEnd.toISOString()).toBe(previousEnd.toISOString());
     faults.audit = false;
     expect((await review()).status).toBe(200);
     expect((await review()).status).toBe(200);
     const subscription = await Subscription.findOne({ organizationId: org._id });
-    expect(subscription!.currentPeriodEnd.toISOString()).toBe("2025-02-28T12:30:00.000Z");
+    expect(subscription!.currentPeriodEnd.toISOString()).toBe("2030-02-28T12:30:00.000Z");
     expect(await AuditLog.countDocuments({ entityId: String(payment._id) })).toBe(1);
-  } finally { vi.useRealTimers(); }
 });
 it("reuses a pending checkout even when the browser supplies a new idempotency key", async () => {
   await CheckoutIdempotency.deleteMany({ organizationId: org._id });
@@ -155,6 +189,12 @@ it("reuses a pending checkout even when the browser supplies a new idempotency k
   expect(first.status).toBe(200); expect(second.status).toBe(200);
   expect((await first.json()).checkoutId).toBe((await second.json()).checkoutId);
   expect(keys).toHaveLength(1);
+});
+it("does not create another recurring checkout while a different plan is pending",async()=>{
+  const created=await checkout(new Request("http://localhost/api/commercial/checkout",{method:"POST",headers:{authorization:"Bearer "+ownerToken},body:JSON.stringify({planId:"fleet-4",idempotencyKey:randomUUID()})}));
+  expect(created.status).toBe(409);
+  expect(await CheckoutIdempotency.countDocuments({organizationId:org._id})).toBe(1);
+  expect(fetch).not.toHaveBeenCalled();
 });
 
 it("cancels at the provider before reconciling the local subscription", async () => {

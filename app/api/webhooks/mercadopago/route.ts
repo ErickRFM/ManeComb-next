@@ -7,6 +7,7 @@ import { verifyMercadoPagoWebhook } from "@/src/core/services/mercadopago";
 import { mercadoPagoRequest, reconcilePreapproval } from "@/src/core/services/billing";
 import { Subscription } from "@/src/core/models/Subscription";
 import { writeAudit } from "@/src/core/services/audit";
+import { getCommercialPlan } from "@/src/core/domain/commercial-plans";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
         if (String(provider.id) !== dataId) throw new Error("BILLING_CORRELATION_INVALID");
       } else if (type === "subscription_authorized_payment" || type === "payment") {
         payment = await mercadoPagoRequest((type === "payment" ? "/v1/payments/" : "/authorized_payments/") + encodeURIComponent(dataId));
+        if(String(payment.id)!==dataId)throw new Error("BILLING_CORRELATION_INVALID");
         const preapprovalId = payment.preapproval_id || payment.metadata?.preapproval_id;
         if (!preapprovalId) throw new Error("BILLING_CORRELATION_INVALID");
         provider = await mercadoPagoRequest("/preapproval/" + encodeURIComponent(String(preapprovalId)));
@@ -51,8 +53,16 @@ export async function POST(request: Request) {
           if (["rejected", "cancelled", "refunded", "charged_back"].includes(status) && subscription.status === "active") {
             await Subscription.updateOne({ _id: subscription._id }, { $set: { status: "past_due", lastPaymentAt: paymentDate } }, { session });
           } else if (status === "approved") {
-            const planPrice = Number(provider.auto_recurring?.transaction_amount);
-            const priceMatches = paid.currency_id === "MXN" && Math.round(Number(paid.transaction_amount) * 100) === Math.round(planPrice * 100);
+            const planPrice = getCommercialPlan(subscription.planCode)?.monthlyMxn;
+            // Authorized invoices keep monetary fields at the invoice root;
+            // ordinary payment resources carry them on the payment itself.
+            const currency=paid.currency_id??payment.currency_id;
+            const amount=paid.transaction_amount??payment.transaction_amount;
+            const recurring=provider.auto_recurring;
+            const priceMatches = planPrice!==undefined && currency === "MXN" && Number.isFinite(Number(amount)) &&
+              recurring?.currency_id==="MXN" && Number(recurring.frequency)===1 && recurring.frequency_type==="months" &&
+              Math.round(Number(recurring.transaction_amount)*100)===Math.round(planPrice*100) &&
+              Math.round(Number(amount) * 100) === Math.round(planPrice * 100);
             await Subscription.updateOne({ _id: subscription._id }, { $set: {
               ...(priceMatches && provider.status === "authorized" ? {status:"active",lastPaymentAt:paymentDate} : {reconciliationNeeded:true})
             } }, { session });

@@ -31,17 +31,19 @@ export async function POST(request:Request){
 
     await connectDb();
     await CheckoutIdempotency.init();
-    const existing=await CheckoutIdempotency.findOne({organizationId:session.organizationId,planCode:plan.code,status:{$in:["created","pending"]}}).sort({createdAt:-1});
+    const existing=await CheckoutIdempotency.findOne({organizationId:session.organizationId,status:{$in:["created","pending"]}}).sort({createdAt:-1});
+    if(existing&&existing.planCode!==plan.code)return NextResponse.json({error:"PENDING_CHECKOUT_DIFFERENT_PLAN"},{status:409});
     if(existing?.initPoint) return NextResponse.json({checkoutId:String(existing._id),initPoint:existing.initPoint,reused:true});
     const subscription = await Subscription.findOne({organizationId:session.organizationId});
     if(subscription && subscription.status !== "cancelled" && subscription.status !== "trial") return NextResponse.json({error:"USE_SUBSCRIPTION_CHANGE"},{status:409});
     // Persist the provider key before I/O. Retries and concurrent browsers share it.
     const attempt = existing || await CheckoutIdempotency.findOneAndUpdate(
-      {organizationId:session.organizationId,planCode:plan.code,activeIntent:true},
+      {organizationId:session.organizationId,activeIntent:true},
       {$setOnInsert:{organizationId:session.organizationId,planCode:plan.code,key:randomUUID(),activeIntent:true,status:"created"}},
       {upsert:true,new:true}
     );
     const key=attempt.key;
+    if(attempt.planCode!==plan.code)return NextResponse.json({error:"PENDING_CHECKOUT_DIFFERENT_PLAN"},{status:409});
 
     const user=await User.findById(session.sub).lean();
     const email=(user as any)?.email;

@@ -1,6 +1,6 @@
 # Financial RC1 policy and evidence
 
-All amounts, currency (MXN), recurrence and vehicle limits come from the server catalog. A pending checkout intent is reused across browser refreshes and new client keys until provider reconciliation closes it. Its provider idempotency key is persisted before the API call. A unique partial organization/plan index enforces one active intent. Historical attempts remain available for diagnosis.
+All amounts, currency (MXN), recurrence and vehicle limits come from the server catalog. A pending checkout intent is reused across browser refreshes and new client keys until provider reconciliation closes it. Its provider idempotency key is persisted before the API call. A unique partial organization index enforces one active intent across all plans. A different plan returns PENDING_CHECKOUT_DIFFERENT_PLAN until the previous intent is reconciled/cancelled; it cannot start a second recurring charge. Historical attempts remain available for diagnosis.
 
 Webhook signatures require the signed URL `data.id`, request ID, HMAC and a five-minute timestamp tolerance (seconds or milliseconds). Duplicate signed request IDs are acknowledged after processing. A new delivery still fetches the current provider resource. `subscription_preapproval`, `subscription_authorized_payment` and `payment` use their respective provider endpoints; payments must identify the preapproval. Missing correlation fails without entitlement changes. Retries after timeout/HTTP failure receive a non-success response.
 
