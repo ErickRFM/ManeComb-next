@@ -128,7 +128,7 @@ export function LiveMap(){
         });
 
         map.on("click","fleet-clusters",(event:any)=>{
-          const feature=map.queryRenderedFeatures(event.point,{layers:["fleet-clusters"]})[0];
+          const feature=map.queryRenderedFeatures(event.point,{layers:["fleet-clusters"]})[0] as any;
           const clusterId=feature?.properties?.cluster_id;
           if(clusterId==null)return;
           const source=map.getSource("fleet-density") as any;
