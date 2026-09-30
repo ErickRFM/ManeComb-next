@@ -7,6 +7,7 @@ import { apiError } from "@/src/lib/http";
 import { Vehicle } from "@/src/core/models/Vehicle";
 import { writeAudit } from "@/src/core/services/audit";
 import { requireVehicleCapacity } from "@/src/core/services/subscription-access";
+import { withVehicleCapacityLock } from "@/src/core/services/vehicle-capacity-lock";
 
 const VehicleInput = z.object({
   economicNumber: z.string().min(1).max(40),
@@ -31,8 +32,12 @@ export async function POST(request: Request) {
     if (!session.organizationId) throw new Error("FORBIDDEN");
     const input = VehicleInput.parse(await request.json());
     await connectDb();
-    const capacity = await requireVehicleCapacity(session.organizationId);
-    const vehicle = await Vehicle.create({ organizationId: session.organizationId, ...input });
+    const {capacity,vehicle}=await withVehicleCapacityLock(session.organizationId,async(renew)=>{
+      const capacity=await requireVehicleCapacity(session.organizationId!);
+      await renew();
+      const vehicle=await Vehicle.create({organizationId:session.organizationId,...input});
+      return {capacity,vehicle};
+    });
     await writeAudit({
       organizationId: session.organizationId,
       actorUserId: session.sub,

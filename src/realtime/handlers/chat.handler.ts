@@ -53,8 +53,8 @@ export function registerChatHandler(io: Server, socket: Socket) {
         if (!recipient) throw new Error("CHAT_RECIPIENT_NOT_FOUND");
       }
 
-      const message = await Message.findOneAndUpdate(
-        { organizationId: session.organizationId, clientMessageId: input.clientMessageId },
+      const result = await Message.findOneAndUpdate(
+        { organizationId: session.organizationId, senderUserId: session.sub, clientMessageId: input.clientMessageId },
         {
           $setOnInsert: {
             organizationId: session.organizationId,
@@ -66,24 +66,30 @@ export function registerChatHandler(io: Server, socket: Socket) {
             clientMessageId: input.clientMessageId
           }
         },
-        { upsert: true, new: true }
+        { upsert: true, new: true, includeResultMetadata: true }
       );
+      const message = result.value;
+      if (!message) throw new Error("CHAT_PERSIST_ERROR");
 
-      if (input.recipientUserId) {
-        io.to("user:" + session.sub).to("user:" + input.recipientUserId).emit("chat:message", message);
+      if (message.recipientUserId) {
+        io.to("user:" + String(message.senderUserId)).to("user:" + String(message.recipientUserId)).emit("chat:message", message);
         await enqueueOutboxEvent("push.send", {
-          userId: input.recipientUserId,
+          userId: String(message.recipientUserId),
           title: "Nuevo mensaje en ManeComb",
-          body: input.kind === "image" ? "Recibiste una imagen." : input.body.slice(0, 140),
+          body: message.kind === "image" ? "Recibiste una imagen." : message.body.slice(0, 140),
           url: "/operacion/chat",
           tag: "chat-" + String(message?._id || input.clientMessageId)
-        }, session.organizationId);
+        }, session.organizationId, String(message._id));
       } else {
-        io.to(chatRoom(session.organizationId, input.channelId)).emit("chat:message", message);
+        io.to(chatRoom(session.organizationId, message.channelId)).emit("chat:message", message);
       }
 
       ack?.({ ok: true, message });
     } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+        ack?.({ ok: false, error: "CHAT_MESSAGE_ID_CONFLICT" });
+        return;
+      }
       ack?.({ ok: false, error: error instanceof Error ? error.message : "CHAT_ERROR" });
     }
   });

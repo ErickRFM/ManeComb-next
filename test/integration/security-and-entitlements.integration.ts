@@ -7,6 +7,10 @@ import { Subscription } from "@/src/core/models/Subscription";
 import { User } from "@/src/core/models/User";
 import { Vehicle } from "@/src/core/models/Vehicle";
 import { GET as getVehicles, POST as createVehicle } from "@/app/api/vehicles/route";
+import { PATCH as patchVehicle } from "@/app/api/vehicles/[vehicleId]/route";
+import { requireIntegrationDatabase } from "../support/integration-database";
+import { enqueueOutboxEvent } from "@/src/core/services/outbox";
+import { OutboxEvent } from "@/src/core/models/OutboxEvent";
 
 function jsonRequest(method:string,token:string,body?:unknown){
   return new Request("http://localhost/api/vehicles",{
@@ -24,9 +28,13 @@ describe("tenant security and subscription entitlements",()=>{
   let viewerToken="";
   let otherOwnerToken="";
   let viewerId="";
+  let ownedDatabase="";
 
   beforeAll(async()=>{
+    const expectedDatabase=requireIntegrationDatabase(process.env.MONGODB_URI);
     await connectDb();
+    if(mongoose.connection.name!==expectedDatabase)throw new Error("Integration database mismatch");
+    ownedDatabase=expectedDatabase;
     await mongoose.connection.db?.dropDatabase();
 
     const [orgA,orgB]=await Organization.create([
@@ -56,7 +64,7 @@ describe("tenant security and subscription entitlements",()=>{
   });
 
   afterAll(async()=>{
-    await mongoose.connection.db?.dropDatabase();
+    if(ownedDatabase && mongoose.connection.name===ownedDatabase)await mongoose.connection.db?.dropDatabase();
     await mongoose.disconnect();
   });
 
@@ -92,6 +100,18 @@ describe("tenant security and subscription entitlements",()=>{
     expect(response.status).toBe(401);
   });
 
+  it("checks capacity when restoring an archived vehicle",async()=>{
+    const vehicle=await Vehicle.findOne({economicNumber:"C-1"});
+    const params=Promise.resolve({vehicleId:String(vehicle!._id)});
+    expect((await patchVehicle(jsonRequest("PATCH",ownerToken,{status:"archived"}),{params})).status).toBe(200);
+    expect((await createVehicle(jsonRequest("POST",ownerToken,{economicNumber:"C-3"}))).status).toBe(201);
+    const denied=await patchVehicle(jsonRequest("PATCH",ownerToken,{status:"active"}),{params});
+    expect(denied.status).toBe(409);
+    expect((await denied.json()).error).toBe("VEHICLE_LIMIT_REACHED");
+    await Vehicle.updateOne({economicNumber:"C-3"},{$set:{status:"archived"}});
+    expect((await patchVehicle(jsonRequest("PATCH",ownerToken,{status:"active"}),{params})).status).toBe(200);
+  });
+
   it("invalidates an old token when server-side roles change",async()=>{
     const viewer=await User.findById(viewerId);
     viewer!.roles=["support"];
@@ -103,5 +123,25 @@ describe("tenant security and subscription entitlements",()=>{
     await User.updateOne({_id:viewerId},{$set:{roles:["admin"]}});
     const response=await getVehicles(jsonRequest("GET",freshToken));
     expect(response.status).toBe(401);
+  });
+
+  it("serializes concurrent restores against the fleet limit",async()=>{
+    const original=await Vehicle.findOne({economicNumber:"C-1"});
+    await Vehicle.updateOne({_id:original!._id},{$set:{status:"archived"}});
+    const other=await Vehicle.findOne({economicNumber:"C-3"});
+    const results=await Promise.all([original,other].map(vehicle=>patchVehicle(jsonRequest("PATCH",ownerToken,{status:"active"}),{params:Promise.resolve({vehicleId:String(vehicle!._id)})})));
+    expect(results.map(response=>response.status).sort()).toEqual([200,409]);
+    expect(await Vehicle.countDocuments({organizationId:original!.organizationId,status:{$ne:"archived"}})).toBe(2);
+  });
+
+  it("outbox retries create one notification without resetting a processed event",async()=>{
+    const id=String(new mongoose.Types.ObjectId());
+    const first=await enqueueOutboxEvent("push.send",{body:"canonical"},null,id);
+    await OutboxEvent.updateOne({_id:first._id},{$set:{status:"processed"}});
+    await enqueueOutboxEvent("push.send",{body:"replay"},null,id);
+    expect(await OutboxEvent.countDocuments({_id:id})).toBe(1);
+    const saved=await OutboxEvent.findById(id);
+    expect(saved!.status).toBe("processed");
+    expect(saved!.payload.body).toBe("canonical");
   });
 });

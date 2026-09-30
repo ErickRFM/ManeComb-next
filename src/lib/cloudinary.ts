@@ -47,6 +47,11 @@ export function assertTenantCloudinaryAsset(input:{
   if(url.protocol!=="https:"||url.hostname!=="res.cloudinary.com")throw new Error("INVALID_STORAGE_URL");
   const cloudPrefix="/"+encodeURIComponent(env.cloudinaryCloudName)+"/";
   if(!url.pathname.startsWith(cloudPrefix))throw new Error("INVALID_STORAGE_CLOUD");
+  const assetPath=decodeURIComponent(url.pathname.slice(cloudPrefix.length));
+  const delivery=assetPath.match(/^(image|raw|video)\/upload\/(?:v\d+\/)?(.+)$/);
+  const storedPath=delivery?.[2];
+  const matches=storedPath===input.publicId || Boolean(storedPath?.startsWith(input.publicId+".") && /^[A-Za-z0-9]+$/.test(storedPath.slice(input.publicId.length+1)));
+  if(!matches || input.publicId.split("/").some(part=>part==="."||part==="..") || url.search || url.hash)throw new Error("INVALID_STORAGE_ASSET");
 }
 
 export async function proxyTrustedCloudinaryAsset(urlValue:string){

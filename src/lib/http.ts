@@ -6,6 +6,7 @@ export function apiError(error: unknown) {
   if (message === "FORBIDDEN") return NextResponse.json({ error: message }, { status: 403 });
   if (message === "RATE_LIMITED") return NextResponse.json({ error: message }, { status: 429 });
   if (message === "RATE_LIMIT_UNAVAILABLE") return NextResponse.json({ error: message }, { status: 503 });
+  if (["VEHICLE_CAPACITY_UNAVAILABLE","VEHICLE_CAPACITY_BUSY"].includes(message)) return NextResponse.json({ error: message }, { status: 503 });
   if (["SUBSCRIPTION_INACTIVE","SUBSCRIPTION_EXPIRED","SUBSCRIPTION_PLAN_INVALID"].includes(message)) {
     return NextResponse.json({ error: message }, { status: 403 });
   }

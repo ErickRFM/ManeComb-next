@@ -19,7 +19,9 @@ export function RadioConsole(){
   const streamRef=useRef<MediaStream|null>(null);
 
   useEffect(()=>{
-    socket.emit("radio:join",{channelId},(ack:any)=>setState(ack?.ok?"Escuchando":"No se pudo unir al canal"));
+    const join=()=>socket.emit("radio:join",{channelId},(ack:any)=>setState(ack?.ok?"Escuchando":"No se pudo unir al canal"));
+    socket.on("connect",join);
+    if(socket.connected)join();
     const play=({channelId:incomingChannel,chunk}:{channelId:string;chunk:string})=>{
       if(incomingChannel!==channelId)return;
       const audio=new Audio(chunk);
@@ -31,6 +33,7 @@ export function RadioConsole(){
     socket.on("radio:audio",play);
     socket.on("radio:floor-lost",lost);
     return()=>{
+      socket.off("connect",join);
       socket.emit("radio:leave",{channelId});
       socket.off("radio:audio",play);
       socket.off("radio:floor-lost",lost);

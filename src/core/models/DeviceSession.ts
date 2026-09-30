@@ -1,4 +1,6 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+
+const { Schema } = mongoose;
 
 const DeviceSessionSchema = new Schema({
   tokenHash: { type: String, required: true, unique: true, index: true },
@@ -13,4 +15,4 @@ const DeviceSessionSchema = new Schema({
 
 DeviceSessionSchema.index({ organizationId: 1, userId: 1, journeyId: 1, revokedAt: 1 });
 
-export const DeviceSession = models.DeviceSession || model("DeviceSession", DeviceSessionSchema);
+export const DeviceSession = mongoose.models.DeviceSession || mongoose.model("DeviceSession", DeviceSessionSchema);

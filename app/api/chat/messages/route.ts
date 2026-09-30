@@ -48,7 +48,7 @@ export async function GET(request: Request) {
         { senderUserId: session.sub, recipientUserId: query.recipientUserId },
         { senderUserId: query.recipientUserId, recipientUserId: session.sub }
       ];
-    } else if (session.channel === "mobile_operations") {
+    } else {
       filter.recipientUserId = null;
     }
 

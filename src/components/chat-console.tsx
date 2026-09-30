@@ -19,7 +19,9 @@ export function ChatConsole(){
       })
       .catch(error=>mounted&&setState(error.message));
 
-    socket.emit("chat:join",{channelId});
+    const join=()=>socket.emit("chat:join",{channelId});
+    socket.on("connect",join);
+    if(socket.connected)join();
     const handler=(message:any)=>{
       if(message?.channelId!==channelId)return;
       setMessages((current)=>current.some((item)=>String(item._id)===String(message._id))?current:[...current,message]);
@@ -27,6 +29,7 @@ export function ChatConsole(){
     socket.on("chat:message",handler);
     return()=>{
       mounted=false;
+      socket.off("connect",join);
       socket.emit("chat:leave",{channelId});
       socket.off("chat:message",handler);
     }

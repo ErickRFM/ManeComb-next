@@ -7,6 +7,8 @@ import { apiError } from "@/src/lib/http";
 import { Vehicle } from "@/src/core/models/Vehicle";
 import { Journey } from "@/src/core/models/Journey";
 import { writeAudit } from "@/src/core/services/audit";
+import { requireVehicleCapacity } from "@/src/core/services/subscription-access";
+import { withVehicleCapacityLock } from "@/src/core/services/vehicle-capacity-lock";
 
 const Patch=z.object({
   economicNumber:z.string().min(1).max(40).optional(),
@@ -25,6 +27,12 @@ export async function PATCH(request:Request,{params}:{params:Promise<{vehicleId:
     const {vehicleId}=await params;
     const patch=Patch.parse(await request.json());
     await connectDb();
+    const vehicle=await withVehicleCapacityLock(session.organizationId,async(renew)=>{
+    if(patch.status && patch.status!=="archived"){
+      const existing=await Vehicle.findOne({_id:vehicleId,organizationId:session.organizationId});
+      if(!existing)return NextResponse.json({error:"Vehicle not found"},{status:404});
+      if(existing.status==="archived")await requireVehicleCapacity(session.organizationId!);
+    }
 
     if(patch.status==="maintenance"||patch.status==="archived"){
       const active=await Journey.exists({
@@ -39,11 +47,14 @@ export async function PATCH(request:Request,{params}:{params:Promise<{vehicleId:
     if(patch.status==="maintenance"||patch.status==="archived"){
       update.$unset={driverId:1};
     }
-    const vehicle=await Vehicle.findOneAndUpdate(
+    await renew();
+    return Vehicle.findOneAndUpdate(
       {_id:vehicleId,organizationId:session.organizationId},
       update,
-      {new:true,runValidators:true}
+      {new:true,runValidators:true,maxTimeMS:10_000}
     );
+    });
+    if(vehicle instanceof Response)return vehicle;
     if(!vehicle)return NextResponse.json({error:"Vehicle not found"},{status:404});
 
     await writeAudit({
