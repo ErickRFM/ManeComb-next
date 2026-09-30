@@ -17,7 +17,7 @@ try{
       const height=width<=430?820:width<=768?900:960;
       const context=await browser.newContext({viewport:{width,height},colorScheme:"dark",reducedMotion:"reduce"});
       const page=await context.newPage();
-      await page.goto(baseUrl+"/__visual/"+surface,{waitUntil:"networkidle"});
+      await page.goto(baseUrl+"/visual-qa/"+surface,{waitUntil:"networkidle"});
 
       const overflow=await page.evaluate(()=>({
         scrollWidth:document.documentElement.scrollWidth,
