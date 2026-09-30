@@ -47,7 +47,7 @@ jobs:
           nohup npm run dev > /tmp/manecomb-visual.log 2>&1 &
           echo $! > /tmp/manecomb-visual.pid
           for i in {1..60}; do
-            if curl -fsS http://127.0.0.1:3000/__visual/portal >/dev/null; then
+            if curl -fsS http://127.0.0.1:3000/visual-qa/portal >/dev/null; then
               exit 0
             fi
             sleep 2
@@ -72,7 +72,7 @@ jobs:
     env:
       VISUAL_QA: "1"
       AUTH_SECRET: android-qa-auth-secret-abcdefghijklmnopqrstuvwxyz-0123456789
-      CAPACITOR_SERVER_URL: http://10.0.2.2:3000/__visual/driver
+      CAPACITOR_SERVER_URL: http://10.0.2.2:3000/visual-qa/driver
       MANECOMB_ANDROID_VERSION_NAME: 0.1.0-rc1
       MANECOMB_ANDROID_VERSION_CODE: "1"
     steps:
@@ -90,7 +90,7 @@ jobs:
         run: |
           nohup npm run dev > /tmp/manecomb-android-web.log 2>&1 &
           for i in {1..60}; do
-            if curl -fsS http://127.0.0.1:3000/__visual/driver >/dev/null; then exit 0; fi
+            if curl -fsS http://127.0.0.1:3000/visual-qa/driver >/dev/null; then exit 0; fi
             sleep 2
           done
           cat /tmp/manecomb-android-web.log
