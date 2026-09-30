@@ -47,6 +47,7 @@ it("processes an actual queued email with a stubbed provider and records complet
   const job = await queue.add(event.type, { outboxId: String(event._id), payload: event.payload }, { jobId: String(event._id) });
   await job.waitUntilFinished(events, 10_000);
   expect(deliver).toHaveBeenCalledOnce();
+  expect(deliver).toHaveBeenLastCalledWith(event.payload,{idempotencyKey:"outbox/"+String(event._id)});
   const saved = await OutboxEvent.findById(event._id);
   expect(saved!.status).toBe("processed");
   expect(saved!.processedAt).toBeInstanceOf(Date);

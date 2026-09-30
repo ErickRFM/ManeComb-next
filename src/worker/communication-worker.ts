@@ -82,7 +82,7 @@ export async function startCommunicationWorker() {
 
     try {
       if (job.name === "email.send") {
-        await sendTransactionalEmail(job.data.payload);
+        await sendTransactionalEmail(job.data.payload,{idempotencyKey:"outbox/"+String(event._id)});
       } else if (job.name === "push.send") {
         await sendPushNotification({
           organizationId: job.data.organizationId,
