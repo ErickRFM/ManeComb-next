@@ -1013,3 +1013,14 @@ label{color:var(--text-soft);font-size:13px;font-weight:700}
   bottom:calc(8px + env(safe-area-inset-bottom,0px))
 }
 .driver-action-card{appearance:none;text-align:left;color:var(--text);cursor:pointer}
+
+
+/* WCAG active control contrast */
+.fleet-filters button.active,
+.camera-mode.active{
+  color:var(--text);
+}
+.fleet-filters button.active span{
+  color:var(--text);
+  background:color-mix(in srgb,var(--surface-3) 92%,var(--brand));
+}
