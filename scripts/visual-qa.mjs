@@ -37,7 +37,17 @@ try{
       const axe=await new AxeBuilder({page}).analyze();
       const severe=axe.violations.filter(item=>item.impact==="critical"||item.impact==="serious");
       if(severe.length){
-        report.violations.push({surface,width,violations:severe.map(item=>({id:item.id,impact:item.impact,help:item.help,nodes:item.nodes.length}))});
+        report.violations.push({surface,width,violations:severe.map(item=>({
+          id:item.id,
+          impact:item.impact,
+          help:item.help,
+          nodes:item.nodes.map(node=>({
+            target:node.target,
+            html:node.html,
+            failureSummary:node.failureSummary
+          }))
+        }))});
+        console.error(JSON.stringify(report.violations.at(-1),null,2));
         throw new Error("Accessibility violations at "+surface+" "+width+"px: "+severe.map(item=>item.id).join(", "));
       }
 

@@ -381,9 +381,9 @@ label{color:var(--text-soft);font-size:13px;font-weight:700}
 .fleet-list-stats strong{font-size:11px}
 .fleet-list-stats small{font-size:8px;color:var(--muted)}
 .fleet-marker{width:38px;height:38px;border-radius:14px;border:2px solid white;color:white;background:#4b5563;display:grid;place-items:center;font-size:10px;font-weight:950;box-shadow:0 8px 24px rgba(0,0,0,.32);cursor:pointer;transition:transform .16s ease,box-shadow .16s ease}
-.fleet-marker.good{background:var(--success)}
-.fleet-marker.warn{background:var(--warning)}
-.fleet-marker.danger{background:var(--danger)}
+.fleet-marker.good{background:#15803d}
+.fleet-marker.warn{background:#a16207}
+.fleet-marker.danger{background:#be123c}
 .fleet-marker:hover,.fleet-marker.selected{transform:scale(1.12);box-shadow:0 10px 30px rgba(0,0,0,.42)}
 .unit-detail-panel{
   position:absolute;right:14px;top:14px;z-index:6;width:300px;padding:14px;border:1px solid var(--border);border-radius:16px;background:var(--surface-glass);backdrop-filter:blur(18px) saturate(140%);box-shadow:var(--shadow)

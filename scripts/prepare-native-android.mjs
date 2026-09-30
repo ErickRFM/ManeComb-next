@@ -50,8 +50,9 @@ const permissions=[
 ];
 const missing=permissions.filter(line=>!manifest.includes(line.match(/android:name="([^"]+)"/)?.[1]||line));
 if(missing.length){
-  const end=manifest.indexOf(">");
-  manifest=manifest.slice(0,end+1)+"\n    "+missing.join("\n    ")+manifest.slice(end+1);
+  const opening=manifest.match(/<manifest\b[^>]*>/)?.[0];
+  if(!opening)throw new Error("AndroidManifest.xml is missing the <manifest> root element.");
+  manifest=manifest.replace(opening,opening+"\n    "+missing.join("\n    "));
 }
 if(!manifest.includes("com.manecomb.location.ManeCombLocationService")){
   manifest=manifest.replace(
