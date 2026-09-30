@@ -48,10 +48,10 @@ export function AdminShell({children}:{children:React.ReactNode}){
     </aside>
 
     {mobileOpen?<button className="mobile-scrim" aria-label="Cerrar menú" onClick={()=>setMobileOpen(false)}/>:null}
-    <aside className={"mobile-drawer "+(mobileOpen?"open":"")} aria-label="Menú administrativo">
-      <div className="mobile-drawer-head"><strong>Admin Global</strong><button className="icon-action" onClick={()=>setMobileOpen(false)} aria-label="Cerrar menú">×</button></div>
+    {mobileOpen?<aside className="mobile-drawer open" aria-label="Menú administrativo">
+      <div className="mobile-drawer-head"><strong>Admin Global</strong><button type="button" className="icon-action" onClick={()=>setMobileOpen(false)} aria-label="Cerrar menú">×</button></div>
       {items.map(item=><Link key={item.href} href={item.href} className={"mobile-drawer-link "+(pathname.startsWith(item.href)?"active":"")}><span>{item.key}</span>{item.label}</Link>)}
-    </aside>
+    </aside>:null}
 
     <div className="product-workspace">
       <header className="workspace-topbar">
