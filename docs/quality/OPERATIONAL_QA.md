@@ -67,3 +67,7 @@ Record timestamp, commit, environment, Redis mode, generated QA database/namespa
 | Date | Commit | Environment | E2E result | Redis mode | Clients / duration | ACK errors / missing | p50 / p95 / p99 | Resource notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+| 2026-09-30 | Integration working tree after `344daad` | Windows Node 20, Atlas QA, real namespaced Redis | Flow through SOS; load gate FAIL | isolated `qa_*` | 500 / 60s, 3s interval | 0 errors received / 10000 ACK timeouts | none within 10s deadline | All 500 connected; capacity diagnosis required |
+| 2026-09-30 | Same integration working tree | Same infrastructure; new QA fixtures | Full flow + device-token exclusion/revocation PASS | isolated `qa_*` | 1 / 10s, 3s interval | 0 / 0 | 377 / 458 / 458 ms | 4/4 ACKs; transport works at low load |
+
+The single-client run isolates the 500-client failure from a total transport failure. It does not establish the bottleneck or production capacity. The 500-client target remains FAIL until the actual release infrastructure sustains it with complete ACKs and measured resource use. No timeout threshold was relaxed to obtain a pass.

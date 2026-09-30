@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
+import { enforceRateLimit } from "@/src/lib/rate-limit";
 import {
   buildTotpUri,
   encryptMfaSecret,
@@ -18,6 +19,7 @@ export async function POST(request: Request) {
     if (!token) throw new Error("UNAUTHORIZED");
     const challenge = await verifyMfaChallenge(token);
     if (challenge.mode !== "setup") throw new Error("FORBIDDEN");
+    await enforceRateLimit(request,"auth:mfa-setup",{limit:5,windowSeconds:600,identity:challenge.userId});
 
     await connectDb();
     const user = await User.findOne({ _id: challenge.userId, active: true, channel: "platform_admin" })

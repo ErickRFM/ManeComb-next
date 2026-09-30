@@ -18,7 +18,7 @@ const httpServer = createServer((req, res) => {
   handler(req,res);
 });
 const realtime = await createRealtimeServer(httpServer);
-const stopFreshnessSweeper=startFreshnessSweeper(realtime);
+const stopFreshnessSweeper=process.env.VISUAL_QA==="1"?()=>{}:startFreshnessSweeper(realtime);
 
 httpServer.listen(port, hostname, () => {
   console.log("[manecomb] listening on http://" + hostname + ":" + port);

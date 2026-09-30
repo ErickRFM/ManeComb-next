@@ -4,8 +4,15 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
 jobs:
   validate:
+    strategy:
+      matrix:
+        node: [20, 24]
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -41,10 +48,87 @@ jobs:
           exit 1
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node }}
       - run: npm ci --no-audit --no-fund
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run typecheck
+      - name: Smoke custom Node server
+        run: |
+          npx tsx server.ts > /tmp/manecomb-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/api/health/live >/dev/null; then
+              kill $SERVER_PID 2>/dev/null || true
+              wait $SERVER_PID 2>/dev/null || true
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/manecomb-server.log
+          exit 1
       - run: npm test
       - run: npm run test:integration
       - run: npm run build
+
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: validate
+    env:
+      NODE_ENV: production
+      DEPLOYMENT_ENVIRONMENT: staging
+      APP_URL: https://staging.example.invalid
+      AUTH_SECRET: ci-production-auth-secret-abcdefghijklmnopqrstuvwxyz
+      MFA_ENCRYPTION_KEY: ci-production-mfa-secret-abcdefghijklmnopqrstuvwxyz
+      MONGODB_URI: mongodb://mongo.invalid:27017/manecomb_staging
+      REDIS_URL: redis://redis.invalid:6379
+      REDIS_NAMESPACE: manecomb-next-staging-ci
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: pk.ci_synthetic
+      RESEND_API_KEY: re_ci_synthetic
+      EMAIL_FROM: ManeComb <no-reply@manecomb.com>
+      MERCADO_PAGO_WEBHOOK_SECRET: mp_webhook_ci_synthetic
+      MERCADOPAGO_ACCESS_TOKEN: TEST-ci-synthetic
+      WEB_PUSH_SUBJECT: mailto:soporte@manecomb.com
+      CLOUDINARY_CLOUD_NAME: manecomb-ci
+      CLOUDINARY_API_KEY: cloudinary_ci
+      CLOUDINARY_API_SECRET: cloudinary_secret_ci
+      RTC_STUN_URLS: stun:stun.l.google.com:19302
+      RTC_TURN_URLS: turn:turn.example.invalid:3478
+      RTC_TURN_SECRET: turn_ci_secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Generate synthetic CI VAPID keys
+        run: |
+          node --input-type=module -e 'import {generateKeyPairSync} from "node:crypto"; const key=generateKeyPairSync("ec",{namedCurve:"prime256v1"}).privateKey.export({format:"jwk"}); console.log("NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY="+Buffer.concat([Buffer.from([4]),Buffer.from(key.x,"base64url"),Buffer.from(key.y,"base64url")]).toString("base64url")); console.log("WEB_PUSH_VAPID_PRIVATE_KEY="+key.d);' >> "$GITHUB_ENV"
+      - name: Validate production environment contract
+        run: |
+          npm run deploy:check
+          npm run deploy:check:worker
+      - name: Build production Docker image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN="$NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN" \
+            --build-arg NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY="$NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY" \
+            -t manecomb-next:ci .
+      - name: Smoke production container
+        run: |
+          docker run -d --name manecomb-next-ci -p 3001:3000 \
+            -e PORT=3000 \
+            -e VISUAL_QA=1 \
+            -e AUTH_SECRET="$AUTH_SECRET" \
+            -e MFA_ENCRYPTION_KEY="$MFA_ENCRYPTION_KEY" \
+            manecomb-next:ci
+          trap 'docker rm -f manecomb-next-ci >/dev/null 2>&1 || true' EXIT
+          for i in {1..45}; do
+            if curl -fsS http://127.0.0.1:3001/api/health/live >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs manecomb-next-ci
+          exit 1

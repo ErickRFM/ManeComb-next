@@ -12,6 +12,7 @@ import { assertPermission } from "@/src/lib/authorization";
 import { connectDb } from "@/src/lib/db";
 import { getEnv } from "@/src/lib/env";
 import { apiError } from "@/src/lib/http";
+import { enforceRateLimit } from "@/src/lib/rate-limit";
 
 const Input=z.object({planId:z.string().min(1),idempotencyKey:z.string().min(8).max(200).optional()});
 export const runtime="nodejs";
@@ -20,6 +21,7 @@ export async function POST(request:Request){
   try{
     const session=assertPermission(await requireApiSession(request,["company_portal"]),"manage_billing");
     if(!session.organizationId) throw new Error("FORBIDDEN");
+    await enforceRateLimit(request,"commercial:checkout",{limit:10,windowSeconds:600,identity:session.organizationId});
     const {planId,idempotencyKey}=Input.parse(await request.json());
     const plan=getCommercialPlan(planId);
     if(!plan) return NextResponse.json({error:"Unknown plan"},{status:404});

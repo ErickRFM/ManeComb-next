@@ -1,15 +1,20 @@
 import { DriverConsole } from "@/src/components/driver-console";
+import { DriverMapHome } from "@/src/components/driver-map-home";
 import { JourneyPanel } from "@/src/components/journey-panel";
 import { PushOptIn } from "@/src/components/push-opt-in";
 import { AppVersionGate } from "@/src/components/app-version-gate";
 
 export default function OperationPage(){
-  return <main className="driver">
+  return <div className="driver-home">
     <AppVersionGate/>
-    <div className="driver-panel grid">
-      <JourneyPanel/>
-      <DriverConsole/>
-      <PushOptIn/>
-    </div>
-  </main>
+    <DriverMapHome/>
+    <details className="driver-tools">
+      <summary><span>Controles de jornada y GPS</span><small>Checklist, iniciar/pausar/finalizar y diagnóstico de seguimiento</small></summary>
+      <div className="driver-tools-body">
+        <JourneyPanel/>
+        <DriverConsole/>
+        <PushOptIn/>
+      </div>
+    </details>
+  </div>;
 }

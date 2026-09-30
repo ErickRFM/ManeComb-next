@@ -37,7 +37,9 @@ export async function runOperationalFlow() {
   const request = async (path: string, options: Options = {}) => {
     const headers: Record<string, string> = {};
     if (options.body !== undefined) headers['content-type'] = 'application/json';
-    if (options.token) headers.cookie = 'manecomb_session=' + encodeURIComponent(options.token);
+    if (options.token?.startsWith('mcdev_')) headers.authorization='Bearer '+options.token;
+    else if (options.token) headers.cookie = 'manecomb_session=' + encodeURIComponent(options.token);
+    if (options.body !== undefined) { headers.origin = baseUrl; headers['sec-fetch-site'] = 'same-origin'; }
     const response = await fetch(baseUrl + path, {
       method: options.method || 'GET', headers, redirect: 'error',
       signal: AbortSignal.any([abortController.signal, AbortSignal.timeout(TIMEOUT_MS)]),
@@ -151,12 +153,20 @@ export async function runOperationalFlow() {
     } });
     const started = await request('/api/journeys', { method: 'POST', token: driverToken, body: { journeyId, action: 'start' } });
     check(started.data.journey?.state === 'RUNNING', 'Journey did not reach RUNNING');
+    const issued=await request('/api/auth/device-session',{method:'POST',token:driverToken,body:{vehicleId,journeyId}});
+    const deviceToken=String(issued.data.token||'');
+    check(deviceToken.startsWith('mcdev_'),'Device telemetry session was not issued');
+    for(const path of ['/api/vehicles','/api/chat/messages','/api/account/subscription','/api/admin/audit']){
+      const denied=await fetch(baseUrl+path,{headers:{authorization:'Bearer '+deviceToken},signal:AbortSignal.timeout(TIMEOUT_MS)});
+      check(denied.status===401||denied.status===403,'Device telemetry token accessed '+path);
+    }
+    check(await connect(deviceToken).then(()=>false,()=>true),'Device token accessed chat/radio realtime');
 
     console.log('[e2e] verify GPS packet replay and old-point ordering');
     const first = { packetId: randomUUID(), vehicleId, journeyId, latitude: 19.3139, longitude: -98.2404, speedMps: 7, heading: 90, accuracy: 6, recordedAt: new Date(Date.now() - 5000).toISOString() };
     const second = { ...first, packetId: randomUUID(), latitude: 19.314, recordedAt: new Date().toISOString() };
     for (const packet of [first, second, first]) {
-      const result = await request('/api/locations/telemetry', { method: 'POST', token: driverToken, body: packet });
+      const result = await request('/api/locations/telemetry', { method: 'POST', token: deviceToken, body: packet });
       check(result.data.packetId === packet.packetId, 'Telemetry packet acknowledgment mismatch');
     }
     const live = await request('/api/locations/live', { token: ownerToken });
@@ -214,6 +224,8 @@ export async function runOperationalFlow() {
 
     console.log('[e2e] finish journey and verify driver login');
     await request('/api/journeys', { method: 'POST', token: driverToken, body: { journeyId, action: 'finish', finalOdometerKm: 1005 } });
+    const revoked=await fetch(baseUrl+'/api/locations/telemetry',{method:'POST',headers:{authorization:'Bearer '+deviceToken,'content-type':'application/json'},body:JSON.stringify({...second,packetId:randomUUID()}),signal:AbortSignal.timeout(TIMEOUT_MS)});
+    check(revoked.status===401,'Finished journey retained an active device token');
     const journeys = await request('/api/journeys', { token: ownerToken });
     check(journeys.data.journeys?.some((item: any) => item._id === journeyId && item.state === 'FINISHED'), 'Journey did not reach FINISHED');
     const login = await request('/api/auth/login', { method: 'POST', body: { email: driverEmail, password: driverPassword } });
