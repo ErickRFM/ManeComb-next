@@ -3,6 +3,7 @@ import next from "next";
 import { createRealtimeServer } from "@/src/realtime/socket-server";
 import { startFreshnessSweeper } from "@/src/realtime/services/freshness-sweeper";
 import { recordApiRequest } from "@/src/lib/metrics";
+import { startRuntimeMetrics } from "@/src/lib/runtime-metrics";
 
 const dev = process.env.NODE_ENV !== "production";
 const port = Number(process.env.PORT || 3000);
@@ -18,6 +19,7 @@ const httpServer = createServer((req, res) => {
   handler(req,res);
 });
 const realtime = await createRealtimeServer(httpServer);
+const stopRuntimeMetrics=startRuntimeMetrics();
 const stopFreshnessSweeper=process.env.VISUAL_QA==="1"?()=>{}:startFreshnessSweeper(realtime);
 
 httpServer.listen(port, hostname, () => {
@@ -27,6 +29,7 @@ httpServer.listen(port, hostname, () => {
 const shutdown = (signal: string) => {
   console.log("[manecomb] received " + signal);
   stopFreshnessSweeper();
+  stopRuntimeMetrics();
   realtime.close();
   httpServer.close(() => process.exit(0));
 };

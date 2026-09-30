@@ -46,3 +46,26 @@ Workspace autorizado: Erick Rivaldo's workspace. Proyecto: Manecomb-next. No exi
 Sólo inspección/preparación autorizada. Recursos exactos de `render.yaml`: web `manecomb-next`, worker `manecomb-next-communication-worker`, Key Value `manecomb-next-redis`; región Oregon, plan starter, Docker Node 24, branch main. Web: `/api/health/ready`, predeploy web; worker: `npm run worker`, predeploy worker; Redis: noeviction y journal-snapshot, sin IP pública permitida. DB explícita `manecomb`, namespace `manecomb-next-prod`; staging separado `manecomb_staging`/namespace staging. Auto-deploy web/worker off y Blueprint Auto Sync deshabilitado. Schema oficial validado localmente; ningún recurso creado ni variable productiva modificada. El primer sync crea y despliega: no ejecutarlo hasta completar gates. Rollback preserva Mongo, Redis, eventos y outbox; ver `docs/deployment/PRODUCTION_DEPLOYMENT.md`.
 
 Estado actual: NOT READY por carga 500 FAIL y checks exactos pendientes, además de gates externos. El smoke Android 13–16 preparado verifica APK/install/start/orientación; no reemplaza GPS/Doze/cámara/audio físicos.
+
+## Matriz de ports selectivos
+
+Fuentes auditadas: main `2608838`, PR #3 `b052833`, PR #5 `526d71a`; integración conserva la base #4. El cierre de los PRs originales requiere que el PR de consolidación tenga checks verdes.
+
+| Feature | Main | Integration | PR #3 | Decisión |
+|---|---|---|---|---|
+| Mongoose / retry | ESM y retry vigente | Conservados | Parcial | Mantener main |
+| Permisos / tenants / sesiones | Hardening #4 | Scope device + revocación ampliados | Sustituciones inferiores | Mantener main y regresiones |
+| Cloudinary / managed assets | Proxy y permisos | Metadata real del proveedor, scope exacto, authenticated | Validator débil / política única | Conservar permisos main, portar política y reforzar metadata |
+| Documentos / recibos | Owner/tenant/review | MIME/bytes compartidos y proveedor | Único upload-policy | Port selectivo |
+| Chat adjuntos / DM | Persistencia, replay y DM aislado | Metadata/proxy + UX directo | Metadata única | Port compatible; rechazar sustituciones regresivas |
+| Readiness / health | Estado Mongo/Redis/config | Conservado, validator roles/env reforzado | Docs y flags parciales | Mantener servicios main |
+| GPS / Android | Device token, SQLite, packetId | Orden atómico y matriz API 33–36 | Protocolo físico | Conservar nativo y portar protocolo |
+| Carga 500 | Ausente | Runner estricto, métricas y gate CI | Omite ACK perdidos | Corregir runner; capacidad destino pendiente |
+| E2E | Ausente | Fixture marker-owned, activo, Redis real, pares y revocación | Tenant sin entitlement | Adaptar fixture sin bypass productivo |
+| Env producción | Runbook | Validator único por rol, DB/namespace separados | Script duplicado | Ampliar validator #5, descartar duplicado |
+| Presence / radio / RTC | Salas, leases, aislamiento | Conservados + rejoin/release UX | Sustituciones con regresiones | Mantener main |
+| Render | Preparación mínima | Tres recursos privados, Docker, auto-deploy off | Config incompleta | Blueprint #5 reforzado, ningún recurso creado |
+| UX | Superficies funcionales | Shells/mapa/modal/contraste responsive | Parcial | Delta #5, sin merge de su historia divergente |
+| Validation log / checklist | Docs fragmentarios | Este registro, ACCEPTANCE y OPERATIONAL_QA | Registro previo sin evidencia actual | Centralizar; no copiar PASS históricos |
+
+Finanzas: antes de un rollout, revisar intents legacy y duplicados por organización para crear el índice `one_active_checkout_per_org`. Reconciliar/cancelar cada intento duplicado en el proveedor antes de tocar índices; no borrar historia. No existe servicio productivo de este repo todavía.

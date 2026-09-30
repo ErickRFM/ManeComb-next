@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import mongoose, { type Connection } from 'mongoose';
 import { io, type Socket } from 'socket.io-client';
+import { SignJWT } from 'jose';
 import { assertLoadTarget, integerSetting, runGpsLoad } from '../load/socket-gps';
 
 type Options = { method?: string; token?: string; body?: unknown };
@@ -212,14 +213,30 @@ export async function runOperationalFlow() {
 
     let load;
     if (process.env.E2E_RUN_LOAD === 'YES') {
+      let metricsToken:string|undefined;
+      if(fixture?.db){
+        // Synthetic MFA-verified identity exists only in the marker-owned QA DB.
+        // This does not validate administrator MFA setup or real authentication.
+        const adminId=new mongoose.Types.ObjectId();const jti=randomUUID();
+        await fixture.db.collection('users').insertOne({_id:adminId,name:'QA metrics',email:'metrics-'+stamp+'@example.invalid',active:true,roles:['admin'],channel:'platform_admin',organizationId:null});
+        await fixture.db.collection('sessions').insertOne({jti,userId:adminId,revokedAt:null,expiresAt:new Date(Date.now()+3600_000)});
+        metricsToken=await new SignJWT({organizationId:null,roles:['admin'],channel:'platform_admin',jti,mfaVerified:true}).setProtectedHeader({alg:'HS256'}).setSubject(String(adminId)).setIssuedAt().setExpirationTime('1h').sign(new TextEncoder().encode(process.env.AUTH_SECRET));
+        // Compile the diagnostic endpoint before applying load.
+        await request('/api/admin/metrics',{token:metricsToken});
+      }
       console.log('[e2e] execute GPS load while journey is RUNNING');
-      load = await runGpsLoad({ baseUrl, email: driverEmail, password: driverPassword, vehicleId, journeyId,
+      try{load = await runGpsLoad({ baseUrl, email: driverEmail, password: driverPassword, vehicleId, journeyId,
         clients: integerSetting(process.env.LOAD_TEST_CLIENTS, 500, 1, 5000, 'LOAD_TEST_CLIENTS'),
         intervalMs: integerSetting(process.env.LOAD_TEST_INTERVAL_MS, 3000, 1000, 60_000, 'LOAD_TEST_INTERVAL_MS'),
         durationMs: integerSetting(process.env.LOAD_TEST_DURATION_MS, 60_000, 10_000, 3_600_000, 'LOAD_TEST_DURATION_MS'),
         ackTimeoutMs: integerSetting(process.env.LOAD_TEST_ACK_TIMEOUT_MS, 10_000, 100, 60_000, 'LOAD_TEST_ACK_TIMEOUT_MS'),
         confirmStaging: process.env.E2E_CONFIRM_STAGING === 'YES'
-      });
+      })}finally{
+        if(metricsToken)try{
+          const diagnostics=await request('/api/admin/metrics',{token:metricsToken});
+          console.log('[load-metrics] '+JSON.stringify(diagnostics.data.metrics));
+        }catch{console.log('[load-metrics] diagnostic request timed out or failed')}
+      }
     }
 
     console.log('[e2e] finish journey and verify driver login');
