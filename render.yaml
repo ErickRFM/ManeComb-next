@@ -1,22 +1,42 @@
 services:
+  - type: keyvalue
+    name: manecomb-next-redis
+    plan: starter
+    region: oregon
+    maxmemoryPolicy: noeviction
+    persistenceMode: journal-snapshot
+    ipAllowList: []
+
   - type: web
     name: manecomb-next
     runtime: docker
     plan: starter
+    region: oregon
+    branch: main
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 60
     healthCheckPath: /api/health/ready
+    preDeployCommand: npm run deploy:check
     envVars:
       - key: NODE_ENV
         value: production
+      - key: HOSTNAME
+        value: 0.0.0.0
       - key: APP_URL
         sync: false
       - key: AUTH_SECRET
-        sync: false
+        generateValue: true
       - key: MFA_ENCRYPTION_KEY
-        sync: false
+        generateValue: true
       - key: MONGODB_URI
         sync: false
       - key: REDIS_URL
-        sync: false
+        fromService:
+          type: keyvalue
+          name: manecomb-next-redis
+          property: connectionString
+      - key: REDIS_NAMESPACE
+        value: manecomb-next-prod
       - key: NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
         sync: false
       - key: RESEND_API_KEY
@@ -51,17 +71,27 @@ services:
         sync: false
 
   - type: worker
-    name: manecomb-communication-worker
+    name: manecomb-next-communication-worker
     runtime: docker
     plan: starter
+    region: oregon
+    branch: main
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 60
     dockerCommand: npm run worker
+    preDeployCommand: npm run deploy:check:worker
     envVars:
       - key: NODE_ENV
         value: production
       - key: MONGODB_URI
         sync: false
       - key: REDIS_URL
-        sync: false
+        fromService:
+          type: keyvalue
+          name: manecomb-next-redis
+          property: connectionString
+      - key: REDIS_NAMESPACE
+        value: manecomb-next-prod
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM
