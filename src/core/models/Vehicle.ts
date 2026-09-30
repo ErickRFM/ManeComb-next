@@ -1,4 +1,6 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+
+const { Schema } = mongoose;
 const VehicleSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
   economicNumber: { type: String, required: true, trim: true },
@@ -13,4 +15,4 @@ const VehicleSchema = new Schema({
   }
 }, { timestamps: true });
 VehicleSchema.index({ organizationId: 1, economicNumber: 1 }, { unique: true });
-export const Vehicle = models.Vehicle || model("Vehicle", VehicleSchema);
+export const Vehicle = mongoose.models.Vehicle || mongoose.model("Vehicle", VehicleSchema);

@@ -1,4 +1,6 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+
+const { Schema } = mongoose;
 const ActivationKeySchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
   driverId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -8,4 +10,4 @@ const ActivationKeySchema = new Schema({
   usedAt: { type: Date, default: null },
   revokedAt: { type: Date, default: null }
 }, { timestamps: true });
-export const ActivationKey = models.ActivationKey || model("ActivationKey", ActivationKeySchema);
+export const ActivationKey = mongoose.models.ActivationKey || mongoose.model("ActivationKey", ActivationKeySchema);

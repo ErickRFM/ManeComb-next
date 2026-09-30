@@ -1,4 +1,6 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+
+const { Schema } = mongoose;
 const PositionSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
   vehicleId: { type: Schema.Types.ObjectId, ref: "Vehicle", required: true, index: true },
@@ -8,4 +10,4 @@ const PositionSchema = new Schema({
   recordedAt: { type: Date, required: true, index: true }
 }, { timestamps: true });
 PositionSchema.index({ organizationId: 1, vehicleId: 1, recordedAt: -1 });
-export const RouteSessionPosition = models.RouteSessionPosition || model("RouteSessionPosition", PositionSchema);
+export const RouteSessionPosition = mongoose.models.RouteSessionPosition || mongoose.model("RouteSessionPosition", PositionSchema);

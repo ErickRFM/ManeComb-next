@@ -1,4 +1,6 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+
+const { Schema } = mongoose;
 const PointSchema=new Schema({latitude:Number,longitude:Number},{_id:false});
 const CandidateSchema=new Schema({
   organizationId:{type:Schema.Types.ObjectId,ref:"Organization",required:true,index:true},
@@ -10,4 +12,4 @@ const CandidateSchema=new Schema({
   reviewedBy:{type:Schema.Types.ObjectId,ref:"User",default:null},
   reviewedAt:Date
 },{timestamps:true});
-export const LearnedRouteCandidate=models.LearnedRouteCandidate||model("LearnedRouteCandidate",CandidateSchema);
+export const LearnedRouteCandidate=mongoose.models.LearnedRouteCandidate||mongoose.model("LearnedRouteCandidate",CandidateSchema);
