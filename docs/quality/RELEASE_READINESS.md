@@ -10,14 +10,16 @@ Fecha: 2026-09-30. Consolidación solicitada para ManeComb-next. No guardar secr
 | #7 retry Mongo | Squash `a58152e`; retry tras promise rechazada + concurrencia, health/worker/CI PASS |
 | #4 hardening | Squash `2608838`; typecheck, 35 unitarias, 10 integración Atlas QA/Redis, build y CI PASS |
 | #3 readiness | Ports selectivos de uploads/adjuntos, runners y gates; conservar #4, sin merge duplicado |
-| #5 UX | Delta selectivo consolidado sobre main; 56 vistas locales PASS y UX CI PASS en `5c895a1`; repetir contra el SHA final |
+| #5 UX | Delta selectivo consolidado sobre main; 56 vistas locales PASS y UX CI PASS en `baf523f`; repetir contra el SHA final |
 | Finanzas | Transacciones, conciliación de estado/precio, checkout persistido por organización, firma/replay y mes calendario; 19 integraciones con proveedor simulado PASS |
 | GPS/sesiones | Escritura GPS y barrido de frescura condicionales; token de dispositivo exclusivo, revocación por cierre/usuario/asignación/expiración |
 | Worker | BullMQ con prefix aislado; race outbox y retry real Mongo/Redis probados; Resend simulado sin correo externo |
 
-Validación local Node 20.20.2/npm 10.8.2: typecheck PASS; 79 unitarias/27 archivos PASS; 38 integraciones/5 archivos Atlas QA + Redis PASS; build Next 15.5.26 con 76 páginas PASS; audit producción 0 vulnerabilidades. UX local: 56 vistas (dark/light, 360/390/430/768/1024/1366/1920), axe/foco/teclado PASS. UX CI y smoke Android API 33/34/35/36 PASS en `5c895a1`; CI de ese SHA falló por carga en Node 20 con servidor de desarrollo. La siguiente validación usa el build de producción y conserva 500 sockets/3 s/60 s/ACK de 10 s. Confirmar todos los checks contra el SHA final; no reutilizar resultados de PR #5.
+Validación local Node 20.20.2/npm 10.8.2: typecheck PASS; 79 unitarias/27 archivos PASS; 38 integraciones/5 archivos Atlas QA + Redis PASS; build Next 15.5.26 con 76 páginas PASS; audit producción 0 vulnerabilidades. UX local: 56 vistas (dark/light, 360/390/430/768/1024/1366/1920), axe/foco/teclado PASS. CI Node 20/24, Docker, UX y smoke Android API 33/34/35/36 PASS en `baf523f9decc7970ee328c4faf90f62289ff0020`: [CI](https://github.com/ErickRFM/ManeComb-next/actions/runs/36699571127), [UX/Android](https://github.com/ErickRFM/ManeComb-next/actions/runs/36699571054). Confirmar nuevamente todos los checks contra el último ajuste de modal/documentación antes del merge; no reutilizar resultados de PR #5.
 
 E2E local con build de producción y Mongo/Redis aislados PASS, incluido GPS HTTP nativo entregado al socket del monitor, chat, floor de radio, SOS, cierre y revocación. Control de carga: 25/25 sockets, 125/125 ACK, cero errores/pérdidas, p50 913 ms, p95 1.230 ms y p99 1.741 ms. Este control no certifica 500 sockets ni proveedores live. La lectura de métricas usa una sesión sintética limitada al fixture; no certifica MFA real.
+
+Carga compilada CI, 500 sockets/3 s/60 s/ACK 10 s: Node 20, 10.000/10.000 ACK, p50/p95/p99 1.509/1.758/1.908 ms; Node 24, 10.500/10.500 ACK, 761/998/1.203 ms. Cero errores/pérdidas en ambos; E2E completo PASS. Métricas al cierre: CPU 64,8%/21,6%, RSS 699/608 MB y event-loop p95 31,2/22,5 ms. Mongo replica set y Redis desechables en CI, una unidad asignada; no certifica 500 vehículos independientes ni infraestructura Render/Atlas. La carga compilada contra Atlas local en el mismo SHA volvió a fallar (0/10.000 ACK en 10 s); fixtures eliminados con verificación de propiedad. La causa del destino/tier no está confirmada y no se atribuye sólo a Atlas.
 
 Decisiones: conservar RBAC/sesiones/entitlements, SQLite/packetId, salas/throttle/push y descargas protegidas de #4. Portar política compartida de uploads (10 MB documentos/pagos, 8 MB imágenes), adjuntos compatibles, tenant de ruta/audit, runners E2E/carga y protocolo Android. Ampliar el validator de #5 sin duplicarlo.
 
@@ -38,7 +40,7 @@ El usuario confirmó que Android físico y proveedores live siguen pendientes. L
 | MFA | PENDIENTE LIVE | setup/verificación/recovery reales de administrador sin conservar secretos |
 | Android físico | PENDIENTE | protocolo `native/android/README.md`: bloqueo, Doze, background, red y batería |
 | GPS físico | PENDIENTE | continuidad, orden, retry/buffer, dedup packetId y revocación |
-| Carga 500 sockets/3 s | PENDIENTE PRODUCCIÓN | El baseline local de desarrollo falló (0/10.000 ACK dentro de 10 s). Tras corregir fanout, CI Node 20 de desarrollo recibió 8.076/10.500 dentro de 10 s y siguió fallando; producción + lecturas lean requiere gate de 500 en Node 20/24 y después staging equivalente. Control compilado 25 sockets PASS; no relajar el gate |
+| Carga 500 sockets/3 s | CI PASS / ATLAS LOCAL FAIL / STAGING PENDIENTE | Producción CI Node 20/24 sin pérdida; Atlas local compilado 0/10.000 ACK dentro de 10 s. Control compilado 25 sockets PASS. Repetir en staging equivalente y confirmar tier/capacidad, sin relajar el gate |
 | E2E live | PENDIENTE | tenant/activación/jornada/tracking/chat/PTT/SOS/cierre y proveedores reales |
 
 ## Render
@@ -47,7 +49,7 @@ Workspace autorizado: Erick Rivaldo's workspace. Proyecto: Manecomb-next. No exi
 
 Sólo inspección/preparación autorizada. Recursos exactos de `render.yaml`: web `manecomb-next`, worker `manecomb-next-communication-worker`, Key Value `manecomb-next-redis`; región Oregon, plan starter, Docker Node 24, branch main. Web: `/api/health/ready`, predeploy web; worker: `npm run worker`, predeploy worker; Redis: noeviction y journal-snapshot, sin IP pública permitida. DB explícita `manecomb`, namespace `manecomb-next-prod`; staging separado `manecomb_staging`/namespace staging. Auto-deploy web/worker off y Blueprint Auto Sync deshabilitado. Schema oficial validado localmente; ningún recurso creado ni variable productiva modificada. El primer sync crea y despliega: no ejecutarlo hasta completar gates. Rollback preserva Mongo, Redis, eventos y outbox; ver `docs/deployment/PRODUCTION_DEPLOYMENT.md`.
 
-Estado actual: NOT READY por capacidad 500 sin confirmar en producción y checks finales pendientes, además de gates externos. El smoke Android 13–16 PASS en `5c895a1` verifica APK/install/start/orientación; no reemplaza GPS/Doze/cámara/audio físicos.
+Producción: NOT READY por carga Atlas local FAIL, staging sin certificar y gates externos. El código de `baf523f` tiene CI/UX/Android verdes; eso permite consolidar Git tras validar el último SHA, pero no permite crear servicios ni desplegar. El smoke Android 13–16 verifica APK/install/start/orientación; no reemplaza GPS/Doze/cámara/audio físicos.
 
 ## Matriz de ports selectivos
 

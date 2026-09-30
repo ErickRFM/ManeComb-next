@@ -12,6 +12,9 @@ export function VehicleManager(){
   const [search,setSearch]=useState("");
   const [modalOpen,setModalOpen]=useState(false);
   const [editing,setEditing]=useState<Vehicle|null>(null);
+  const [archiving,setArchiving]=useState<Vehicle|null>(null);
+  const [archiveBusy,setArchiveBusy]=useState(false);
+  const [archiveError,setArchiveError]=useState("");
 
   const load=useCallback(async()=>{
     const response=await fetch("/api/vehicles");
@@ -65,6 +68,19 @@ export function VehicleManager(){
     await load();
   }
 
+  async function archiveVehicle(){
+    if(!archiving||archiveBusy)return;
+    setArchiveBusy(true);setArchiveError("");
+    try{
+      const response=await fetch("/api/vehicles/"+archiving._id,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({status:"archived"})});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||"No se pudo archivar la unidad");
+      setArchiving(null);
+      await load().catch(error=>setStatus(error.message));
+    }catch(error){setArchiveError(error instanceof Error?error.message:"No se pudo archivar la unidad")}
+    finally{setArchiveBusy(false)}
+  }
+
   return <div className="entity-manager">
     <section className="entity-metrics">
       <div><small>Disponibles</small><strong>{metrics.active}</strong></div>
@@ -87,7 +103,7 @@ export function VehicleManager(){
         <div className="entity-actions">
           <button onClick={()=>openEdit(vehicle)}>Editar</button>
           {vehicle.status==="maintenance"?<button onClick={()=>void updateStatus(vehicle,"active")}>Reactivar</button>:vehicle.status!=="running"&&vehicle.status!=="archived"?<button onClick={()=>void updateStatus(vehicle,"maintenance")}>Mantenimiento</button>:null}
-          {vehicle.status!=="running"&&vehicle.status!=="archived"?<button className="danger" onClick={()=>window.confirm("¿Archivar esta unidad?")&&void updateStatus(vehicle,"archived")}>Archivar</button>:null}
+          {vehicle.status!=="running"&&vehicle.status!=="archived"?<button className="danger" onClick={()=>{setArchiveError("");setArchiving(vehicle)}}>Archivar</button>:null}
         </div>
       </div>)}
       {!visible.length?<div className="empty-state"><strong>No encontramos unidades</strong><span>Prueba con otra búsqueda o agrega una unidad.</span></div>:null}
@@ -103,6 +119,10 @@ export function VehicleManager(){
         </div>
         <div className="form-actions"><button type="button" className="btn secondary" onClick={()=>setModalOpen(false)}>Cancelar</button><button className="btn" disabled={busy}>{busy?"Guardando...":editing?"Guardar cambios":"Agregar unidad"}</button></div>
       </form>
+    </UiModal>
+    <UiModal open={Boolean(archiving)} onClose={()=>{if(!archiveBusy)setArchiving(null)}} title="Archivar unidad" description={"¿Archivar la unidad "+(archiving?.economicNumber||"")+"? Su historial se conserva."}>
+      {archiveError?<p role="alert">{archiveError}</p>:null}
+      <div className="form-actions"><button type="button" className="btn secondary" disabled={archiveBusy} onClick={()=>setArchiving(null)}>Cancelar</button><button type="button" className="btn" disabled={archiveBusy} onClick={()=>void archiveVehicle()}>{archiveBusy?"Archivando...":"Archivar unidad"}</button></div>
     </UiModal>
   </div>;
 }

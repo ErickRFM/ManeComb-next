@@ -67,18 +67,19 @@ Estas referencias se contrastaron contra decisiones ya maduras del repositorio o
 - [x] Admin health convertido a control center.
 - [x] Gestión de unidades sin window.prompt.
 - [x] Gestión de conductores con flujo de alta/asignación/activación estructurado.
+- [x] Módulos secundarios homologados; confirmación de archivo con UiModal, cancelación y error visible.
+- [x] QA automático: 56 fixtures dark/light en siete breakpoints, sin overflow ni violaciones axe serias/críticas; trap de teclado/foco PASS.
+- [x] Screenshots en CI y smoke APK/orientación Android 13–16; regresión visual por baseline sigue pendiente.
+- [x] Estrategia 0/1/20/100/500 con GeoJSON y clustering desde 100 unidades, probada por unidad; Mapbox live pendiente.
 
 ## Pendiente antes de cerrar UX/UI RC1
 
 - [ ] QA visual manual en 360, 390, 430, 768, 1024, 1366 y 1920 px.
 - [ ] Validar contraste/teclado/focus y navegación con lector de pantalla.
 - [ ] Estado de loading/skeleton/empty/error en todos los módulos.
-- [ ] Pulir Facturación, Documentos, Incidencias, Rutas y Empresas con los mismos patrones de entity management.
-- [ ] Reemplazar cualquier confirmación de navegador restante por modal ManeComb.
-- [ ] Visual regression tests / screenshots en CI.
+- [ ] Visual regression tests con baseline aprobado.
 - [ ] Prueba Android real de bottom navigation, teclado, Safe Area y orientación.
-- [ ] Validar mapa con 0, 1, 20, 100 y 500 unidades.
-- [ ] Clustering para densidad alta si las pruebas de 100/500 unidades lo requieren.
+- [ ] Validar Mapbox live con 0, 1, 20, 100 y 500 unidades.
 
 ## Criterio de salida
 

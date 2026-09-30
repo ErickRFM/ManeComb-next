@@ -1,5 +1,7 @@
 # Criterios de aceptación
 
+Las casillas de dominio/realtime/comunicación/comercial/Android/seguridad indican implementación y pruebas de código; no certifican proveedores live, hardware ni capacidad del destino. Evidencia y gates de release: `RELEASE_READINESS.md`.
+
 ## Dominio
 - [x] Estados de jornada centralizados y probados.
 - [x] Checklist pre-operacional obligatorio antes de READY.
@@ -64,15 +66,17 @@
 - [x] PTT con feedback visual de estado.
 - [x] Admin control center.
 - [x] Gestión de flota/conductores sin patrones MVP de prompt.
-- [ ] QA visual multi-breakpoint y accesibilidad.
-- [ ] Homologar módulos secundarios (Facturación, Documentos, Incidencias, Empresas) al nuevo patrón visual.
+- [x] QA automático de 56 fixtures responsive, axe serio/crítico, teclado y foco (lectura de pantalla manual pendiente).
+- [x] Homologar módulos secundarios (Facturación, Documentos, Incidencias, Empresas) al nuevo patrón visual.
 - [ ] Visual regression tests.
 
 ## Antes de producción
-- [ ] Probar 500+ sockets con GPS cada 3 s.
+- [x] Gate CI de 500 sockets/3 s/60 s/ACK 10 s sobre servidor compilado en Node 20/24.
+- [ ] Certificar 500+ sockets sobre staging equivalente (Atlas local continúa FAIL).
 - [ ] Prueba prolongada Android con pantalla bloqueada, Doze y ahorro de batería.
 - [ ] Validar Cloudinary real para documentos y fotos de chat.
 - [ ] Validar MFA TOTP con secreto de producción y procedimiento de recuperación.
 - [ ] Configurar credenciales reales de MongoDB, Redis, Mapbox, Mercado Pago, Resend, VAPID, Cloudinary y TURN.
-- [ ] Pruebas E2E de alta empresa → plan → unidad → ruta → conductor → activación → jornada → tracking → PTT/chat → SOS → cierre.
+- [x] E2E aislado empresa → trial sintético → unidad → ruta → conductor → activación → jornada → tracking → PTT/chat → SOS → cierre/revocación.
+- [ ] E2E staging con pago/proveedores reales.
 - [ ] QA visual de UX_UI_RC1.md.
