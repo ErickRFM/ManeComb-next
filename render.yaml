@@ -3,7 +3,7 @@ services:
     name: manecomb-next
     runtime: docker
     plan: starter
-    healthCheckPath: /api/health
+    healthCheckPath: /api/health/ready
     envVars:
       - key: NODE_ENV
         value: production
@@ -33,6 +33,22 @@ services:
         sync: false
       - key: WEB_PUSH_SUBJECT
         value: mailto:soporte@manecomb.com
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: RTC_STUN_URLS
+        value: stun:stun.l.google.com:19302
+      - key: RTC_TURN_URLS
+        sync: false
+      - key: RTC_TURN_USERNAME
+        sync: false
+      - key: RTC_TURN_CREDENTIAL
+        sync: false
+      - key: RTC_TURN_SECRET
+        sync: false
 
   - type: worker
     name: manecomb-communication-worker

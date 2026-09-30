@@ -1,2 +1,5 @@
 import { ModuleShell } from "@/src/components/module-shell";
-export default function NavigationPage(){return <ModuleShell eyebrow="NAVEGACIÓN" title="Ruta asignada" description="Paradas, progreso, desviación y ETA se derivan del snapshot operativo del servidor."><div className="card"><p className="muted">La navegación no modifica la geometría de la ruta; sólo consume la revisión activa aprobada.</p></div></ModuleShell>}
+import { DriverNavigation } from "@/src/components/driver-navigation";
+export default function NavigationPage(){
+  return <ModuleShell eyebrow="NAVEGACIÓN" title="Ruta asignada" description="Paradas, avance, desviación y ETA vienen del snapshot operacional calculado por el servidor."><DriverNavigation/></ModuleShell>
+}

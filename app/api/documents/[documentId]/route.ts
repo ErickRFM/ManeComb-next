@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiSession } from "@/src/lib/auth";
+import { assertPermission } from "@/src/lib/authorization";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Document } from "@/src/core/models/Document";
@@ -12,12 +13,11 @@ const Review = z.object({
 }).refine((value) => value.status !== "rejected" || Boolean(value.rejectionReason?.trim()), {
   message: "Rejection reason is required"
 });
-
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ documentId: string }> }) {
   try {
-    const session = await requireApiSession(request, ["company_portal"]);
+    const session = assertPermission(await requireApiSession(request, ["company_portal"]), "manage_documents");
     if (!session.organizationId) throw new Error("FORBIDDEN");
     const { documentId } = await params;
     const input = Review.parse(await request.json());
@@ -43,7 +43,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ do
       entityId: String(document._id),
       metadata: { kind: document.kind, ownerType: document.ownerType, ownerId: String(document.ownerId) }
     });
-
     return NextResponse.json({ document });
   } catch (error) {
     return apiError(error);

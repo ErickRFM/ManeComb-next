@@ -37,10 +37,7 @@ export function LiveMap() {
       if (disposed || !container.current || mapRef.current) return;
       const mapboxgl = module.default;
       const token = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-      if (!token) {
-        setError("Falta NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN");
-        return;
-      }
+      if (!token) { setError("Falta NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN"); return; }
       mapboxgl.accessToken = token;
       mapRef.current = new mapboxgl.Map({
         container: container.current,
@@ -72,9 +69,7 @@ export function LiveMap() {
           el.textContent = unit.economicNumber.slice(-2);
           marker = new mapboxgl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
           markers.current.set(unit.vehicleId, marker);
-        } else {
-          marker.setLngLat(lngLat);
-        }
+        } else marker.setLngLat(lngLat);
       }
       if (withLocation.length > 1) {
         const bounds = new mapboxgl.LngLatBounds();
@@ -91,8 +86,12 @@ export function LiveMap() {
     <div ref={container} className="map" />
     <div className="grid grid-3">
       {units.map((unit) => <div className="card" key={unit.vehicleId}>
-        <strong>{unit.economicNumber}</strong>
-        <div className="muted">{unit.freshness} · {unit.speedKmH.toFixed(1)} km/h</div>
+        <div className="status-row"><strong>{unit.economicNumber}</strong><span className="badge">{unit.freshness}</span></div>
+        <p className="muted">{unit.routeName||"Sin ruta"} · {unit.speedKmH.toFixed(1)} km/h</p>
+        <div className="status-row"><span>Avance</span><strong>{unit.progressPercent==null?"—":unit.progressPercent.toFixed(1)+"%"}</strong></div>
+        <div className="status-row"><span>ETA</span><strong>{unit.etaMinutes==null?"—":unit.etaMinutes+" min"}</strong></div>
+        <div className="status-row"><span>Corredor</span><strong style={unit.isOffRoute?{color:"#fb7185"}:undefined}>{unit.isOffRoute?"FUERA DE RUTA":unit.routeState||"—"}</strong></div>
+        {unit.nextStop?<p className="muted">Siguiente: {unit.nextStop.name} · {unit.nextStop.distanceRemainingM} m</p>:null}
       </div>)}
     </div>
   </div>;

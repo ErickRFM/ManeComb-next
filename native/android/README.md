@@ -1,15 +1,39 @@
-# Android native location bridge
+# Android native bridge
 
-This directory contains the native source that complements the Next.js/PWA driver surface when ManeComb must continue transmitting GPS with the screen locked.
+La UI del conductor sigue viviendo en Next.js/Capacitor. Kotlin mantiene las capacidades que el navegador no puede garantizar: GPS con pantalla bloqueada y entrega resiliente.
 
-## Integration
+## Garantías absorbidas del ManeComb original
 
-1. Run `npm run native:add` once to generate Capacitor's `android/` project.
-2. Copy the Kotlin files from this directory into `android/app/src/main/java/com/manecomb/location/`.
-3. Merge the permissions/service declarations from `AndroidManifest.snippet.xml` into the generated manifest.
-4. Register `ManeCombLocationPlugin` in `MainActivity`.
-5. Set `CAPACITOR_SERVER_URL=https://<production-host>` and run `npm run native:sync`.
+- Foreground Service.
+- Token nativo limitado a telemetría y ligado a conductor/unidad/jornada RUNNING.
+- Cola SQLite persistente.
+- `packetId` idempotente.
+- retry exponencial y flush al volver la red.
+- configuración persistente ante reinicio del proceso.
+- notificación de paquetes pendientes.
+- permisos Android necesarios para GPS, micrófono/WebRTC y audio Bluetooth.
+- HTTPS obligatorio fuera de desarrollo local.
 
-The plugin reads the HttpOnly ManeComb session cookie from Android WebView CookieManager and passes it only to the foreground service. JavaScript never receives the cookie. The service posts telemetry directly to `/api/locations/telemetry`, so WebView suspension does not stop tracking.
+## Preparación reproducible
 
-Production must use HTTPS. The PWA path remains available as a fallback, but reliable locked-screen tracking uses this foreground service.
+Configura el servidor que abrirá Capacitor:
+
+```powershell
+$env:CAPACITOR_SERVER_URL="http://10.0.2.2:3000"
+npm run native:prepare
+npm run native:open
+```
+
+Para release:
+
+```powershell
+$env:CAPACITOR_SERVER_URL="https://manecomb.com"
+$env:MANECOMB_ANDROID_VERSION_NAME="1.0.0"
+$env:MANECOMB_ANDROID_VERSION_CODE="1"
+npm run native:prepare
+npm run native:open
+```
+
+`native:prepare` genera `android/` si hace falta, ejecuta Capacitor Sync, copia los tres módulos Kotlin, fusiona permisos/servicio, registra el plugin en `MainActivity` y aplica versión/versionCode. El directorio generado continúa ignorado por Git porque es reproducible.
+
+El token nativo no sirve para Portal, Chat, Radio ni administración. La autoridad de negocio permanece en el servidor.

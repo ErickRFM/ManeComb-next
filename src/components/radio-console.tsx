@@ -14,18 +14,31 @@ function blobToDataUrl(blob:Blob){
 export function RadioConsole(){
   const socket=useSocket();
   const [channelId,setChannelId]=useState("general");
-  const [state,setState]=useState("Listo");
+  const [state,setState]=useState("Conectando canal...");
   const recorderRef=useRef<MediaRecorder|null>(null);
   const streamRef=useRef<MediaStream|null>(null);
 
   useEffect(()=>{
-    const play=({chunk}:{chunk:string})=>{
+    const join=()=>socket.emit("radio:join",{channelId},(ack:any)=>setState(ack?.ok?"Escuchando":"No se pudo unir al canal"));
+    socket.on("connect",join);
+    if(socket.connected)join();
+    const play=({channelId:incomingChannel,chunk}:{channelId:string;chunk:string})=>{
+      if(incomingChannel!==channelId)return;
       const audio=new Audio(chunk);
       void audio.play().catch(()=>undefined);
     };
+    const lost=({channelId:lostChannel}:{channelId:string})=>{
+      if(lostChannel===channelId)setState("Se perdió el turno de transmisión");
+    };
     socket.on("radio:audio",play);
-    return()=>{socket.off("radio:audio",play)}
-  },[socket]);
+    socket.on("radio:floor-lost",lost);
+    return()=>{
+      socket.off("connect",join);
+      socket.emit("radio:leave",{channelId});
+      socket.off("radio:audio",play);
+      socket.off("radio:floor-lost",lost);
+    }
+  },[socket,channelId]);
 
   async function press(){
     if(recorderRef.current)return;
@@ -62,9 +75,9 @@ export function RadioConsole(){
   }
 
   return <div className="card grid">
-    <input className="input" value={channelId} onChange={(e)=>setChannelId(e.target.value)} placeholder="Canal"/>
+    <input className="input" value={channelId} onChange={(e)=>setChannelId(e.target.value.trim()||"general")} placeholder="Canal"/>
     <button className="btn" style={{minHeight:140,fontSize:28,touchAction:"none"}} onPointerDown={()=>void press()} onPointerUp={release} onPointerCancel={release}>MANTÉN PARA HABLAR</button>
     <strong>{state}</strong>
-    <p className="muted">Audio Opus en chunks cortos, control de piso central y reproducción inmediata a los demás miembros del tenant.</p>
+    <p className="muted">El audio y el floor-control están aislados por organización y canal; Redis arbitra el turno entre instancias.</p>
   </div>
 }

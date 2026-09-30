@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { requireApiSession } from "@/src/lib/auth";
+import { assertPermission } from "@/src/lib/authorization";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { ActivationKey } from "@/src/core/models/ActivationKey";
@@ -10,7 +11,7 @@ const Input = z.object({ driverId:z.string().min(1), vehicleId:z.string().min(1)
 export const runtime="nodejs";
 export async function POST(request:Request){
   try{
-    const session=await requireApiSession(request,["company_portal"]);
+    const session=assertPermission(await requireApiSession(request,["company_portal"]),"manage_users");
     if(!session.organizationId) throw new Error("FORBIDDEN");
     const input=Input.parse(await request.json());
     await connectDb();

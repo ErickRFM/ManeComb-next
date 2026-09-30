@@ -10,6 +10,8 @@ const VehicleSchema = new Schema({
   status: { type: String, enum: ["active", "running", "maintenance", "archived"], default: "active", index: true },
   routeId: { type: Schema.Types.ObjectId, ref: "Route", default: null },
   driverId: { type: Schema.Types.ObjectId, ref: "User", default: null },
+  lastFreshness: { type:String, enum:["live","delayed","stale","lost","never_reported"], default:"never_reported" },
+  activeRouteProgress: { type: Schema.Types.Mixed, default: null },
   lastLocation: {
     latitude: Number, longitude: Number, speedMps: Number, heading: Number, accuracy: Number, recordedAt: Date
   }
