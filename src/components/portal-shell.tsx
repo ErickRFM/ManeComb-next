@@ -8,8 +8,8 @@ import { useNetworkStatus } from "@/src/hooks/useNetworkStatus";
 
 const groups=[
   {label:"Operación",items:[
-    {label:"Resumen",href:"/portal/dashboard",key:"IN"},
-    {label:"Monitoreo",href:"/portal/monitoreo",key:"GPS"}
+    {label:"Mapa",href:"/portal/monitoreo",key:"GPS"},
+    {label:"Resumen",href:"/portal/dashboard",key:"IN"}
   ]},
   {label:"Gestión",items:[
     {label:"Unidades",href:"/portal/unidades",key:"FL"},
@@ -18,10 +18,11 @@ const groups=[
     {label:"Documentos",href:"/portal/documentos",key:"DC"}
   ]},
   {label:"Comunicación",items:[
-    {label:"Incidencias",href:"/portal/incidencias",key:"AL"},
-    {label:"Radio / RTC",href:"/portal/radio",key:"PTT"}
+    {label:"Chat",href:"/portal/chat",key:"CH"},
+    {label:"Radio / RTC",href:"/portal/radio",key:"PTT"},
+    {label:"Incidencias",href:"/portal/incidencias",key:"AL"}
   ]},
-  {label:"Cuenta",items:[
+  {label:"Administración",items:[
     {label:"Facturación",href:"/portal/facturacion",key:"$"}
   ]}
 ];
@@ -64,7 +65,7 @@ export function PortalShell({children}:{children:React.ReactNode}){
   return <div className={"product-shell "+(collapsed?"is-collapsed":"")}>
     <aside className="product-sidebar" aria-label="Navegación del portal">
       <div className="sidebar-brand-row">
-        <Link href="/portal/dashboard" className="product-brand" aria-label="ManeComb Portal">
+        <Link href="/portal/monitoreo" className="product-brand" aria-label="ManeComb Portal">
           <span className="brand-mark">MC</span>
           <span className="brand-copy"><strong>ManeComb</strong><small>Portal operativo</small></span>
         </Link>

@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { channelHome } from "@/src/lib/channel-home";
 
 export function AuthForm({mode}:{mode:"login"|"register"}) {
   const router=useRouter();
@@ -12,13 +13,13 @@ export function AuthForm({mode}:{mode:"login"|"register"}) {
     setBusy(true);
     setError("");
     const body=Object.fromEntries(new FormData(event.currentTarget).entries());
+    try{
     const response=await fetch("/api/auth/"+mode,{
       method:"POST",
       headers:{"content-type":"application/json"},
       body:JSON.stringify(body)
     });
     const result=await response.json().catch(()=>({}));
-    setBusy(false);
     if(!response.ok)return setError(result.error||"No fue posible completar la operación");
 
     if(result.mfaRequired){
@@ -27,19 +28,20 @@ export function AuthForm({mode}:{mode:"login"|"register"}) {
       return;
     }
 
-    const channel=result.user?.channel;
-    router.push(channel==="mobile_operations"?"/operacion":channel==="platform_admin"?"/admin/salud":"/portal/dashboard");
+    router.push(channelHome(result.user?.channel));
     router.refresh();
+    }catch{setError("No se pudo completar el acceso. Comprueba tu conexión e inténtalo de nuevo.")}
+    finally{setBusy(false)}
   }
 
   return <form onSubmit={submit} className="card grid" style={{maxWidth:520}}>
     {mode==="register"?<>
-      <input className="input" name="organizationName" placeholder="Empresa / línea" required/>
-      <input className="input" name="name" placeholder="Nombre del responsable" required/>
+      <label>Empresa / línea<input className="input" name="organizationName" autoComplete="organization" required/></label>
+      <label>Nombre del responsable<input className="input" name="name" autoComplete="name" required/></label>
     </>:null}
-    <input className="input" name="email" type="email" placeholder="Correo" required/>
-    <input className="input" name="password" type="password" placeholder="Contraseña" minLength={mode==="register"?10:8} required/>
-    {error?<p style={{color:"#fb7185",margin:0}}>{error}</p>:null}
+    <label>Correo<input className="input" name="email" type="email" autoComplete="username" required/></label>
+    <label>Contraseña<input className="input" name="password" type="password" autoComplete={mode==="register"?"new-password":"current-password"} minLength={mode==="register"?10:8} required/></label>
+    {error?<p role="alert" style={{color:"var(--danger)",margin:0}}>{error}</p>:null}
     <button className="btn" disabled={busy}>{busy?"Procesando...":mode==="login"?"Entrar":"Crear empresa"}</button>
   </form>;
 }
