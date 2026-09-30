@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { isTrustedMutationRequest } from "@/src/lib/request-security";
 
 const protectedPrefixes = [
   { prefix: "/portal", channel: "company_portal" },
@@ -8,6 +9,22 @@ const protectedPrefixes = [
 ] as const;
 
 export async function middleware(request: NextRequest) {
+  if(request.nextUrl.pathname.startsWith("/api/")){
+    const trusted=isTrustedMutationRequest({
+      method:request.method,
+      pathname:request.nextUrl.pathname,
+      origin:request.headers.get("origin"),
+      secFetchSite:request.headers.get("sec-fetch-site"),
+      authorization:request.headers.get("authorization"),
+      hasSessionCookie:Boolean(request.cookies.get("manecomb_session")?.value),
+      hasMfaCookie:Boolean(request.cookies.get("manecomb_mfa_challenge")?.value),
+      appUrl:process.env.APP_URL,
+      requestOrigin:request.nextUrl.origin
+    });
+    if(!trusted)return NextResponse.json({error:"UNTRUSTED_ORIGIN"},{status:403});
+    return NextResponse.next();
+  }
+
   const rule = protectedPrefixes.find((item) => request.nextUrl.pathname.startsWith(item.prefix));
   if (!rule) return NextResponse.next();
 
@@ -31,4 +48,4 @@ export async function middleware(request: NextRequest) {
   }
 }
 
-export const config = { matcher: ["/portal/:path*", "/admin/:path*", "/operacion/:path*"] };
+export const config = { matcher: ["/portal/:path*", "/admin/:path*", "/operacion/:path*", "/api/:path*"] };

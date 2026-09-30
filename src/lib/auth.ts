@@ -93,7 +93,7 @@ export async function assertStoredSessionActive(session: SessionToken) {
 }
 
 export async function requireRealtimeSession(token: string) {
-  const session = await verifySessionToken(token);
+  const session = await verifySessionToken(token).catch(() => { throw new Error("UNAUTHORIZED"); });
   if (session.channel === "platform_admin" && !session.mfaVerified) throw new Error("UNAUTHORIZED");
   return assertStoredSessionActive(session);
 }
@@ -101,7 +101,7 @@ export async function requireRealtimeSession(token: string) {
 export async function requireApiSession(request: Request, allowedChannels?: Channel[]) {
   const token = extractRequestToken(request);
   if (!token) throw new Error("UNAUTHORIZED");
-  const session = await verifySessionToken(token);
+  const session = await verifySessionToken(token).catch(() => { throw new Error("UNAUTHORIZED"); });
   if (session.channel === "platform_admin" && !session.mfaVerified) throw new Error("UNAUTHORIZED");
   if (allowedChannels && !allowedChannels.includes(session.channel)) throw new Error("FORBIDDEN");
   await assertStoredSessionActive(session);

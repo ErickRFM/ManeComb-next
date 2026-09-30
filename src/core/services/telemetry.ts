@@ -5,6 +5,7 @@ import { Vehicle } from "@/src/core/models/Vehicle";
 import { Journey } from "@/src/core/models/Journey";
 import { RouteSessionPosition } from "@/src/core/models/RouteSessionPosition";
 import { calculateOperationalRouteProgress } from "@/src/core/services/route-projection";
+import { randomUUID } from "node:crypto";
 
 export async function recordTelemetry(
   organizationId: string,
@@ -25,17 +26,25 @@ export async function recordTelemetry(
     canonicalJourneyId = String(journey._id);
   }
 
-  const recordedAt = input.recordedAt instanceof Date ? input.recordedAt : new Date(input.recordedAt);
+  let recordedAt = input.recordedAt instanceof Date ? input.recordedAt : new Date(input.recordedAt);
   observeDuration("telemetry_capture_to_ingest_ms", Math.max(0, Date.now() - recordedAt.getTime()));
 
   const position = {
     organizationId, vehicleId: vehicle._id, journeyId: canonicalJourneyId,
-    packetId: input.packetId || null, latitude: input.latitude, longitude: input.longitude,
+    packetId: input.packetId || randomUUID(), latitude: input.latitude, longitude: input.longitude,
     speedMps: input.speedMps || 0, heading: input.heading, accuracy: input.accuracy, recordedAt
   };
 
   if (input.packetId) {
-    await RouteSessionPosition.updateOne({ organizationId, packetId: input.packetId }, { $setOnInsert: position }, { upsert: true });
+    const filter = { organizationId, packetId: input.packetId };
+    const saved = await RouteSessionPosition.findOneAndUpdate(filter, { $setOnInsert: position }, { upsert: true, new: true }).catch(async (error: any) => {
+      if(error?.code !== 11000)throw error;
+      return RouteSessionPosition.findOne(filter);
+    });
+    if(!saved || String(saved.vehicleId) !== String(vehicle._id) || String(saved.journeyId || "") !== String(canonicalJourneyId || "")) throw new Error("PACKET_ID_CONFLICT");
+    // Replay acknowledges the originally stored packet, never forged replacement coordinates.
+    input = {...input,latitude:saved.latitude,longitude:saved.longitude,speedMps:saved.speedMps,heading:saved.heading,accuracy:saved.accuracy};
+    recordedAt = new Date(saved.recordedAt);
   } else {
     await RouteSessionPosition.create(position);
   }
@@ -50,24 +59,19 @@ export async function recordTelemetry(
     previous:vehicle.activeRouteProgress
   });
   const freshness=getGpsFreshness(recordedAt);
-  const existingRecordedAt = vehicle.lastLocation?.recordedAt ? new Date(vehicle.lastLocation.recordedAt) : null;
-
-  if (!existingRecordedAt || recordedAt >= existingRecordedAt) {
-    await Vehicle.updateOne(
-      { _id: vehicle._id, organizationId },
+  const updated = await Vehicle.findOneAndUpdate(
+      { _id: vehicle._id, organizationId, ...(context?.driverId ? {driverId:context.driverId} : {}),
+        $or:[{"lastLocation.recordedAt":null},{"lastLocation.recordedAt":{$lte:recordedAt}}] },
       { $set: {
         status:"running",
         lastFreshness:freshness,
         activeRouteProgress:routeProgress,
         lastLocation:{latitude:input.latitude,longitude:input.longitude,speedMps:input.speedMps||0,heading:input.heading,accuracy:input.accuracy,recordedAt}
-      }}
+      }}, {new:true}
     );
-    vehicle.lastFreshness=freshness;
-    vehicle.activeRouteProgress=routeProgress;
-    vehicle.lastLocation={latitude:input.latitude,longitude:input.longitude,speedMps:input.speedMps||0,heading:input.heading,accuracy:input.accuracy,recordedAt} as any;
-  }
-
-  return vehicleToSnapshot(vehicle, canonicalJourneyId);
+  const canonical = updated || await Vehicle.findOne({_id:vehicle._id,organizationId});
+  if(!canonical)throw new Error("Vehicle no longer exists");
+  return vehicleToSnapshot(canonical, canonicalJourneyId);
 }
 
 export function vehicleToSnapshot(vehicle:any, journeyId:string|null=null):OperationalUnitSnapshot {

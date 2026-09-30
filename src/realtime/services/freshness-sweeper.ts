@@ -18,9 +18,15 @@ export function startFreshnessSweeper(io:Server){
       for(const vehicle of vehicles){
         const next=getGpsFreshness(vehicle.lastLocation?.recordedAt);
         if(vehicle.lastFreshness===next)continue;
-        vehicle.lastFreshness=next;
-        await vehicle.save();
-        io.to("org:"+String(vehicle.organizationId)).emit("location:snapshot",vehicleToSnapshot(vehicle));
+        // A packet may have committed since this sweep read the vehicle. Only
+        // change freshness while the location and previous classification match.
+        const updated=await Vehicle.findOneAndUpdate({
+          _id:vehicle._id,organizationId:vehicle.organizationId,
+          status:{$ne:"archived"},
+          "lastLocation.recordedAt":vehicle.lastLocation.recordedAt,
+          lastFreshness:vehicle.lastFreshness
+        },{$set:{lastFreshness:next}},{new:true});
+        if(updated)io.to("org:"+String(updated.organizationId)).emit("location:snapshot",vehicleToSnapshot(updated));
       }
     }catch(error){
       console.error("[freshness-sweeper]",error);

@@ -15,3 +15,9 @@ export function emitToOrganization(organizationId: string, event: string, payloa
 export function emitToUser(userId: string, event: string, payload: unknown) {
   runtime.__manecombRealtimeServer?.to("user:" + userId).emit(event, payload);
 }
+
+export function disconnectUserSessions(userId: string) {
+  const io = runtime.__manecombRealtimeServer;
+  io?.to("user:" + userId).emit("session:revoked", { reason: "UNAUTHORIZED" });
+  io?.in("user:" + userId).disconnectSockets(true);
+}
