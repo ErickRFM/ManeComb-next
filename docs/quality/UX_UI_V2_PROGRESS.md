@@ -9,7 +9,7 @@ Especificación: plan maestro del usuario; ejecución continua por dominio, sin 
 - [ ] Imagen visual aprobada: no está en el adjunto recibido; ruta/enlace solicitado. No certificar fidelidad sin verla.
 
 ## Plan de ejecución y contratos
-1. [ ] Foundation CSS: separar secciones conservando orden de cascada y tokens; prueba de equivalencia + build/QA responsive.
+1. [x] Modularización Foundation CSS: 17 secciones importadas en su orden original; reglas conservadas byte a byte. Tokens/look V2 sujetos a referencia.
 2. [ ] Entrada y Portal: redirección map-first implementada; pendientes identidad/rol/navegación V2 y prueba de UI. Auth HTTP existente, canales canónicos y `/api/auth/session`.
 3. [ ] Chat principal: `/portal/chat` creado con ChatConsole existente; separado de Radio/RTC. Pendientes estados, mobile y pruebas funcionales UI.
 4. [ ] Mapa: mantener LiveMap, `/api/locations/live`, `location:snapshot`, filtros/clusters/cámara; detalle con datos reales y selección sincronizada. Layout visual requiere referencia.
@@ -31,3 +31,4 @@ Especificación: plan maestro del usuario; ejecución continua por dominio, sin 
 ## Evidencia por fase
 - Baseline: PASS; warning opcional BullMQ `@valkey/valkey-glide` ya existente, sin cambio de dependencias.
 - Entrada: tres tests de canal RED (módulo ausente) → GREEN; typecheck PASS. Company → mapa, driver → operación, admin → salud; canal inválido rechazado. Login recupera busy ante fallo de red y usa labels/autocomplete.
+- CSS: equivalencia SHA256 `e637eaa6021bfd4ef36228aed2517b95e09e094c52906fa3ca1db42ad88ef7b2`, build 78 páginas PASS, QA 56 fixtures/0 violaciones PASS. Playwright 1.55.1/axe 4.10.2 instalados sólo para QA, sin cambios de package/lock.

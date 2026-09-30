@@ -1,0 +1,53 @@
+/* Operational dashboard */
+.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(300px,.75fr);gap:18px}
+.metric-strip{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.dashboard-main-card,.dashboard-alerts-card,.quick-actions-card{
+  border:1px solid var(--border);background:var(--surface);border-radius:20px;box-shadow:var(--shadow-soft)
+}
+.dashboard-main-card{padding:20px}
+.dashboard-alerts-card{padding:18px}
+.quick-actions-card{grid-column:1/-1;padding:18px}
+.dashboard-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;margin-bottom:16px}
+.dashboard-card-head.compact{align-items:center}
+.dashboard-card-head h2{margin:8px 0 0;font-size:22px;letter-spacing:-.03em}
+.dashboard-card-head p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
+.dashboard-card-head>a:not(.btn){color:var(--brand);font-size:12px;font-weight:800}
+.fleet-glance{display:grid;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--background-soft)}
+.fleet-glance-row{display:grid;grid-template-columns:auto minmax(0,1fr) 86px 78px;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--border);transition:background .15s ease}
+.fleet-glance-row:first-child{border-top:0}
+.fleet-glance-row:hover{background:var(--surface-2)}
+.unit-status-dot{width:9px;height:9px;border-radius:999px;background:var(--muted-2);box-shadow:0 0 0 4px color-mix(in srgb,var(--muted-2) 12%,transparent)}
+.unit-status-dot.good,.fleet-list-state.good{background:var(--success)}
+.unit-status-dot.warn,.fleet-list-state.warn{background:var(--warning)}
+.unit-status-dot.danger,.fleet-list-state.danger{background:var(--danger)}
+.fleet-glance-copy{display:grid;min-width:0}
+.fleet-glance-copy strong{font-size:13px}
+.fleet-glance-copy span{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fleet-glance-meta{display:grid;text-align:right}
+.fleet-glance-meta span{font-size:13px;font-weight:800}
+.fleet-glance-meta small{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.alert-stack{display:grid;gap:9px}
+.alert-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:flex-start;padding:11px;border:1px solid var(--border);border-radius:12px;background:var(--background-soft)}
+.alert-row:hover{background:var(--surface-2)}
+.alert-indicator{width:8px;height:8px;border-radius:999px;margin-top:5px;background:var(--info)}
+.alert-row.warn .alert-indicator{background:var(--warning)}
+.alert-row.danger .alert-indicator{background:var(--danger)}
+.alert-row strong{font-size:12px}
+.alert-row p{margin:3px 0 0;font-size:11px;color:var(--muted);line-height:1.45}
+.alert-arrow{color:var(--muted);font-size:18px}
+.quick-actions-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.quick-action{display:flex;align-items:center;gap:11px;padding:13px;border:1px solid var(--border);border-radius:13px;background:var(--background-soft);transition:.16s ease}
+.quick-action:hover{background:var(--surface-2);transform:translateY(-1px)}
+.quick-action>span{width:34px;height:34px;border-radius:10px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-size:9px;font-weight:950}
+.quick-action div{display:grid}
+.quick-action strong{font-size:12px}
+.quick-action small{font-size:10px;color:var(--muted);margin-top:2px}
+.empty-state{display:grid;place-items:center;text-align:center;gap:4px;padding:28px;color:var(--muted)}
+.empty-state.compact{padding:18px}
+.empty-state strong{color:var(--text);font-size:13px}
+.empty-state span{font-size:11px}
+.dashboard-skeleton{grid-template-columns:1fr}
+.skeleton-block{height:110px;border-radius:18px;background:linear-gradient(90deg,var(--surface) 25%,var(--surface-2) 50%,var(--surface) 75%);background-size:200% 100%;animation:skeletonPulse 1.5s infinite}
+.skeleton-block.large{height:360px}
+@keyframes skeletonPulse{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
