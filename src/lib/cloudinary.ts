@@ -37,13 +37,9 @@ export function expectedCloudinaryFolder(organizationId:string,kind:ManeCombUplo
   return "manecomb/" + sanitize(organizationId) + "/" + kind;
 }
 
-export function assertTenantCloudinaryAsset(input:{
-  organizationId:string;
-  kind:ManeCombUploadKind;
-  url:string;
-  publicId:string;
-  resourceType?:string;
-},options:{allowLegacyPublic?:boolean}={}){
+type TenantAssetInput={organizationId:string;kind:ManeCombUploadKind;url:string;publicId:string;resourceType?:string};
+
+export function assertTenantCloudinaryAsset(input:TenantAssetInput,options:{allowLegacyPublic?:boolean}={}){
   const env=getEnv();
   if(!env.cloudinaryCloudName)throw new Error("Cloudinary is not configured");
   const expectedPrefix=expectedCloudinaryFolder(input.organizationId,input.kind)+"/";
@@ -63,6 +59,25 @@ export function assertTenantCloudinaryAsset(input:{
   const extension=storedPath!.split(".").at(-1)!.toLowerCase();
   if(!(UPLOAD_POLICY[input.kind].formats as readonly string[]).includes(extension))throw new Error("INVALID_STORAGE_FORMAT");
   return {url,resourceType:delivery![1],deliveryType:delivery![2],directives:delivery![3]};
+}
+
+export async function verifyTenantCloudinaryAsset(input:TenantAssetInput&{bytes:number;mimeType?:string}){
+  const asset=assertTenantCloudinaryAsset(input);
+  const env=getEnv();
+  if(!env.cloudinaryApiKey||!env.cloudinaryApiSecret)throw new Error("Cloudinary is not configured");
+  const endpoint="https://api.cloudinary.com/v1_1/"+encodeURIComponent(env.cloudinaryCloudName!)+"/resources/"+asset.resourceType+"/authenticated/"+encodeURIComponent(input.publicId);
+  const response=await fetch(endpoint,{headers:{authorization:"Basic "+Buffer.from(env.cloudinaryApiKey+":"+env.cloudinaryApiSecret).toString("base64")},redirect:"error",cache:"no-store",signal:AbortSignal.timeout(10_000)});
+  if(!response.ok)throw new Error("STORAGE_VERIFICATION_FAILED");
+  const metadata=await response.json();
+  const version=asset.directives.match(/^v(\d+)\//)?.[1];
+  if(metadata.public_id!==input.publicId||metadata.resource_type!==asset.resourceType||metadata.type!=="authenticated"||(version&&Number(metadata.version)!==Number(version)))throw new Error("INVALID_STORAGE_ASSET");
+  if(!Number.isSafeInteger(metadata.bytes)||metadata.bytes<1||metadata.bytes>UPLOAD_POLICY[input.kind].maxBytes||metadata.bytes!==input.bytes)throw new Error("INVALID_STORAGE_SIZE");
+  const format=String(metadata.format||input.publicId.split(".").at(-1)||"").toLowerCase();
+  if(!(UPLOAD_POLICY[input.kind].formats as readonly string[]).includes(format))throw new Error("INVALID_STORAGE_FORMAT");
+  const mimeTypes:Record<string,string>={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp",pdf:"application/pdf"};
+  const mimeType=mimeTypes[format];
+  if(input.mimeType&&input.mimeType!==mimeType)throw new Error("INVALID_STORAGE_MIME");
+  return {bytes:metadata.bytes as number,mimeType};
 }
 
 export async function proxyTrustedCloudinaryAsset(urlValue:string,scope:{organizationId:string;kind:ManeCombUploadKind;publicId:string;resourceType?:string}){

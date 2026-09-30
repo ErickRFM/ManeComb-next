@@ -5,7 +5,7 @@ import { requireApiSession } from "@/src/lib/auth";
 import { assertPermission } from "@/src/lib/authorization";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
-import { assertTenantCloudinaryAsset } from "@/src/lib/cloudinary";
+import { verifyTenantCloudinaryAsset } from "@/src/lib/cloudinary";
 import { getCommercialPlan } from "@/src/core/domain/commercial-plans";
 import { ManualPayment } from "@/src/core/models/ManualPayment";
 
@@ -41,12 +41,14 @@ export async function POST(request:Request){
     if(Math.round(input.amountMxn*100)!==Math.round(plan.monthlyMxn*100)){
       return NextResponse.json({error:"PAYMENT_AMOUNT_MISMATCH",expectedAmountMxn:plan.monthlyMxn},{status:422});
     }
-    assertTenantCloudinaryAsset({
+    const verified=await verifyTenantCloudinaryAsset({
       organizationId:session.organizationId,
       kind:"payment",
       url:input.receiptUrl,
       publicId:input.receiptPublicId,
-      resourceType:input.receiptResourceType
+      resourceType:input.receiptResourceType,
+      bytes:input.receiptBytes,
+      mimeType:input.receiptMimeType
     });
 
     await connectDb();
@@ -64,7 +66,7 @@ export async function POST(request:Request){
         receiptPublicId:input.receiptPublicId,
         receiptResourceType:input.receiptResourceType,
         receiptBytes:input.receiptBytes,
-        receiptMimeType:input.receiptMimeType,
+        receiptMimeType:verified.mimeType,
         receiptFileName:input.receiptFileName,
         idempotencyKey:key
       }},
