@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
+import { gpsStatusText } from "@/src/lib/fleet-snapshots";
 
 type Incident={_id:string;type:string;status:string;message?:string;createdAt?:string};
 type Journey={_id:string;state:string;vehicleId:string};
@@ -55,7 +56,7 @@ export function PortalDashboardOverview(){
   return <div className="dashboard-grid">
     <section className="metric-strip">
       <div className="metric-card"><span className="metric-label">Flota</span><div className="metric-value">{metrics.total}</div><div className="metric-delta">{metrics.running} jornadas en curso</div></div>
-      <div className="metric-card"><span className="metric-label">GPS en vivo</span><div className="metric-value">{metrics.live}</div><div className={"metric-delta "+(metrics.degraded?"warn":"good")}>{metrics.degraded?metrics.degraded+" requieren atención":"Telemetría estable"}</div></div>
+      <div className="metric-card"><span className="metric-label">GPS en vivo</span><div className="metric-value">{metrics.live}</div><div className={"metric-delta "+(metrics.degraded?"warn":metrics.live?"good":"")}>{gpsStatusText(metrics.live,metrics.degraded)}</div></div>
       <div className="metric-card"><span className="metric-label">Fuera de ruta</span><div className="metric-value">{metrics.offRoute}</div><div className={"metric-delta "+(metrics.offRoute?"bad":"good")}>{metrics.offRoute?"Revisar corredor":"Sin desvíos confirmados"}</div></div>
       <div className="metric-card"><span className="metric-label">Incidencias</span><div className="metric-value">{metrics.openIncidents}</div><div className={"metric-delta "+(metrics.openIncidents?"warn":"good")}>{metrics.openIncidents?"Pendientes de resolver":"Operación limpia"}</div></div>
     </section>

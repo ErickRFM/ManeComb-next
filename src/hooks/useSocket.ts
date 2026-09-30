@@ -1,8 +1,20 @@
 "use client";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { io } from "socket.io-client";
 
 const HEARTBEAT_MS=20_000;
+
+export function useSocketStatus(socket:ReturnType<typeof io>){
+  const [status,setStatus]=useState<"connecting"|"connected"|"disconnected">(socket.connected?"connected":"connecting");
+  useEffect(()=>{
+    const connected=()=>setStatus("connected");
+    const disconnected=()=>setStatus("disconnected");
+    socket.on("connect",connected);socket.on("disconnect",disconnected);socket.on("connect_error",disconnected);
+    setStatus(socket.connected?"connected":"connecting");
+    return()=>{socket.off("connect",connected);socket.off("disconnect",disconnected);socket.off("connect_error",disconnected)};
+  },[socket]);
+  return status;
+}
 
 export function useSocket() {
   const socket = useMemo(() => io({
@@ -32,7 +44,7 @@ export function useSocket() {
       if(timer)clearInterval(timer);
       timer=null;
       socket.disconnect();
-      window.location.assign("/login");
+      window.location.assign(window.location.pathname.startsWith("/operacion")?"/login?surface=operation":"/login");
     };
 
     socket.on("connect",join);

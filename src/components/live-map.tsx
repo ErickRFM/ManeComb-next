@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
-import { useSocket } from "@/src/hooks/useSocket";
+import { useSocket, useSocketStatus } from "@/src/hooks/useSocket";
 import { fleetMarkerState, fleetToGeoJson, shouldClusterFleet } from "@/src/lib/fleet-density";
+import { mergeSnapshots } from "@/src/lib/fleet-snapshots";
 
 type Filter="all"|"live"|"risk"|"lost";
 const emptyCollection={type:"FeatureCollection" as const,features:[] as any[]};
@@ -15,6 +16,7 @@ export function LiveMap(){
   const programmaticCamera=useRef(false);
   const unitsRef=useRef<OperationalUnitSnapshot[]>([]);
   const socket=useSocket();
+  const connection=useSocketStatus(socket);
 
   const [units,setUnits]=useState<OperationalUnitSnapshot[]>([]);
   const [mapReady,setMapReady]=useState(false);
@@ -23,26 +25,27 @@ export function LiveMap(){
   const [filter,setFilter]=useState<Filter>("all");
   const [cameraMode,setCameraMode]=useState<"auto"|"free">("auto");
   const [error,setError]=useState("");
+  const [mapError,setMapError]=useState("");
+  const [loading,setLoading]=useState(true);
+  const [retry,setRetry]=useState(0);
 
   useEffect(()=>{unitsRef.current=units},[units]);
 
   useEffect(()=>{
     let cancelled=false;
-    fetch("/api/locations/live").then(async response=>{
+    const refresh=()=>void fetch("/api/locations/live").then(async response=>{
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"No se pudo cargar la flota");
-      if(!cancelled)setUnits(data.units||[]);
-    }).catch(err=>!cancelled&&setError(err.message));
-    return()=>{cancelled=true};
-  },[]);
+      if(!cancelled){setUnits(current=>mergeSnapshots(current,data.units||[]).filter(unit=>(data.units||[]).some((next:OperationalUnitSnapshot)=>next.vehicleId===unit.vehicleId)));setError("")}
+    }).catch(()=>!cancelled&&setError("No se pudo cargar la flota. Revisa la conexión o tu acceso."))
+      .finally(()=>!cancelled&&setLoading(false));
+    refresh();socket.on("connect",refresh);
+    return()=>{cancelled=true;socket.off("connect",refresh)};
+  },[socket,retry]);
 
   useEffect(()=>{
     const onSnapshot=(snapshot:OperationalUnitSnapshot)=>{
-      setUnits(current=>{
-        const index=current.findIndex(unit=>unit.vehicleId===snapshot.vehicleId);
-        if(index<0)return [...current,snapshot];
-        const next=[...current];next[index]=snapshot;return next;
-      });
+      setUnits(current=>mergeSnapshots(current,[snapshot]));
     };
     socket.on("location:snapshot",onSnapshot);
     return()=>{socket.off("location:snapshot",onSnapshot)};
@@ -61,7 +64,8 @@ export function LiveMap(){
   },[units,search,filter]);
 
   const clustered=shouldClusterFleet(filtered.length);
-  const selected=units.find(unit=>unit.vehicleId===selectedId)||null;
+  const selected=filtered.find(unit=>unit.vehicleId===selectedId)||null;
+  useEffect(()=>{if(selectedId&&!filtered.some(unit=>unit.vehicleId===selectedId))setSelectedId(null)},[filtered,selectedId]);
 
   useEffect(()=>{
     let disposed=false;
@@ -69,7 +73,7 @@ export function LiveMap(){
       if(disposed||!container.current||mapRef.current)return;
       const mapboxgl=module.default;
       const token=process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-      if(!token){setError("Falta NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN");return}
+      if(!token){setMapError("El mapa no está disponible. Puedes consultar la lista de unidades.");return}
       mapboxgl.accessToken=token;
       const light=document.documentElement.dataset.theme==="light";
       const map=new mapboxgl.Map({
@@ -83,6 +87,7 @@ export function LiveMap(){
       const unlock=()=>{if(!programmaticCamera.current)setCameraMode("free")};
       map.on("dragstart",unlock);
       map.on("zoomstart",unlock);
+      map.on("error",()=>{if(!disposed)setMapError("No se pudo cargar el mapa. La lista sigue disponible.")});
 
       map.on("load",()=>{
         map.addSource("fleet-density",{
@@ -149,10 +154,10 @@ export function LiveMap(){
           map.on("mouseenter",layer,()=>{map.getCanvas().style.cursor="pointer"});
           map.on("mouseleave",layer,()=>{map.getCanvas().style.cursor=""});
         }
-        setMapReady(true);
+        setMapReady(true);setMapError("");
       });
       mapRef.current=map;
-    });
+    }).catch(()=>{if(!disposed)setMapError("No se pudo cargar el mapa. La lista sigue disponible.")});
     return()=>{disposed=true;markers.current.forEach(marker=>marker.remove?.());markers.current.clear();mapRef.current?.remove?.();mapRef.current=null};
   },[]);
 
@@ -250,11 +255,11 @@ export function LiveMap(){
       <button className={"camera-mode "+(cameraMode==="auto"?"active":"")} onClick={enableAutoCamera}>◎ {cameraMode==="auto"?"Auto":"Recentrar"}</button>
     </div>
 
-    {error?<div className="fleet-map-error" role="alert">{error}</div>:null}
+    {error?<div className="fleet-map-error" role="alert">{error} <button className="btn secondary" onClick={()=>{setLoading(true);setRetry(value=>value+1)}}>Reintentar</button></div>:mapError?<div className="fleet-map-error" role="status">{mapError}</div>:null}
 
     <div className="fleet-stage">
       <aside className="fleet-list-panel" aria-label="Lista de unidades visibles">
-        <div className="fleet-panel-heading"><div><strong>Flota</strong><span>{filtered.length} visibles</span></div><span className="live-badge"><span className="live-dot"/>Live</span></div>
+        <div className="fleet-panel-heading"><div><strong>Flota</strong><span>{filtered.length} visibles</span></div><span className="live-badge" role="status">{connection==="connected"?"En línea":connection==="connecting"?"Conectando":"Reconectando"}</span></div>
         <div className="fleet-list-scroll">
           {filtered.map(unit=><button key={unit.vehicleId} className={"fleet-list-item "+(selectedId===unit.vehicleId?"selected":"")} onClick={()=>selectUnit(unit)} aria-pressed={selectedId===unit.vehicleId}>
             <span className={"fleet-list-state "+fleetMarkerState(unit)}/>
@@ -262,7 +267,7 @@ export function LiveMap(){
             <span className="fleet-list-stats"><strong>{unit.speedKmH.toFixed(0)}</strong><small>km/h</small></span>
             <span className="fleet-list-stats"><strong>{unit.etaMinutes==null?"—":unit.etaMinutes}</strong><small>min ETA</small></span>
           </button>)}
-          {!filtered.length?<div className="empty-state compact"><strong>Sin coincidencias</strong><span>Ajusta búsqueda o filtros.</span></div>:null}
+          {!filtered.length?<div className="empty-state compact" role="status"><strong>{loading?"Cargando flota…":error?"Flota no disponible":units.length?"Sin coincidencias":"Sin unidades"}</strong><span>{!loading&&!error?(units.length?"Ajusta búsqueda o filtros.":"Registra una unidad para comenzar."):""}</span></div>:null}
         </div>
       </aside>
 
