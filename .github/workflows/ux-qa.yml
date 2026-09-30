@@ -107,7 +107,13 @@ jobs:
             sleep 12
             adb shell dumpsys activity activities | grep -q "com.manecomb.app"
             mkdir -p artifacts/android-smoke
-            adb exec-out screencap -p > artifacts/android-smoke/driver-emulator.png
+            adb exec-out screencap -p > artifacts/android-smoke/driver-portrait.png
+            adb shell settings put system accelerometer_rotation 0
+            adb shell settings put system user_rotation 1
+            sleep 4
+            adb exec-out screencap -p > artifacts/android-smoke/driver-landscape.png
+            adb shell settings put system user_rotation 0
+            adb shell settings put system accelerometer_rotation 1
             adb shell wm size > artifacts/android-smoke/device.txt
             adb shell dumpsys package com.manecomb.app | grep -E "versionName|versionCode" >> artifacts/android-smoke/device.txt
       - uses: actions/upload-artifact@v4
