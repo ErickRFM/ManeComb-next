@@ -3,6 +3,7 @@ import { connectDb } from "@/src/lib/db";
 import { getGpsFreshness } from "@/src/core/domain/gps-freshness";
 import { Vehicle } from "@/src/core/models/Vehicle";
 import { vehicleToSnapshot } from "@/src/core/services/telemetry";
+import { publishLocationSnapshot } from "@/src/realtime/services/location-publisher";
 
 export function startFreshnessSweeper(io:Server){
   let running=false;
@@ -26,7 +27,7 @@ export function startFreshnessSweeper(io:Server){
           "lastLocation.recordedAt":vehicle.lastLocation.recordedAt,
           lastFreshness:vehicle.lastFreshness
         },{$set:{lastFreshness:next}},{new:true});
-        if(updated)io.to("org:"+String(updated.organizationId)).emit("location:snapshot",vehicleToSnapshot(updated));
+        if(updated)publishLocationSnapshot(io,String(updated.organizationId),vehicleToSnapshot(updated));
       }
     }catch(error){
       console.error("[freshness-sweeper]",error);

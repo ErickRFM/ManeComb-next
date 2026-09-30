@@ -7,6 +7,7 @@ beforeEach(() => {
   vi.resetModules();
   delete globalCache.__manecombMongoose;
   vi.stubEnv("MONGODB_URI", "mongodb://diagnostic.invalid/test");
+  vi.stubEnv("MONGODB_MAX_POOL_SIZE", "");
 });
 
 afterEach(() => {
@@ -16,6 +17,19 @@ afterEach(() => {
 });
 
 describe("database connection recovery", () => {
+  it("accepts an explicit bounded pool size for measured capacity tuning",async()=>{
+    vi.stubEnv("MONGODB_MAX_POOL_SIZE","100");
+    const connect=vi.spyOn(mongoose,"connect").mockResolvedValue(mongoose);
+    const {connectDb}=await import("@/src/lib/db");await connectDb();
+    expect(connect).toHaveBeenCalledWith(expect.any(String),expect.objectContaining({maxPoolSize:100}));
+  });
+  it("rejects malformed pool configuration before connecting",async()=>{
+    vi.stubEnv("MONGODB_MAX_POOL_SIZE","10000");
+    const connect=vi.spyOn(mongoose,"connect").mockResolvedValue(mongoose);
+    const {connectDb}=await import("@/src/lib/db");
+    await expect(connectDb()).rejects.toThrow("MONGODB_MAX_POOL_SIZE_INVALID");
+    expect(connect).not.toHaveBeenCalled();
+  });
   it("allows a new connection after a transient failure", async () => {
     const failure = new Error("temporary DNS failure");
     vi.spyOn(mongoose, "connect")

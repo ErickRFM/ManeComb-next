@@ -11,7 +11,9 @@ export async function connectDb() {
   if (cache.connection) return cache.connection;
   const uri = getEnv().mongodbUri;
   if (!uri) throw new Error("MONGODB_URI is not configured");
-  if (!cache.promise) cache.promise = mongoose.connect(uri, { maxPoolSize: 20, serverSelectionTimeoutMS: 5000, monitorCommands:true });
+  const maxPoolSize=Number(process.env.MONGODB_MAX_POOL_SIZE||20);
+  if(!Number.isSafeInteger(maxPoolSize)||maxPoolSize<1||maxPoolSize>200)throw new Error("MONGODB_MAX_POOL_SIZE_INVALID");
+  if (!cache.promise) cache.promise = mongoose.connect(uri, { maxPoolSize, serverSelectionTimeoutMS: 5000, monitorCommands:true });
   const promise = cache.promise;
   try {
     cache.connection = await promise;

@@ -5,6 +5,7 @@ import { connectDb } from "@/src/lib/db";
 import { recordTelemetry } from "@/src/core/services/telemetry";
 import { requireActiveSubscription } from "@/src/core/services/subscription-access";
 import { incrementMetric, observeDuration, setGauge } from "@/src/lib/metrics";
+import { publishLocationSnapshot } from "@/src/realtime/services/location-publisher";
 
 let inFlight=0;
 
@@ -24,7 +25,7 @@ export function registerLocationHandler(io: Server, socket: Socket) {
         { ...input, recordedAt: input.recordedAt || new Date() },
         { driverId: session.sub }
       );
-      io.to("org:" + session.organizationId).emit("location:snapshot", snapshot);
+      publishLocationSnapshot(io,session.organizationId,snapshot);
       ack?.({ ok: true, snapshot });
       incrementMetric("telemetry_ack_total",1,{status:"ok"});
     } catch (error) {
