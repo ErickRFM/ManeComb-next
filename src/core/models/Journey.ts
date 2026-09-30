@@ -1,4 +1,6 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+
+const { Schema } = mongoose;
 
 const ChecklistSchema = new Schema({
   brakes: { type: Boolean, default: false },
@@ -25,4 +27,4 @@ const JourneySchema = new Schema({
 JourneySchema.index({ organizationId: 1, driverId: 1, state: 1 });
 JourneySchema.index({ organizationId: 1, vehicleId: 1, state: 1 });
 
-export const Journey = models.Journey || model("Journey", JourneySchema);
+export const Journey = mongoose.models.Journey || mongoose.model("Journey", JourneySchema);
