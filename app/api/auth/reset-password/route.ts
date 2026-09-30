@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
+import { enforceRateLimit } from "@/src/lib/rate-limit";
 import { PasswordResetToken } from "@/src/core/models/PasswordResetToken";
 import { Session } from "@/src/core/models/Session";
 import { User } from "@/src/core/models/User";
@@ -15,6 +16,7 @@ export const runtime="nodejs";
 export async function POST(request:Request){
   try{
     const input=Input.parse(await request.json());
+    await enforceRateLimit(request,"auth:reset-password",{limit:10,windowSeconds:900,identity:input.token.slice(0,24)});
     const tokenHash=createHash("sha256").update(input.token).digest("hex");
     await connectDb();
     const reset=await PasswordResetToken.findOne({tokenHash,usedAt:null,expiresAt:{$gt:new Date()}});
