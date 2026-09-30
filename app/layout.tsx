@@ -10,5 +10,5 @@ export const metadata: Metadata = {
 const themeScript=`(()=>{try{const saved=localStorage.getItem("manecomb.theme");const system=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";document.documentElement.dataset.theme=saved||system}catch{document.documentElement.dataset.theme="dark"}})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="es" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeScript}}/></head><body><PwaRegistration />{children}</body></html>;
+  return <html lang="es" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:themeScript}}/></head><body><a className="skip-link" href="#main-content">Saltar al contenido</a><PwaRegistration />{children}</body></html>;
 }
