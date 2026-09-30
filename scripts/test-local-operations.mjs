@@ -8,6 +8,8 @@ import Redis from 'ioredis';
 
 // Invoke with node --env-file=.env.local; credentials are never printed or rewritten.
 const root = fileURLToPath(new URL('../', import.meta.url));
+const productionMode=process.argv.includes('--production');
+if(productionMode&&!existsSync(new URL('../.next/BUILD_ID',import.meta.url)))throw new Error('Build the current source before production-mode QA');
 const source = process.env.MONGODB_URI?.match(/^(mongodb(?:\+srv)?:\/\/[^/]+)(?:\/([^?]*))?(\?.*)?$/);
 if (!source) throw new Error('Local operations QA requires MONGODB_URI loaded by Node --env-file');
 const runId = randomBytes(10).toString('hex');
@@ -33,7 +35,7 @@ const port = await new Promise((accept, reject) => {
 });
 const baseUrl = 'http://127.0.0.1:' + port;
 const qaEnv = {
-  ...process.env, NODE_ENV: 'development', NEXT_TELEMETRY_DISABLED: '1', HOSTNAME: '127.0.0.1', PORT: String(port),
+  ...process.env, NODE_ENV: productionMode?'production':'development', NEXT_TELEMETRY_DISABLED: '1', HOSTNAME: '127.0.0.1', PORT: String(port),
   APP_URL: baseUrl, MONGODB_URI: uri, REDIS_URL: redisEnabled ? process.env.REDIS_URL : '', REDIS_NAMESPACE: namespace,
   AUTH_SECRET: randomBytes(32).toString('hex'), MFA_ENCRYPTION_KEY: randomBytes(32).toString('hex'),
   E2E_BASE_URL: baseUrl, E2E_LOCAL_QA_DATABASE: database, E2E_LOCAL_QA_URI: uri, E2E_LOCAL_QA_OWNER: owner,
@@ -94,7 +96,7 @@ try {
       redisOwned = true;
     } catch { throw new Error('Could not reserve isolated QA Redis namespace'); }
   }
-  console.log('[local-qa] ' + database + '; Redis ' + (redisEnabled ? 'isolated namespace ' + namespace : 'disabled (development fallback)'));
+  console.log('[local-qa] '+(productionMode?'production build':'development')+'; ' + database + '; Redis ' + (redisEnabled ? 'isolated namespace ' + namespace : 'disabled (development fallback)'));
   // No worker runs. Outbox email/push payloads remain inside the owned Mongo database.
   const server = start('../server.ts', ['ignore', 'pipe', 'pipe']);
   let serverError = false;

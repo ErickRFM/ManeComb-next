@@ -115,7 +115,7 @@ export async function runGpsLoad(config: LoadConfig) {
         pending.add(ack);
         void ack.then(() => pending.delete(ack));
       }
-      await new Promise(accept => setTimeout(accept, Math.min(Math.max(0, config.intervalMs - (performance.now() - tickStart)), Math.max(0, deadline - performance.now()))));
+      await new Promise(accept => setTimeout(accept, Math.ceil(Math.min(Math.max(0, config.intervalMs - (performance.now() - tickStart)), Math.max(0, deadline - performance.now())))));
     }
     await Promise.all(pending);
     const summary = { ...summarizeLoad(counts), intervalMs: config.intervalMs, durationMs: config.durationMs, ackTimeoutMs: config.ackTimeoutMs, aborted };

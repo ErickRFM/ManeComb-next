@@ -10,7 +10,7 @@ async function getRoute(organizationId:string,routeId:unknown){
   const key=organizationId+":"+String(routeId);
   const cached=cache.get(key);
   if(cached&&cached.expiresAt>Date.now())return cached.route;
-  const route=await Route.findOne({_id:routeId,organizationId,status:"active"});
+  const route:any=await Route.findOne({_id:routeId,organizationId,status:"active"},null,{lean:true});
   if(route)cache.set(key,{route,expiresAt:Date.now()+TTL_MS});
   return route;
 }

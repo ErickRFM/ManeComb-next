@@ -19,14 +19,14 @@ export async function recordTelemetry(
 ): Promise<OperationalUnitSnapshot> {
   const vehicleQuery: Record<string, unknown> = { _id: input.vehicleId, organizationId };
   if (context?.driverId) vehicleQuery.driverId = context.driverId;
-  const vehicle = await timed("vehicle_read",()=>Vehicle.findOne(vehicleQuery));
+  const vehicle = await timed<any>("vehicle_read",()=>Vehicle.findOne(vehicleQuery,null,{lean:true}));
   if (!vehicle) throw new Error("Vehicle not assigned to authenticated driver");
 
   let canonicalJourneyId: string | null = input.journeyId || null;
   if (context?.driverId) {
     const journeyQuery: Record<string, unknown> = {organizationId,vehicleId:vehicle._id,driverId:context.driverId,state:"RUNNING"};
     if (input.journeyId) journeyQuery._id = input.journeyId;
-    const journey = await timed("journey_read",()=>Journey.findOne(journeyQuery).select("_id"));
+    const journey = await timed<any>("journey_read",()=>Journey.findOne(journeyQuery,null,{lean:true}).select("_id"));
     if (!journey) throw new Error("A RUNNING journey is required for telemetry");
     canonicalJourneyId = String(journey._id);
   }
@@ -42,9 +42,9 @@ export async function recordTelemetry(
 
   if (input.packetId) {
     const filter = { organizationId, packetId: input.packetId };
-    const saved = await timed("position_upsert",()=>RouteSessionPosition.findOneAndUpdate(filter, { $setOnInsert: position }, { upsert: true, new: true })).catch(async (error: any) => {
+    const saved = await timed<any>("position_upsert",()=>RouteSessionPosition.findOneAndUpdate(filter, { $setOnInsert: position }, { upsert: true, new: true, lean:true })).catch(async (error: any) => {
       if(error?.code !== 11000)throw error;
-      return RouteSessionPosition.findOne(filter);
+      return RouteSessionPosition.findOne(filter,null,{lean:true});
     });
     if(!saved || String(saved.vehicleId) !== String(vehicle._id) || String(saved.journeyId || "") !== String(canonicalJourneyId || "")) throw new Error("PACKET_ID_CONFLICT");
     // Replay acknowledges the originally stored packet, never forged replacement coordinates.
@@ -72,9 +72,9 @@ export async function recordTelemetry(
         lastFreshness:freshness,
         activeRouteProgress:routeProgress,
         lastLocation:{latitude:input.latitude,longitude:input.longitude,speedMps:input.speedMps||0,heading:input.heading,accuracy:input.accuracy,recordedAt}
-      }}, {new:true}
+      }}, {new:true,lean:true}
     ));
-  const canonical = updated || await Vehicle.findOne({_id:vehicle._id,organizationId});
+  const canonical = updated || await Vehicle.findOne({_id:vehicle._id,organizationId},null,{lean:true});
   if(!canonical)throw new Error("Vehicle no longer exists");
   return vehicleToSnapshot(canonical, canonicalJourneyId);
 }

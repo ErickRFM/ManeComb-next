@@ -11,6 +11,7 @@ concurrency:
 jobs:
   validate:
     strategy:
+      fail-fast: false
       matrix:
         node: [20, 24]
     runs-on: ubuntu-latest
@@ -69,14 +70,14 @@ jobs:
           exit 1
       - run: npm test
       - run: npm run test:integration
+      - run: npm run build
       - name: Isolated operational E2E and 500-socket GPS gate
-        run: node scripts/test-local-operations.mjs --load
+        run: node scripts/test-local-operations.mjs --production --load
         env:
           LOAD_TEST_CLIENTS: "500"
           LOAD_TEST_INTERVAL_MS: "3000"
           LOAD_TEST_DURATION_MS: "60000"
           LOAD_TEST_ACK_TIMEOUT_MS: "10000"
-      - run: npm run build
 
 
   container:

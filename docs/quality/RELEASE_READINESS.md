@@ -10,12 +10,14 @@ Fecha: 2026-09-30. Consolidación solicitada para ManeComb-next. No guardar secr
 | #7 retry Mongo | Squash `a58152e`; retry tras promise rechazada + concurrencia, health/worker/CI PASS |
 | #4 hardening | Squash `2608838`; typecheck, 35 unitarias, 10 integración Atlas QA/Redis, build y CI PASS |
 | #3 readiness | Ports selectivos de uploads/adjuntos, runners y gates; conservar #4, sin merge duplicado |
-| #5 UX | Delta selectivo consolidado sobre main; contraste corregido, 56 vistas locales PASS; CI exacto pendiente |
-| Finanzas | Transacciones, conciliación de estado/precio, checkout persistido, firma/replay y mes calendario; 14 integraciones con proveedor simulado PASS |
+| #5 UX | Delta selectivo consolidado sobre main; 56 vistas locales PASS y UX CI PASS en `5c895a1`; repetir contra el SHA final |
+| Finanzas | Transacciones, conciliación de estado/precio, checkout persistido por organización, firma/replay y mes calendario; 19 integraciones con proveedor simulado PASS |
 | GPS/sesiones | Escritura GPS y barrido de frescura condicionales; token de dispositivo exclusivo, revocación por cierre/usuario/asignación/expiración |
 | Worker | BullMQ con prefix aislado; race outbox y retry real Mongo/Redis probados; Resend simulado sin correo externo |
 
-Validación local Node 20.20.2/npm 10.8.2: typecheck PASS; 71 unitarias/24 archivos PASS; 33 integraciones/5 archivos Atlas QA + Redis PASS; build Next 15.5.26 con 76 páginas PASS; audit producción 0 vulnerabilidades. UX local: 56 vistas (dark/light, 360/390/430/768/1024/1366/1920), axe/foco/teclado PASS. La última corrección de frescura se verificó por regresión roja/verde. Las checks de CI/UX/Android se deben confirmar contra el SHA final; no reutilizar resultados de PR #5.
+Validación local Node 20.20.2/npm 10.8.2: typecheck PASS; 79 unitarias/27 archivos PASS; 38 integraciones/5 archivos Atlas QA + Redis PASS; build Next 15.5.26 con 76 páginas PASS; audit producción 0 vulnerabilidades. UX local: 56 vistas (dark/light, 360/390/430/768/1024/1366/1920), axe/foco/teclado PASS. UX CI y smoke Android API 33/34/35/36 PASS en `5c895a1`; CI de ese SHA falló por carga en Node 20 con servidor de desarrollo. La siguiente validación usa el build de producción y conserva 500 sockets/3 s/60 s/ACK de 10 s. Confirmar todos los checks contra el SHA final; no reutilizar resultados de PR #5.
+
+E2E local con build de producción y Mongo/Redis aislados PASS, incluido GPS HTTP nativo entregado al socket del monitor, chat, floor de radio, SOS, cierre y revocación. Control de carga: 25/25 sockets, 125/125 ACK, cero errores/pérdidas, p50 913 ms, p95 1.230 ms y p99 1.741 ms. Este control no certifica 500 sockets ni proveedores live. La lectura de métricas usa una sesión sintética limitada al fixture; no certifica MFA real.
 
 Decisiones: conservar RBAC/sesiones/entitlements, SQLite/packetId, salas/throttle/push y descargas protegidas de #4. Portar política compartida de uploads (10 MB documentos/pagos, 8 MB imágenes), adjuntos compatibles, tenant de ruta/audit, runners E2E/carga y protocolo Android. Ampliar el validator de #5 sin duplicarlo.
 
@@ -36,7 +38,7 @@ El usuario confirmó que Android físico y proveedores live siguen pendientes. L
 | MFA | PENDIENTE LIVE | setup/verificación/recovery reales de administrador sin conservar secretos |
 | Android físico | PENDIENTE | protocolo `native/android/README.md`: bloqueo, Doze, background, red y batería |
 | GPS físico | PENDIENTE | continuidad, orden, retry/buffer, dedup packetId y revocación |
-| Carga 500 sockets/3 s | FAIL LOCAL | 500/500 conectados, 10.000 enviados, 0 ACK dentro de 10 s; investigación pendiente. Control de un socket: 4/4 ACK, p95 458 ms. Repetir sobre infraestructura equivalente, sin relajar el gate |
+| Carga 500 sockets/3 s | PENDIENTE PRODUCCIÓN | El baseline local de desarrollo falló (0/10.000 ACK dentro de 10 s). Tras corregir fanout, CI Node 20 de desarrollo recibió 8.076/10.500 dentro de 10 s y siguió fallando; producción + lecturas lean requiere gate de 500 en Node 20/24 y después staging equivalente. Control compilado 25 sockets PASS; no relajar el gate |
 | E2E live | PENDIENTE | tenant/activación/jornada/tracking/chat/PTT/SOS/cierre y proveedores reales |
 
 ## Render
@@ -45,7 +47,7 @@ Workspace autorizado: Erick Rivaldo's workspace. Proyecto: Manecomb-next. No exi
 
 Sólo inspección/preparación autorizada. Recursos exactos de `render.yaml`: web `manecomb-next`, worker `manecomb-next-communication-worker`, Key Value `manecomb-next-redis`; región Oregon, plan starter, Docker Node 24, branch main. Web: `/api/health/ready`, predeploy web; worker: `npm run worker`, predeploy worker; Redis: noeviction y journal-snapshot, sin IP pública permitida. DB explícita `manecomb`, namespace `manecomb-next-prod`; staging separado `manecomb_staging`/namespace staging. Auto-deploy web/worker off y Blueprint Auto Sync deshabilitado. Schema oficial validado localmente; ningún recurso creado ni variable productiva modificada. El primer sync crea y despliega: no ejecutarlo hasta completar gates. Rollback preserva Mongo, Redis, eventos y outbox; ver `docs/deployment/PRODUCTION_DEPLOYMENT.md`.
 
-Estado actual: NOT READY por carga 500 FAIL y checks exactos pendientes, además de gates externos. El smoke Android 13–16 preparado verifica APK/install/start/orientación; no reemplaza GPS/Doze/cámara/audio físicos.
+Estado actual: NOT READY por capacidad 500 sin confirmar en producción y checks finales pendientes, además de gates externos. El smoke Android 13–16 PASS en `5c895a1` verifica APK/install/start/orientación; no reemplaza GPS/Doze/cámara/audio físicos.
 
 ## Matriz de ports selectivos
 
@@ -69,3 +71,11 @@ Fuentes auditadas: main `2608838`, PR #3 `b052833`, PR #5 `526d71a`; integració
 | Validation log / checklist | Docs fragmentarios | Este registro, ACCEPTANCE y OPERATIONAL_QA | Registro previo sin evidencia actual | Centralizar; no copiar PASS históricos |
 
 Finanzas: antes de un rollout, revisar intents legacy y duplicados por organización para crear el índice `one_active_checkout_per_org`. Reconciliar/cancelar cada intento duplicado en el proveedor antes de tocar índices; no borrar historia. No existe servicio productivo de este repo todavía.
+
+## Decisiones de operación
+
+La carga local de 100 sockets mostró espera media del pool de 1.823 ms frente a comandos find de 162 ms, con 20 conexiones ocupadas. El candidato pool 100 tampoco pasó (113/500 ACK, 387 fuera de 10 s), por lo que se conserva el default 20. `MONGODB_MAX_POOL_SIZE` permite un valor entero explícito 1–200 para futuros benchmarks; sumar pools web/worker/réplicas al límite Atlas antes de configurarlo. No modificar `.env.local` ni tratar ese ajuste como certificación. El límite de [Atlas Free](https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/) es una posible restricción sólo si se confirma ese tier; no se ha confirmado el tier de este destino.
+
+CI reprodujo el fallo con Mongo local: CPU saturada, ~3,1 GB RSS, 4.500 handlers pendientes y 809/10.000 ACK dentro de 10 s. Se corrigió el fanout: snapshots canónicos agrupados cada 250 ms por tenant/unidad, portal en sala monitor del tenant y conductor en su sala de usuario. Todos los paquetes siguen persistiendo y recibiendo ACK individual. GPS HTTP nativo publica ahora al portal por el mismo canal; no cambia la frecuencia ni el buffer Kotlin. Los resultados posteriores deben sustituir el FAIL antes de declarar capacidad certificada.
+
+Error tracking: conservar logs y métricas actuales; una integración Sentry requiere cuenta/credenciales y validación de scrubbing. Preparar captura futura de release/SHA, OS, ruta y timestamp para web/server/Android, excluyendo tokens, URLs firmadas, payloads sensibles y credenciales. FCM queda pendiente de la prueba física de Web Push con app terminada; no se añade Firebase ni otro SDK a RC1 sin evidencia.
