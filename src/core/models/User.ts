@@ -1,4 +1,5 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+const { Schema } = mongoose;
 
 const UserSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: "Organization", index: true, default: null },
@@ -14,4 +15,4 @@ const UserSchema = new Schema({
   mfaPendingCreatedAt: { type: Date, default: null, select: false }
 }, { timestamps: true });
 
-export const User = models.User || model("User", UserSchema);
+export const User = mongoose.models.User || mongoose.model("User", UserSchema);
