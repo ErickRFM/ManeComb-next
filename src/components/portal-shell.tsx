@@ -89,11 +89,11 @@ export function PortalShell({children}:{children:React.ReactNode}){
     </aside>
 
     {mobileOpen?<button className="mobile-scrim" aria-label="Cerrar menú" onClick={()=>setMobileOpen(false)}/>:null}
-    <aside className={"mobile-drawer "+(mobileOpen?"open":"")} aria-label="Menú móvil">
-      <div className="mobile-drawer-head"><strong>ManeComb</strong><button className="icon-action" onClick={()=>setMobileOpen(false)} aria-label="Cerrar menú">×</button></div>
+    {mobileOpen?<aside className="mobile-drawer open" aria-label="Menú móvil">
+      <div className="mobile-drawer-head"><strong>ManeComb</strong><button type="button" className="icon-action" onClick={()=>setMobileOpen(false)} aria-label="Cerrar menú">×</button></div>
       {groups.flatMap(group=>group.items).map(item=><Link key={item.href} href={item.href} className={"mobile-drawer-link "+(pathname.startsWith(item.href)?"active":"")}><span>{item.key}</span>{item.label}</Link>)}
-      <button className="mobile-drawer-link danger" onClick={()=>void signOut()}><span>↗</span>Cerrar sesión</button>
-    </aside>
+      <button type="button" className="mobile-drawer-link danger" onClick={()=>void signOut()}><span>↗</span>Cerrar sesión</button>
+    </aside>:null}
 
     <div className="product-workspace">
       <header className="workspace-topbar">
