@@ -1,4 +1,6 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+
+const { Schema } = mongoose;
 const IncidentSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: "Organization", required: true, index: true },
   vehicleId: { type: Schema.Types.ObjectId, ref: "Vehicle", default: null },
@@ -7,4 +9,4 @@ const IncidentSchema = new Schema({
   status: { type: String, enum: ["open","acknowledged","resolved"], default: "open", index: true },
   message: String, latitude: Number, longitude: Number, resolvedAt: Date
 }, { timestamps: true });
-export const Incident = models.Incident || model("Incident", IncidentSchema);
+export const Incident = mongoose.models.Incident || mongoose.model("Incident", IncidentSchema);
