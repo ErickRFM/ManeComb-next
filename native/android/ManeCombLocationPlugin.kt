@@ -2,18 +2,47 @@ package com.manecomb.location
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
-import androidx.core.content.ContextCompat
 import com.getcapacitor.JSObject
+import com.getcapacitor.PermissionState
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
 import com.getcapacitor.annotation.CapacitorPlugin
+import com.getcapacitor.annotation.Permission
+import com.getcapacitor.annotation.PermissionCallback
 import java.net.URI
 
-@CapacitorPlugin(name = "ManeCombLocation")
+@CapacitorPlugin(
+    name = "ManeCombLocation",
+    permissions = [
+        Permission(
+            alias = "location",
+            strings = [
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ]
+        )
+    ]
+)
 class ManeCombLocationPlugin : Plugin() {
     @com.getcapacitor.PluginMethod
     fun start(call: PluginCall) {
+        if (getPermissionState("location") != PermissionState.GRANTED) {
+            requestPermissionForAlias("location", call, "locationPermissionCallback")
+            return
+        }
+        startAuthorized(call)
+    }
+
+    @PermissionCallback
+    fun locationPermissionCallback(call: PluginCall) {
+        if (getPermissionState("location") != PermissionState.GRANTED) {
+            call.reject("Precise location permission is required for ManeComb tracking")
+            return
+        }
+        startAuthorized(call)
+    }
+
+    private fun startAuthorized(call: PluginCall) {
         val serverUrl = call.getString("serverUrl") ?: return call.reject("serverUrl is required")
         val vehicleId = call.getString("vehicleId") ?: return call.reject("vehicleId is required")
         val journeyId = call.getString("journeyId") ?: return call.reject("journeyId is required")
@@ -24,16 +53,13 @@ class ManeCombLocationPlugin : Plugin() {
             return call.reject("Native telemetry requires HTTPS outside local development")
         }
 
-        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-        if (fine != PackageManager.PERMISSION_GRANTED) return call.reject("Location permission is required")
-
         val intent = Intent(context, ManeCombLocationService::class.java).apply {
             putExtra("serverUrl", serverUrl)
             putExtra("vehicleId", vehicleId)
             putExtra("journeyId", journeyId)
             putExtra("deviceToken", deviceToken)
         }
-        ContextCompat.startForegroundService(context, intent)
+        androidx.core.content.ContextCompat.startForegroundService(context, intent)
         call.resolve(JSObject().put("started", true))
     }
 

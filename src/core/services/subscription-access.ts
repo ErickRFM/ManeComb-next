@@ -3,10 +3,10 @@ import { Subscription } from "@/src/core/models/Subscription";
 import { Vehicle } from "@/src/core/models/Vehicle";
 
 export async function requireActiveSubscription(organizationId: string) {
-  const subscription = await Subscription.findOne({
+  const subscription:any = await Subscription.findOne({
     organizationId,
     status: { $in: ["active", "trial"] }
-  });
+  },null,{lean:true});
 
   if (!subscription) throw new Error("SUBSCRIPTION_INACTIVE");
   if (subscription.currentPeriodEnd && subscription.currentPeriodEnd.getTime() < Date.now()) {

@@ -12,7 +12,10 @@ export function verifyMercadoPagoWebhook(input: {
     return [key, value];
   }));
   if (!parts.ts || !parts.v1) return false;
-  const manifest = "id:" + input.dataId + ";request-id:" + input.requestId + ";ts:" + parts.ts + ";";
+  if (!/^\d{10,13}$/.test(parts.ts) || !/^[a-fA-F0-9]{64}$/.test(parts.v1)) return false;
+  const timestamp = Number(parts.ts) * (parts.ts.length === 10 ? 1000 : 1);
+  if (Math.abs(Date.now() - timestamp) > 5 * 60_000) return false;
+  const manifest = "id:" + input.dataId.toLowerCase() + ";request-id:" + input.requestId + ";ts:" + parts.ts + ";";
   const expected = createHmac("sha256", input.secret).update(manifest).digest("hex");
   const a = Buffer.from(expected);
   const b = Buffer.from(parts.v1);

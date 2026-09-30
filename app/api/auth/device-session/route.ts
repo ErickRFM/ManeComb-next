@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireApiSession } from "@/src/lib/auth";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
+import { enforceRateLimit } from "@/src/lib/rate-limit";
 import { hashDeviceToken } from "@/src/lib/device-session";
 import { DeviceSession } from "@/src/core/models/DeviceSession";
 import { Journey } from "@/src/core/models/Journey";
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
   try {
     const session = await requireApiSession(request, ["mobile_operations"]);
     if (!session.organizationId) throw new Error("FORBIDDEN");
+    await enforceRateLimit(request,"auth:device-session",{limit:12,windowSeconds:600,identity:session.sub});
     const input = Input.parse(await request.json());
     await connectDb();
     await requireActiveSubscription(session.organizationId);

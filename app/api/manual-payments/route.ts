@@ -1,11 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiSession } from "@/src/lib/auth";
 import { assertPermission } from "@/src/lib/authorization";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
-import { assertTenantCloudinaryAsset } from "@/src/lib/cloudinary";
+import { verifyTenantCloudinaryAsset } from "@/src/lib/cloudinary";
 import { getCommercialPlan } from "@/src/core/domain/commercial-plans";
 import { ManualPayment } from "@/src/core/models/ManualPayment";
 
@@ -16,6 +16,8 @@ const Input=z.object({
   receiptPublicId:z.string().min(1).max(500),
   receiptResourceType:z.string().min(1).max(50),
   receiptBytes:z.number().int().min(1).max(10*1024*1024),
+  receiptMimeType:z.enum(["image/jpeg","image/png","image/webp","application/pdf"]).optional(),
+  receiptFileName:z.string().min(1).max(255).optional(),
   idempotencyKey:z.string().min(8).max(200).optional()
 });
 export const runtime="nodejs";
@@ -39,15 +41,18 @@ export async function POST(request:Request){
     if(Math.round(input.amountMxn*100)!==Math.round(plan.monthlyMxn*100)){
       return NextResponse.json({error:"PAYMENT_AMOUNT_MISMATCH",expectedAmountMxn:plan.monthlyMxn},{status:422});
     }
-    assertTenantCloudinaryAsset({
+    const verified=await verifyTenantCloudinaryAsset({
       organizationId:session.organizationId,
       kind:"payment",
       url:input.receiptUrl,
-      publicId:input.receiptPublicId
+      publicId:input.receiptPublicId,
+      resourceType:input.receiptResourceType,
+      bytes:input.receiptBytes,
+      mimeType:input.receiptMimeType
     });
 
     await connectDb();
-    const key=input.idempotencyKey||randomUUID();
+    const key=input.idempotencyKey||createHash("sha256").update(session.organizationId+"|"+plan.code+"|"+input.receiptPublicId).digest("hex");
     const payment=await ManualPayment.findOneAndUpdate(
       {organizationId:session.organizationId,idempotencyKey:key},
       {$setOnInsert:{
@@ -61,6 +66,8 @@ export async function POST(request:Request){
         receiptPublicId:input.receiptPublicId,
         receiptResourceType:input.receiptResourceType,
         receiptBytes:input.receiptBytes,
+        receiptMimeType:verified.mimeType,
+        receiptFileName:input.receiptFileName,
         idempotencyKey:key
       }},
       {upsert:true,new:true}

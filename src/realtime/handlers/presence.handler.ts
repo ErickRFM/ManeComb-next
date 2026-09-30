@@ -28,6 +28,7 @@ export function registerPresenceHandler(io: Server, socket: Socket) {
   if (!session?.sub) return;
 
   if (session.organizationId) socket.join("org:" + session.organizationId);
+  if(session.organizationId&&session.channel==="company_portal")socket.join("org:"+session.organizationId+":monitor");
   socket.join("user:" + session.sub);
 
   socket.data.presenceJoined=false;

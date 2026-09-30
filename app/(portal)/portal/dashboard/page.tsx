@@ -1,14 +1,9 @@
-import Link from "next/link";
 import { ModuleShell } from "@/src/components/module-shell";
+import { PortalDashboardOverview } from "@/src/components/portal-dashboard-overview";
 import { PushOptIn } from "@/src/components/push-opt-in";
+
 export default function DashboardPage(){
-  const modules=[
-    ["Monitoreo","/portal/monitoreo","GPS, frescura y avance de flota"],
-    ["Unidades","/portal/unidades","Alta y estado operativo"],
-    ["Rutas","/portal/rutas","Geometrías, paradas y revisiones"],
-    ["Conductores","/portal/conductores","Choferes y activaciones"],
-    ["Incidencias","/portal/incidencias","SOS y seguimiento"],
-    ["Radio","/portal/radio","PTT y WebRTC"]
-  ];
-  return <ModuleShell eyebrow="PORTAL" title="Centro de operación" description="La interfaz consume proyecciones canónicas calculadas por el servidor."><div className="grid"><PushOptIn/><div className="grid grid-3">{modules.map(([name,href,copy])=><Link href={href} className="card" key={name}><h3>{name}</h3><p className="muted">{copy}</p></Link>)}</div></div></ModuleShell>
+  return <ModuleShell eyebrow="CENTRO DE OPERACIÓN" title="Resumen operativo" description="Vista ejecutiva del estado de flota, telemetría, desvíos e incidencias para decidir qué atender primero." wide>
+    <div className="grid"><PortalDashboardOverview/><PushOptIn/></div>
+  </ModuleShell>;
 }

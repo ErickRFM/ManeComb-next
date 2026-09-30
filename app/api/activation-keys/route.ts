@@ -5,6 +5,7 @@ import { requireApiSession } from "@/src/lib/auth";
 import { assertPermission } from "@/src/lib/authorization";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
+import { enforceRateLimit } from "@/src/lib/rate-limit";
 import { ActivationKey } from "@/src/core/models/ActivationKey";
 import { User } from "@/src/core/models/User";
 const Input = z.object({ driverId:z.string().min(1), vehicleId:z.string().min(1).optional(), ttlHours:z.number().int().min(1).max(720).default(72) });
@@ -13,6 +14,7 @@ export async function POST(request:Request){
   try{
     const session=assertPermission(await requireApiSession(request,["company_portal"]),"manage_users");
     if(!session.organizationId) throw new Error("FORBIDDEN");
+    await enforceRateLimit(request,"activation-keys:create",{limit:20,windowSeconds:600,identity:session.sub});
     const input=Input.parse(await request.json());
     await connectDb();
     const driver=await User.exists({_id:input.driverId,organizationId:session.organizationId,channel:"mobile_operations",active:true});

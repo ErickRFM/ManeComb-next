@@ -1,0 +1,142 @@
+name: UX QA
+
+on:
+  pull_request:
+    paths:
+      - "app/**"
+      - "src/components/**"
+      - "src/lib/fleet-density.ts"
+      - "native/android/**"
+      - "scripts/**"
+      - ".github/workflows/ux-qa.yml"
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "src/components/**"
+      - "src/lib/fleet-density.ts"
+      - "native/android/**"
+      - "scripts/**"
+      - ".github/workflows/ux-qa.yml"
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VISUAL_QA: "1"
+      AUTH_SECRET: visual-qa-auth-secret-abcdefghijklmnopqrstuvwxyz-0123456789
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Install pinned visual QA tools
+        run: npm install --no-save --package-lock=false playwright@1.55.1 @axe-core/playwright@4.10.2
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Start ManeComb visual fixture
+        run: |
+          nohup npm run dev > /tmp/manecomb-visual.log 2>&1 &
+          echo $! > /tmp/manecomb-visual.pid
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/visual-qa/portal >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/manecomb-visual.log
+          exit 1
+      - name: Responsive, accessibility and screenshot QA
+        run: node scripts/visual-qa.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: manecomb-visual-qa
+          path: |
+            artifacts/visual-qa
+            /tmp/manecomb-visual.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  android-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [33, 34, 35, 36]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VISUAL_QA: "1"
+      AUTH_SECRET: android-qa-auth-secret-abcdefghijklmnopqrstuvwxyz-0123456789
+      CAPACITOR_SERVER_URL: http://10.0.2.2:3000/visual-qa/driver
+      MANECOMB_ANDROID_VERSION_NAME: 0.1.0-rc1
+      MANECOMB_ANDROID_VERSION_CODE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci --no-audit --no-fund
+      - name: Start web UI for emulator
+        run: |
+          nohup npm run dev > /tmp/manecomb-android-web.log 2>&1 &
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:3000/visual-qa/driver >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/manecomb-android-web.log
+          exit 1
+      - name: Prepare native Android wrapper
+        run: npm run native:prepare
+      - name: Build real debug APK
+        run: cd android && ./gradlew assembleDebug --no-daemon
+      - name: Enable KVM for Linux emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+            adb shell am force-stop com.manecomb.app
+            adb shell am start -n com.manecomb.app/.MainActivity
+            sleep 12
+            adb shell dumpsys activity activities | grep -q "com.manecomb.app"
+            mkdir -p artifacts/android-smoke
+            adb exec-out screencap -p > artifacts/android-smoke/driver-portrait.png
+            adb shell settings put system accelerometer_rotation 0
+            adb shell settings put system user_rotation 1
+            sleep 4
+            adb exec-out screencap -p > artifacts/android-smoke/driver-landscape.png
+            adb shell settings put system user_rotation 0
+            adb shell settings put system accelerometer_rotation 1
+            adb shell wm size > artifacts/android-smoke/device.txt
+            adb shell dumpsys package com.manecomb.app | grep -E "versionName|versionCode" >> artifacts/android-smoke/device.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: manecomb-android-rc1-api-${{ matrix.api }}
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            artifacts/android-smoke
+            /tmp/manecomb-android-web.log
+          if-no-files-found: warn
+          retention-days: 14

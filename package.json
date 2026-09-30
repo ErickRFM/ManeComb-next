@@ -19,7 +19,12 @@
     "native:open": "cap open android",
     "bootstrap:platform-admin": "tsx scripts/bootstrap-platform-admin.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "native:prepare": "node scripts/prepare-native-android.mjs"
+    "test:integration:local": "node --env-file=.env.local scripts/test-local-integration.mjs",
+    "test:operations:local": "node --env-file=.env.local scripts/test-local-operations.mjs",
+    "test:load:gps": "tsx scripts/load/socket-gps.ts",
+    "native:prepare": "node scripts/prepare-native-android.mjs",
+    "deploy:check": "node scripts/predeploy-check.mjs --role=web",
+    "deploy:check:worker": "node scripts/predeploy-check.mjs --role=worker"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

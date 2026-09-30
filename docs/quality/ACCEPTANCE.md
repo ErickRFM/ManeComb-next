@@ -1,5 +1,7 @@
 # Criterios de aceptación
 
+Las casillas de dominio/realtime/comunicación/comercial/Android/seguridad indican implementación y pruebas de código; no certifican proveedores live, hardware ni capacidad del destino. Evidencia y gates de release: `RELEASE_READINESS.md`.
+
 ## Dominio
 - [x] Estados de jornada centralizados y probados.
 - [x] Checklist pre-operacional obligatorio antes de READY.
@@ -10,15 +12,18 @@
 - [x] Idempotencia de checkout/webhooks.
 - [x] Rutas versionadas y editor interactivo Mapbox.
 - [x] Flujo de rutas aprendidas con aprobación humana.
+- [x] Suscripción y vehicleLimit como autoridad de operación.
+- [x] RBAC aplicado en servidor.
 
 ## Realtime
-- [x] Socket auth.
+- [x] Socket auth con sesión revocable.
 - [x] Salas por organización y usuario.
 - [x] GPS en vivo.
-- [x] Chat persistente/idempotente.
-- [x] PTT con floor control y audio Opus.
+- [x] Chat persistente/idempotente y entrega segmentada.
+- [x] PTT con floor control distribuido por Redis y aislamiento por canal.
 - [x] Llamadas WebRTC con señalización validada por tenant.
-- [x] Presencia.
+- [x] STUN/TURN configurable.
+- [x] Presencia con heartbeat leases.
 - [x] Incidencias/SOS emitidas en vivo.
 
 ## Comunicación
@@ -28,24 +33,50 @@
 - [x] Push de incidencias y asignaciones de jornada.
 
 ## Comercial
-- [x] Catálogo canónico de planes.
+- [x] Catálogo canónico fleet-*.
 - [x] Suscripción recurrente vía Mercado Pago Preapproval.
 - [x] Webhook firmado, idempotente y conciliado contra Mercado Pago.
-- [x] Pagos manuales y aprobación desde Admin Global.
+- [x] Pagos manuales con plan, importe esperado e idempotencia.
 - [x] Suscripción calculada por servidor.
+- [x] Límite de unidades aplicado al crear flota.
 
-## Superficies
-- [x] Marketing.
-- [x] Auth.
-- [x] Portal.
-- [x] Admin.
-- [x] Driver PWA.
-- [x] Bridge Android/Kotlin opcional para pantalla bloqueada.
+## Android / GPS
+- [x] Foreground Service Kotlin.
+- [x] Device token limitado a telemetría y jornada RUNNING.
+- [x] Cola SQLite para pérdida de conectividad.
+- [x] Retry exponencial + flush al recuperar red.
+- [x] packetId e idempotencia de ingesta.
+- [x] Preparación Android reproducible mediante native:prepare.
+- [x] Gobierno de versión mínima / actualización forzada.
+
+## Archivos y seguridad
+- [x] Cloudinary signed uploads con scope por tenant/tipo.
+- [x] Documentos con owner validation y revisión.
+- [x] Descarga sensible mediada por ManeComb.
+- [x] MFA TOTP real para platform_admin.
+- [x] Rate limiting Redis en superficies críticas.
+
+## UX/UI
+- [x] Shell independiente Marketing / Portal / Admin / Driver.
+- [x] Tema light/dark con tokens semánticos.
+- [x] Dashboard operacional.
+- [x] Fleet View mapa + lista + filtros sincronizados.
+- [x] Driver map-first.
+- [x] Chat conversacional con adjuntos.
+- [x] PTT con feedback visual de estado.
+- [x] Admin control center.
+- [x] Gestión de flota/conductores sin patrones MVP de prompt.
+- [x] QA automático de 56 fixtures responsive, axe serio/crítico, teclado y foco (lectura de pantalla manual pendiente).
+- [x] Homologar módulos secundarios (Facturación, Documentos, Incidencias, Empresas) al nuevo patrón visual.
+- [ ] Visual regression tests.
 
 ## Antes de producción
-- [ ] Probar 500+ sockets con GPS cada 3 s.
-- [ ] Prueba prolongada Android con pantalla bloqueada y ahorro de batería.
-- [ ] Conectar almacenamiento S3/Cloudinary para binarios documentales y fotos de chat.
-- [ ] Activar MFA real (TOTP/WebAuthn) para platform_admin.
-- [ ] Configurar credenciales reales de MongoDB, Redis, Mapbox, Mercado Pago, Resend y VAPID.
-- [ ] Pruebas E2E de alta empresa → unidad → ruta → conductor → activación → jornada → tracking → PTT/chat → SOS → cierre.
+- [x] Gate CI de 500 sockets/3 s/60 s/ACK 10 s sobre servidor compilado en Node 20/24.
+- [ ] Certificar 500+ sockets sobre staging equivalente (Atlas local continúa FAIL).
+- [ ] Prueba prolongada Android con pantalla bloqueada, Doze y ahorro de batería.
+- [ ] Validar Cloudinary real para documentos y fotos de chat.
+- [ ] Validar MFA TOTP con secreto de producción y procedimiento de recuperación.
+- [ ] Configurar credenciales reales de MongoDB, Redis, Mapbox, Mercado Pago, Resend, VAPID, Cloudinary y TURN.
+- [x] E2E aislado empresa → trial sintético → unidad → ruta → conductor → activación → jornada → tracking → PTT/chat → SOS → cierre/revocación.
+- [ ] E2E staging con pago/proveedores reales.
+- [ ] QA visual de UX_UI_RC1.md.

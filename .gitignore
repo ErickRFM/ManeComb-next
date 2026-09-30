@@ -2,8 +2,13 @@
 node_modules/
 .env
 .env.local
+.env.*
+!.env.example
+artifacts/
 coverage/
 dist/
 android/
 *.log
 .DS_Store
+.idea/
+*.tsbuildinfo

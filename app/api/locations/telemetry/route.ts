@@ -6,6 +6,7 @@ import { requireDeviceTelemetrySession } from "@/src/lib/device-session";
 import { apiError } from "@/src/lib/http";
 import { recordTelemetry } from "@/src/core/services/telemetry";
 import { requireActiveSubscription } from "@/src/core/services/subscription-access";
+import { emitLocationSnapshot } from "@/src/realtime/runtime";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
       if (input.vehicleId !== device.vehicleId || input.journeyId !== device.journeyId) throw new Error("FORBIDDEN");
       await requireActiveSubscription(device.organizationId);
       const snapshot = await recordTelemetry(device.organizationId, input, { driverId: device.userId });
+      emitLocationSnapshot(device.organizationId,snapshot);
       return NextResponse.json({ snapshot, packetId: input.packetId || null });
     }
 
@@ -27,6 +29,7 @@ export async function POST(request: Request) {
     if (!session.organizationId) throw new Error("FORBIDDEN");
     await requireActiveSubscription(session.organizationId);
     const snapshot = await recordTelemetry(session.organizationId, input, { driverId: session.sub });
+    emitLocationSnapshot(session.organizationId,snapshot);
     return NextResponse.json({ snapshot, packetId: input.packetId || null });
   } catch (error) { return apiError(error); }
 }

@@ -4,7 +4,7 @@ import { requireApiSession } from "@/src/lib/auth";
 import { assertPermission } from "@/src/lib/authorization";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
-import { assertTenantCloudinaryAsset } from "@/src/lib/cloudinary";
+import { verifyTenantCloudinaryAsset } from "@/src/lib/cloudinary";
 import { Document } from "@/src/core/models/Document";
 import { User } from "@/src/core/models/User";
 import { Vehicle } from "@/src/core/models/Vehicle";
@@ -18,6 +18,8 @@ const Input=z.object({
   storagePublicId:z.string().min(1).max(500),
   resourceType:z.string().min(1).max(50),
   bytes:z.number().int().min(1).max(10*1024*1024),
+  mimeType:z.enum(["image/jpeg","image/png","image/webp","application/pdf"]).optional(),
+  fileName:z.string().min(1).max(255).optional(),
   expiresAt:z.coerce.date().optional()
 });
 export const runtime="nodejs";
@@ -39,11 +41,14 @@ export async function POST(request:Request){
     if(session.channel==="company_portal")assertPermission(session,"manage_documents");
     const input=Input.parse(await request.json());
 
-    assertTenantCloudinaryAsset({
+    const verified=await verifyTenantCloudinaryAsset({
       organizationId:session.organizationId,
       kind:"document",
       url:input.url,
-      publicId:input.storagePublicId
+      publicId:input.storagePublicId,
+      resourceType:input.resourceType,
+      bytes:input.bytes,
+      mimeType:input.mimeType
     });
 
     let ownerType=input.ownerType;
@@ -69,6 +74,7 @@ export async function POST(request:Request){
     const document=await Document.create({
       organizationId:session.organizationId,
       ...input,
+      mimeType:verified.mimeType,
       ownerType,
       ownerId
     });

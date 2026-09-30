@@ -11,6 +11,8 @@ const DocumentSchema=new Schema({
   storagePublicId:String,
   resourceType:String,
   bytes:{type:Number,min:0},
+  mimeType:String,
+  fileName:String,
   status:{type:String,enum:["pending","approved","rejected"],default:"pending",index:true},
   expiresAt:{type:Date,index:true},
   reviewedBy:{type:Schema.Types.ObjectId,ref:"User",default:null},

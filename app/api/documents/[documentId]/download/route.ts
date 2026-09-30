@@ -23,8 +23,8 @@ export async function GET(request:Request,{params}:{params:Promise<{documentId:s
       assertPermission(session,"manage_documents");
     }
 
-    const document=await Document.findOne(query).select("url");
+    const document=await Document.findOne(query).select("url storagePublicId resourceType organizationId");
     if(!document)return NextResponse.json({error:"Document not found"},{status:404});
-    return proxyTrustedCloudinaryAsset(document.url);
+    return proxyTrustedCloudinaryAsset(document.url,{organizationId:String(document.organizationId),kind:"document",publicId:document.storagePublicId||"",resourceType:document.resourceType});
   }catch(error){return apiError(error)}
 }

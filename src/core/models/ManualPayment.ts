@@ -13,6 +13,8 @@ const ManualPaymentSchema=new Schema({
   receiptPublicId:{type:String,required:true},
   receiptResourceType:{type:String,required:true},
   receiptBytes:{type:Number,required:true,min:1,max:10*1024*1024},
+  receiptMimeType:String,
+  receiptFileName:String,
   idempotencyKey:{type:String,required:true},
   status:{type:String,enum:["pending","approved","rejected"],default:"pending",index:true},
   reviewedBy:{type:Schema.Types.ObjectId,ref:"User",default:null},
