@@ -11,8 +11,14 @@ export async function connectDb() {
   const uri = getEnv().mongodbUri;
   if (!uri) throw new Error("MONGODB_URI is not configured");
   if (!cache.promise) cache.promise = mongoose.connect(uri, { maxPoolSize: 20, serverSelectionTimeoutMS: 5000 });
-  cache.connection = await cache.promise;
-  return cache.connection;
+  const promise = cache.promise;
+  try {
+    cache.connection = await promise;
+    return cache.connection;
+  } catch (error) {
+    if (cache.promise === promise) cache.promise = null;
+    throw error;
+  }
 }
 
 export async function checkDb() {
