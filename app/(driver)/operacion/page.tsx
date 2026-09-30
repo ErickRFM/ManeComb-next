@@ -8,7 +8,7 @@ export default function OperationPage(){
   return <div className="driver-home">
     <AppVersionGate/>
     <DriverMapHome/>
-    <details className="driver-tools">
+    <details className="driver-tools" id="controles-jornada">
       <summary><span>Controles de jornada y GPS</span><small>Checklist, iniciar/pausar/finalizar y diagnóstico de seguimiento</small></summary>
       <div className="driver-tools-body">
         <JourneyPanel/>
