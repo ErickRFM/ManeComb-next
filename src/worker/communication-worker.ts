@@ -7,6 +7,7 @@ import { OutboxEvent } from "@/src/core/models/OutboxEvent";
 import { PushSubscription } from "@/src/core/models/PushSubscription";
 import { sendTransactionalEmail } from "@/src/lib/email";
 import { getEnv } from "@/src/lib/env";
+import { communicationQueueName } from "@/src/lib/runtime-namespace";
 
 async function flushOutbox() {
   await connectDb();
@@ -74,7 +75,7 @@ export async function startCommunicationWorker() {
     return null;
   }
 
-  const worker = new Worker("manecomb-communication", async (job) => {
+  const worker = new Worker(communicationQueueName(), async (job) => {
     await connectDb();
     const event = await OutboxEvent.findById(job.data.outboxId);
     if (!event) return;

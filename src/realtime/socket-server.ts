@@ -11,6 +11,7 @@ import { registerRadioHandler } from "@/src/realtime/handlers/radio.handler";
 import { registerRtcHandler } from "@/src/realtime/handlers/rtc.handler";
 import { registerPresenceHandler } from "@/src/realtime/handlers/presence.handler";
 import { setRealtimeServer } from "@/src/realtime/runtime";
+import { socketAdapterKey } from "@/src/lib/runtime-namespace";
 
 const SESSION_RECHECK_MS = 30_000;
 
@@ -25,7 +26,7 @@ export async function createRealtimeServer(httpServer: HttpServer) {
   if (redis) {
     const subscriber = redis.duplicate();
     if (subscriber.status === "wait") await subscriber.connect();
-    io.adapter(createAdapter(redis, subscriber));
+    io.adapter(createAdapter(redis, subscriber, { key: socketAdapterKey() }));
   }
 
   io.use(async (socket, next) => {
