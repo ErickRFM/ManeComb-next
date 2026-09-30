@@ -1,4 +1,6 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+
+const { Schema } = mongoose;
 const AuditLogSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: "Organization", default: null, index: true },
   actorUserId: { type: Schema.Types.ObjectId, ref: "User", default: null },
@@ -6,4 +8,4 @@ const AuditLogSchema = new Schema({
   entityType: String, entityId: String, metadata: Schema.Types.Mixed,
   occurredAt: { type: Date, default: Date.now, immutable: true, index: true }
 }, { timestamps: false, strict: true });
-export const AuditLog = models.AuditLog || model("AuditLog", AuditLogSchema);
+export const AuditLog = mongoose.models.AuditLog || mongoose.model("AuditLog", AuditLogSchema);
