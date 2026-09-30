@@ -64,7 +64,7 @@ export function RouteMapDraw({points,stops=[],onChange}:{points:Point[];stops?:S
   }
 
   return <div className="route-map-editor">
-    <div ref={containerRef} className="route-map-canvas" aria-label="Mapa de edición de ruta"/>
+    <div ref={containerRef} className="route-map-canvas" role="region" aria-label="Mapa de edición de ruta"/>
     <div className="route-map-toolbar">
       <div><strong>{points.length} puntos</strong><small>Haz clic sobre el mapa para extender la geometría.</small></div>
       <div><button type="button" className="btn secondary" onClick={()=>onChange(points.slice(0,-1))} disabled={!points.length}>Deshacer</button><button type="button" className="btn secondary" onClick={()=>onChange([])} disabled={!points.length}>Limpiar</button></div>
