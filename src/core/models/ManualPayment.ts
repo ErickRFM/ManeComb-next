@@ -1,4 +1,5 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+const { Schema } = mongoose;
 
 const ManualPaymentSchema=new Schema({
   organizationId:{type:Schema.Types.ObjectId,ref:"Organization",required:true,index:true},
@@ -20,4 +21,4 @@ const ManualPaymentSchema=new Schema({
 
 ManualPaymentSchema.index({organizationId:1,idempotencyKey:1},{unique:true});
 
-export const ManualPayment=models.ManualPayment||model("ManualPayment",ManualPaymentSchema);
+export const ManualPayment=mongoose.models.ManualPayment||mongoose.model("ManualPayment",ManualPaymentSchema);
