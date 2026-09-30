@@ -41,7 +41,7 @@ describe("tenant security and subscription entitlements",()=>{
     await connectDb();
     if(mongoose.connection.name!==expectedDatabase)throw new Error("Integration database mismatch");
     ownedDatabase=expectedDatabase;
-    await mongoose.connection.db?.dropDatabase();
+    await Promise.all(Object.values(mongoose.models).map(model=>model.init()));
 
     const [orgA,orgB]=await Organization.create([
       {name:"Empresa A",slug:"empresa-a",planCode:"fleet-2"},

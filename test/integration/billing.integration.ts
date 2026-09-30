@@ -44,8 +44,10 @@ beforeAll(async () => {
   await connectDb();
   if (mongoose.connection.name !== expected) throw new Error("Billing QA database mismatch");
   ownedDatabase = expected;
-  await mongoose.connection.db?.dropDatabase();
-  await Promise.all([CheckoutIdempotency.init(), WebhookEvent.init(), Subscription.init(), ManualPayment.init()]);
+  // On a fresh replica set, connect starts autoCreate/index tasks for imported
+  // models. Dropping the database here races those tasks (fast CI reproduces it).
+  // Unique fixtures need no initial drop; wait for all schemas before transactions.
+  await Promise.all(Object.values(mongoose.models).map(model=>model.init()));
 });
 beforeEach(async () => {
   faults.audit = false;

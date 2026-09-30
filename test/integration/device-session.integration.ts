@@ -13,7 +13,7 @@ let ownedDatabase="";let user:any;let vehicle:any;let journey:any;let token="";l
 beforeAll(async()=>{
   const database=requireIntegrationDatabase(process.env.MONGODB_URI);await connectDb();
   if(mongoose.connection.name!==database)throw new Error("Device QA database mismatch");
-  ownedDatabase=database;await mongoose.connection.db?.dropDatabase();
+  ownedDatabase=database;await Promise.all(Object.values(mongoose.models).map(model=>model.init()));
 });
 beforeEach(async()=>{
   const org=await Organization.create({name:"Device QA",slug:randomUUID()});
