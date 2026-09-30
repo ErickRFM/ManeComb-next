@@ -44,6 +44,8 @@ export function DocumentManager(){
         storagePublicId:uploaded.publicId,
         resourceType:uploaded.resourceType,
         bytes:uploaded.bytes,
+        mimeType:uploaded.mimeType,
+        fileName:uploaded.fileName,
         expiresAt:data.get("expiresAt")?String(data.get("expiresAt")):undefined
       };
       const response=await fetch("/api/documents",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});

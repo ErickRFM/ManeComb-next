@@ -16,6 +16,8 @@ const Input=z.object({
   receiptPublicId:z.string().min(1).max(500),
   receiptResourceType:z.string().min(1).max(50),
   receiptBytes:z.number().int().min(1).max(10*1024*1024),
+  receiptMimeType:z.enum(["image/jpeg","image/png","image/webp","application/pdf"]).optional(),
+  receiptFileName:z.string().min(1).max(255).optional(),
   idempotencyKey:z.string().min(8).max(200).optional()
 });
 export const runtime="nodejs";
@@ -43,7 +45,8 @@ export async function POST(request:Request){
       organizationId:session.organizationId,
       kind:"payment",
       url:input.receiptUrl,
-      publicId:input.receiptPublicId
+      publicId:input.receiptPublicId,
+      resourceType:input.receiptResourceType
     });
 
     await connectDb();
@@ -61,6 +64,8 @@ export async function POST(request:Request){
         receiptPublicId:input.receiptPublicId,
         receiptResourceType:input.receiptResourceType,
         receiptBytes:input.receiptBytes,
+        receiptMimeType:input.receiptMimeType,
+        receiptFileName:input.receiptFileName,
         idempotencyKey:key
       }},
       {upsert:true,new:true}

@@ -11,6 +11,12 @@ import { PATCH as patchVehicle } from "@/app/api/vehicles/[vehicleId]/route";
 import { requireIntegrationDatabase } from "../support/integration-database";
 import { enqueueOutboxEvent } from "@/src/core/services/outbox";
 import { OutboxEvent } from "@/src/core/models/OutboxEvent";
+import { PUT as assignJourney } from "@/app/api/journeys/route";
+import { Route } from "@/src/core/models/Route";
+import { Journey } from "@/src/core/models/Journey";
+import { AuditLog } from "@/src/core/models/AuditLog";
+import { Message } from "@/src/core/models/Message";
+import { GET as downloadChatAttachment } from "@/app/api/chat/messages/[messageId]/attachment/route";
 
 function jsonRequest(method:string,token:string,body?:unknown){
   return new Request("http://localhost/api/vehicles",{
@@ -143,5 +149,28 @@ describe("tenant security and subscription entitlements",()=>{
     const saved=await OutboxEvent.findById(id);
     expect(saved!.status).toBe("processed");
     expect(saved!.payload.body).toBe("canonical");
+  });
+
+  it("rejects another tenant's route and audits a valid assignment",async()=>{
+    const owner=await User.findOne({email:"owner-a@example.test"});
+    const other=await User.findOne({email:"owner-b@example.test"});
+    const driver=await User.create({organizationId:owner!.organizationId,name:"QA Driver",email:"qa-driver@example.test",passwordHash:"x",roles:["driver"],channel:"mobile_operations",active:true});
+    const vehicle=await Vehicle.findOne({organizationId:owner!.organizationId,status:"active"});
+    const route=await Route.create({organizationId:other!.organizationId,name:"Other tenant route",status:"active"});
+    const input={driverId:String(driver._id),vehicleId:String(vehicle!._id),routeId:String(route._id)};
+    const denied=await assignJourney(jsonRequest("PUT",ownerToken,input));
+    expect(denied.status).toBe(400);
+    expect(await Journey.countDocuments({driverId:driver._id})).toBe(0);
+    await Route.updateOne({_id:route._id},{$set:{organizationId:owner!.organizationId}});
+    const allowed=await assignJourney(jsonRequest("PUT",ownerToken,input));
+    expect(allowed.status).toBe(201);
+    expect(await AuditLog.countDocuments({action:"journey.assign",organizationId:owner!.organizationId})).toBe(1);
+  });
+  it("denies a third portal user access to a private chat image",async()=>{
+    const driver=await User.findOne({email:"qa-driver@example.test"});
+    const message=await Message.create({organizationId:driver!.organizationId,senderUserId:driver!._id,recipientUserId:viewerId,channelId:"private",kind:"image",clientMessageId:"image-private-123",attachment:{url:"https://res.cloudinary.com/qa/image/authenticated/v1/manecomb/qa/chat/photo.jpg",publicId:"manecomb/qa/chat/photo",resourceType:"image",bytes:1024,mimeType:"image/jpeg",fileName:"photo.jpg"}});
+    const params=Promise.resolve({messageId:String(message._id)});
+    expect((await downloadChatAttachment(jsonRequest("GET",ownerToken),{params})).status).toBe(403);
+    expect((await downloadChatAttachment(jsonRequest("GET",otherOwnerToken),{params})).status).toBe(404);
   });
 });

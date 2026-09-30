@@ -12,6 +12,8 @@ import { Vehicle } from "@/src/core/models/Vehicle";
 import { enqueueOutboxEvent } from "@/src/core/services/outbox";
 import { requireActiveSubscription } from "@/src/core/services/subscription-access";
 import { emitToOrganization } from "@/src/realtime/runtime";
+import { Route } from "@/src/core/models/Route";
+import { writeAudit } from "@/src/core/services/audit";
 
 const ChecklistSchema = z.object({
   brakes: z.boolean(), tires: z.boolean(), lights: z.boolean(), fuel: z.boolean(),
@@ -67,6 +69,7 @@ export async function PUT(request: Request) {
     if (!driver) throw new Error("Driver not found");
     if (!vehicle) throw new Error("Vehicle not found");
     if (active) throw new Error("Driver or vehicle already has an active journey");
+    if(input.routeId&&!await Route.exists({_id:input.routeId,organizationId:session.organizationId,status:{$ne:"archived"}}))throw new Error("Route not found");
 
     const journey = await Journey.create({
       organizationId: session.organizationId,
@@ -82,6 +85,7 @@ export async function PUT(request: Request) {
     );
 
     emitToOrganization(session.organizationId, "journey:update", journey.toObject());
+    await writeAudit({organizationId:session.organizationId,actorUserId:session.sub,action:"journey.assign",entityType:"Journey",entityId:String(journey._id),metadata:{driverId:input.driverId,vehicleId:input.vehicleId,routeId:input.routeId||null}});
     await enqueueOutboxEvent("push.send", {
       userId: input.driverId,
       title: "Nueva jornada asignada",

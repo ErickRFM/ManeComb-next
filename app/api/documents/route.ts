@@ -18,6 +18,8 @@ const Input=z.object({
   storagePublicId:z.string().min(1).max(500),
   resourceType:z.string().min(1).max(50),
   bytes:z.number().int().min(1).max(10*1024*1024),
+  mimeType:z.enum(["image/jpeg","image/png","image/webp","application/pdf"]).optional(),
+  fileName:z.string().min(1).max(255).optional(),
   expiresAt:z.coerce.date().optional()
 });
 export const runtime="nodejs";
@@ -43,7 +45,8 @@ export async function POST(request:Request){
       organizationId:session.organizationId,
       kind:"document",
       url:input.url,
-      publicId:input.storagePublicId
+      publicId:input.storagePublicId,
+      resourceType:input.resourceType
     });
 
     let ownerType=input.ownerType;

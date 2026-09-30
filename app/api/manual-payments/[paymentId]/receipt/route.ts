@@ -21,8 +21,8 @@ export async function GET(request:Request,{params}:{params:Promise<{paymentId:st
       query.organizationId=session.organizationId;
     }
 
-    const payment=await ManualPayment.findOne(query).select("receiptUrl");
+    const payment=await ManualPayment.findOne(query).select("receiptUrl receiptPublicId receiptResourceType organizationId");
     if(!payment)return NextResponse.json({error:"Payment not found"},{status:404});
-    return proxyTrustedCloudinaryAsset(payment.receiptUrl);
+    return proxyTrustedCloudinaryAsset(payment.receiptUrl,{organizationId:String(payment.organizationId),kind:"payment",publicId:payment.receiptPublicId||"",resourceType:payment.receiptResourceType});
   }catch(error){return apiError(error)}
 }

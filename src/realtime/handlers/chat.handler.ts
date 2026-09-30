@@ -6,6 +6,7 @@ import { connectDb } from "@/src/lib/db";
 import { Message } from "@/src/core/models/Message";
 import { User } from "@/src/core/models/User";
 import { enqueueOutboxEvent } from "@/src/core/services/outbox";
+import { assertTenantCloudinaryAsset } from "@/src/lib/cloudinary";
 
 function chatRoom(organizationId: string, channelId: string) {
   return "org:" + organizationId + ":chat:" + channelId;
@@ -42,6 +43,7 @@ export function registerChatHandler(io: Server, socket: Socket) {
       const session = socket.data.session;
       if (!session?.organizationId || !hasPermission(session.roles, "access_chat")) throw new Error("FORBIDDEN");
       const input = ChatMessageSchema.parse(payload);
+      if(input.attachment)assertTenantCloudinaryAsset({organizationId:session.organizationId,kind:"chat",...input.attachment});
       await connectDb();
 
       if (input.recipientUserId) {
@@ -63,6 +65,7 @@ export function registerChatHandler(io: Server, socket: Socket) {
             channelId: input.channelId,
             kind: input.kind,
             body: input.body,
+            attachment:input.attachment||null,
             clientMessageId: input.clientMessageId
           }
         },

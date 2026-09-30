@@ -35,6 +35,8 @@ export function ManualPayments(){
         receiptPublicId:uploaded.publicId,
         receiptResourceType:uploaded.resourceType,
         receiptBytes:uploaded.bytes,
+        receiptMimeType:uploaded.mimeType,
+        receiptFileName:uploaded.fileName,
         idempotencyKey:crypto.randomUUID()
       })});
       const d=await r.json();
