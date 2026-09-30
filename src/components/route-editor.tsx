@@ -114,7 +114,7 @@ export function RouteEditor({routeId}:{routeId:string}){
                   <label>Radio<input className="input" type="number" min="10" max="1000" value={stop.radiusM} onChange={e=>updateStop(index,{radiusM:Number(e.target.value)})}/></label>
                 </div>
               </div>
-              <div className="route-stop-actions"><button type="button" onClick={()=>moveStop(index,-1)} disabled={index===0}>↑</button><button type="button" onClick={()=>moveStop(index,1)} disabled={index===route.stops.length-1}>↓</button><button type="button" className="danger" onClick={()=>removeStop(index)}>×</button></div>
+              <div className="route-stop-actions"><button type="button" onClick={()=>moveStop(index,-1)} disabled={index===0} aria-label={"Subir parada "+(index+1)}>↑</button><button type="button" onClick={()=>moveStop(index,1)} disabled={index===route.stops.length-1} aria-label={"Bajar parada "+(index+1)}>↓</button><button type="button" className="danger" onClick={()=>removeStop(index)} aria-label={"Eliminar parada "+(index+1)}>×</button></div>
             </article>)}
             {!route.stops.length?<div className="empty-state compact"><strong>Sin paradas</strong><span>Dibuja la geometría y agrega paradas desde el último punto trazado.</span></div>:null}
           </div>
