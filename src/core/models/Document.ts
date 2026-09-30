@@ -1,4 +1,5 @@
-import { Schema, model, models } from "mongoose";
+import mongoose from "mongoose";
+const { Schema } = mongoose;
 
 const DocumentSchema=new Schema({
   organizationId:{type:Schema.Types.ObjectId,ref:"Organization",required:true,index:true},
@@ -16,4 +17,4 @@ const DocumentSchema=new Schema({
   rejectionReason:String
 },{timestamps:true});
 
-export const Document=models.Document||model("Document",DocumentSchema);
+export const Document=mongoose.models.Document||mongoose.model("Document",DocumentSchema);
