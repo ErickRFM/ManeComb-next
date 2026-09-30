@@ -48,8 +48,8 @@ export function AdminShell({children}:{children:React.ReactNode}){
     </aside>
 
     {mobileOpen?<button className="mobile-scrim" aria-label="Cerrar menú" onClick={()=>setMobileOpen(false)}/>:null}
-    <aside className={"mobile-drawer "+(mobileOpen?"open":"")}>
-      <div className="mobile-drawer-head"><strong>Admin Global</strong><button className="icon-action" onClick={()=>setMobileOpen(false)}>×</button></div>
+    <aside className={"mobile-drawer "+(mobileOpen?"open":"")} aria-label="Menú administrativo">
+      <div className="mobile-drawer-head"><strong>Admin Global</strong><button className="icon-action" onClick={()=>setMobileOpen(false)} aria-label="Cerrar menú">×</button></div>
       {items.map(item=><Link key={item.href} href={item.href} className={"mobile-drawer-link "+(pathname.startsWith(item.href)?"active":"")}><span>{item.key}</span>{item.label}</Link>)}
     </aside>
 
@@ -58,7 +58,7 @@ export function AdminShell({children}:{children:React.ReactNode}){
         <div className="topbar-left"><button className="mobile-menu-button" onClick={()=>setMobileOpen(true)} aria-label="Abrir menú">☰</button><div><span className="workspace-context">Admin /</span> <strong>{current}</strong></div></div>
         <div className="topbar-actions"><span className="admin-mode-pill">MODO PLATAFORMA</span><ThemeToggle/></div>
       </header>
-      <div className="workspace-content">{children}</div>
+      <main id="main-content" className="workspace-content" tabIndex={-1}>{children}</main>
     </div>
   </div>;
 }
