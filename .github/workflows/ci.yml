@@ -62,3 +62,63 @@ jobs:
       - run: npm test
       - run: npm run test:integration
       - run: npm run build
+
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: validate
+    env:
+      NODE_ENV: production
+      APP_URL: https://staging.example.invalid
+      AUTH_SECRET: ci-production-auth-secret-abcdefghijklmnopqrstuvwxyz
+      MFA_ENCRYPTION_KEY: ci-production-mfa-secret-abcdefghijklmnopqrstuvwxyz
+      MONGODB_URI: mongodb://mongo.invalid:27017/manecomb
+      REDIS_URL: redis://redis.invalid:6379
+      REDIS_NAMESPACE: manecomb-next-ci
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: pk.ci-placeholder
+      RESEND_API_KEY: re_ci_placeholder
+      EMAIL_FROM: ManeComb <no-reply@manecomb.com>
+      MERCADO_PAGO_WEBHOOK_SECRET: mp_webhook_ci_placeholder
+      MERCADOPAGO_ACCESS_TOKEN: TEST-ci-placeholder
+      NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY: vapid_public_ci_placeholder
+      WEB_PUSH_VAPID_PRIVATE_KEY: vapid_private_ci_placeholder
+      WEB_PUSH_SUBJECT: mailto:soporte@manecomb.com
+      CLOUDINARY_CLOUD_NAME: manecomb-ci
+      CLOUDINARY_API_KEY: cloudinary_ci
+      CLOUDINARY_API_SECRET: cloudinary_secret_ci
+      RTC_STUN_URLS: stun:stun.l.google.com:19302
+      RTC_TURN_URLS: turn:turn.example.invalid:3478
+      RTC_TURN_SECRET: turn_ci_secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate production environment contract
+        run: |
+          npm run deploy:check
+          npm run deploy:check:worker
+      - name: Build production Docker image
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN="$NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN" \
+            --build-arg NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY="$NEXT_PUBLIC_WEB_PUSH_VAPID_PUBLIC_KEY" \
+            -t manecomb-next:ci .
+      - name: Smoke production container
+        run: |
+          docker run -d --name manecomb-next-ci -p 3001:3000 \
+            -e PORT=3000 \
+            -e VISUAL_QA=1 \
+            -e AUTH_SECRET="$AUTH_SECRET" \
+            -e MFA_ENCRYPTION_KEY="$MFA_ENCRYPTION_KEY" \
+            manecomb-next:ci
+          trap 'docker rm -f manecomb-next-ci >/dev/null 2>&1 || true' EXIT
+          for i in {1..45}; do
+            if curl -fsS http://127.0.0.1:3001/api/health/live >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs manecomb-next-ci
+          exit 1
