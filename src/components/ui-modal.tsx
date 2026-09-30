@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useLayoutEffect, useId, useRef } from "react";
 
 const focusableSelector='button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
@@ -11,14 +11,14 @@ export function UiModal({open,title,description,onClose,children}:{open:boolean;
   const titleId=useId();
   const detailId=useId();
 
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     if(!open)return;
     const previousFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
     const previousOverflow=document.body.style.overflow;
     document.body.style.overflow="hidden";
 
     const focusables=()=>Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector)||[]);
-    const timer=window.setTimeout(()=>focusables()[0]?.focus(),0);
+    focusables()[0]?.focus();
 
     const handler=(event:KeyboardEvent)=>{
       if(event.key==="Escape"){event.preventDefault();closeRef.current();return}
@@ -32,7 +32,6 @@ export function UiModal({open,title,description,onClose,children}:{open:boolean;
 
     window.addEventListener("keydown",handler);
     return()=>{
-      window.clearTimeout(timer);
       window.removeEventListener("keydown",handler);
       document.body.style.overflow=previousOverflow;
       previousFocus?.focus();

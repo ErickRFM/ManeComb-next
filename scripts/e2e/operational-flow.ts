@@ -182,6 +182,9 @@ export async function runOperationalFlow() {
 
     console.log('[e2e] verify peer chat delivery, history and idempotency');
     const [driverSocket, ownerSocket] = await Promise.all([connect(driverToken), connect(ownerToken)]);
+    const nativeLive={...second,packetId:randomUUID(),recordedAt:new Date().toISOString()};
+    await verifyDelivery(ownerSocket,'location:snapshot',data=>data.vehicleId===vehicleId&&data.recordedAt===nativeLive.recordedAt,
+      ()=>request('/api/locations/telemetry',{method:'POST',token:deviceToken,body:nativeLive}));
     await Promise.all([ack(driverSocket, 'chat:join', { channelId: 'dispatch' }), ack(ownerSocket, 'chat:join', { channelId: 'dispatch' })]);
     const chat = { channelId: 'dispatch', clientMessageId: 'e2e-' + stamp, kind: 'text', body: 'Mensaje E2E ' + stamp };
     const message = await verifyDelivery(ownerSocket, 'chat:message', data => data.clientMessageId === chat.clientMessageId, () => ack(driverSocket, 'chat:message', chat));
