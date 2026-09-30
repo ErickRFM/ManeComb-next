@@ -266,7 +266,7 @@ export function LiveMap(){
         </div>
       </aside>
 
-      <div ref={container} className="fleet-map-canvas" aria-label="Mapa de monitoreo en vivo"/>
+      <div ref={container} className="fleet-map-canvas" role="region" aria-label="Mapa de monitoreo en vivo"/>
 
       {selected?<aside className="unit-detail-panel" aria-label={"Detalle de "+selected.economicNumber}>
         <div className="unit-detail-head"><div><span className={"unit-status-dot "+fleetMarkerState(selected)}/><div><strong>{selected.economicNumber}</strong><small>{selected.routeName||"Sin ruta asignada"}</small></div></div><button className="icon-action" onClick={()=>setSelectedId(null)} aria-label="Cerrar detalle">×</button></div>
