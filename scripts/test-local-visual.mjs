@@ -12,7 +12,7 @@ try{
   let ready=false;const deadline=Date.now()+180_000;
   while(!ready&&server.exitCode===null&&Date.now()<deadline){try{ready=(await fetch(baseUrl+"/visual-qa/portal",{signal:AbortSignal.timeout(10_000)})).ok}catch{}if(!ready)await new Promise(resolve=>setTimeout(resolve,500))}
   if(!ready)throw new Error("Visual fixture server did not become ready");
-  const qa=spawn(process.execPath,["scripts/visual-qa.mjs"],{cwd:root,env,windowsHide:true,stdio:"inherit"});
+  const qa=spawn(process.execPath,[process.argv.includes("--functional")?"scripts/functional-ui-qa.mjs":"scripts/visual-qa.mjs"],{cwd:root,env,windowsHide:true,stdio:"inherit"});
   process.exitCode=await new Promise(resolve=>{qa.on("error",()=>resolve(1));qa.on("exit",code=>resolve(code??1))});
 }finally{
   if(server.exitCode===null)await new Promise(resolve=>{const timer=setTimeout(()=>server.kill("SIGKILL"),5000);server.once("close",()=>{clearTimeout(timer);resolve()});server.kill("SIGTERM")});

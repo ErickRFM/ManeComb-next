@@ -1,5 +1,6 @@
 import type { CapacitorConfig } from "@capacitor/cli";
-const serverUrl=process.env.CAPACITOR_SERVER_URL;
+import {nativeServerUrl} from "./src/lib/native-server-url";
+const serverUrl=nativeServerUrl(process.env.CAPACITOR_SERVER_URL);
 const config:CapacitorConfig={
   appId:"com.manecomb.app",
   appName:"ManeComb",
