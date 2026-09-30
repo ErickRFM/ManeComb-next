@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiSession } from "@/src/lib/auth";
@@ -52,7 +52,7 @@ export async function POST(request:Request){
     });
 
     await connectDb();
-    const key=input.idempotencyKey||randomUUID();
+    const key=input.idempotencyKey||createHash("sha256").update(session.organizationId+"|"+plan.code+"|"+input.receiptPublicId).digest("hex");
     const payment=await ManualPayment.findOneAndUpdate(
       {organizationId:session.organizationId,idempotencyKey:key},
       {$setOnInsert:{

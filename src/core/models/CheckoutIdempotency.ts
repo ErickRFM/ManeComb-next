@@ -9,9 +9,11 @@ const CheckoutIdempotencySchema = new Schema({
   provider: { type: String, enum: ["mercadopago"], default: "mercadopago" },
   providerSubscriptionId: String,
   initPoint: String,
+  activeIntent: Boolean,
   status: { type: String, enum: ["created","pending","active","failed","cancelled"], default: "created", index: true }
 }, { timestamps: true });
 
 CheckoutIdempotencySchema.index({ organizationId: 1, key: 1 }, { unique: true });
+CheckoutIdempotencySchema.index({ organizationId: 1, planCode: 1 }, { unique: true, partialFilterExpression: { activeIntent: true } });
 
 export const CheckoutIdempotency = mongoose.models.CheckoutIdempotency || mongoose.model("CheckoutIdempotency", CheckoutIdempotencySchema);

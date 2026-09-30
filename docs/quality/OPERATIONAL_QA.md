@@ -18,12 +18,10 @@ Cleanup stops child processes before dropping Mongo. The wrapper requires the ex
 
 ## Real Redis and 500 connection load
 
-After PR #5's `src/lib/runtime-namespace.ts` is integrated, opt into Redis with a generated `qa_<20 hex digits>` namespace:
+The runtime always requires real Redis and reserves a generated `qa_<20 hex digits>` namespace:
 
 ```powershell
-$env:QA_REDIS='1'
 node --env-file=.env.local scripts/test-local-operations.mjs --load
-Remove-Item Env:QA_REDIS
 ```
 
 The wrapper reserves a Redis ownership key, preserves the configured Redis URL, and sets `REDIS_NAMESPACE` for the child app. Cleanup scans/deletes only keys beginning with its exact generated namespace and requires its ownership token. Socket.IO adapter pub/sub channels disappear when the child connections close. The wrapper never starts the real communication worker or touches another namespace.

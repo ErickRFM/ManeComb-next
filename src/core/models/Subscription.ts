@@ -8,6 +8,11 @@ const SubscriptionSchema=new Schema({
   provider:{type:String,enum:["mercadopago","manual"],default:"mercadopago"},
   providerSubscriptionId:String,
   currentPeriodEnd:Date,
+  nextPaymentAt:Date,
+  providerVersion:Number,
+  providerLastModifiedAt:Date,
+  lastPaymentAt:Date,
+  reconciliationNeeded:{type:Boolean,default:false},
   vehicleLimit:{type:Number,min:1}
 },{timestamps:true});
 export const Subscription=mongoose.models.Subscription||mongoose.model("Subscription",SubscriptionSchema);
