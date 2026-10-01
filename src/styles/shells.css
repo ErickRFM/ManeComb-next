@@ -172,3 +172,19 @@
 }
 
 
+
+/* Official brand placement */
+.product-brand{max-width:100%;align-items:center}
+.sidebar-logo{max-width:112px}
+.brand-copy{align-content:center}
+.brand-copy small{margin-top:0}
+.product-shell.is-collapsed .sidebar-logo{--brand-logo-width:54px!important}
+.product-shell.is-collapsed .product-brand{width:100%}
+.driver-brand .brand-logo{max-width:118px}
+.driver-brand>span:last-child{display:grid}
+.driver-brand>span:last-child small{font-size:10px;color:var(--muted);margin-top:2px}
+.mobile-drawer-head .brand-logo{max-width:116px}
+@media(max-width:520px){
+  .driver-brand .brand-logo{--brand-logo-width:102px!important}
+  .driver-connection{display:none}
+}

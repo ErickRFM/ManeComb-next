@@ -6,6 +6,7 @@ import { useCallback,useEffect, useMemo,useRef, useState } from "react";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import {Icon,type IconName} from "@/src/components/ui/icon";
 import {SignOutButton} from "@/src/components/sign-out-button";
+import {BrandLogo} from "@/src/components/brand-logo";
 import {useDrawerFocus} from "@/src/hooks/useDrawerFocus";
 
 const items=[
@@ -27,7 +28,7 @@ export function AdminShell({children}:{children:React.ReactNode}){
   return <div className="product-shell admin-product-shell">
     <aside className="product-sidebar admin-sidebar" aria-label="Administración global">
       <div className="sidebar-brand-row">
-        <Link href="/admin/salud" className="product-brand"><span className="brand-mark">MC</span><span className="brand-copy"><strong>ManeComb</strong><small>Control global</small></span></Link>
+        <Link href="/admin/salud" className="product-brand" aria-label="ManeComb Administración"><BrandLogo size="sm" className="sidebar-logo"/><span className="brand-copy"><small>Control global</small></span></Link>
       </div>
       <div className="admin-scope"><span>PLATAFORMA</span><strong>Administración global</strong></div>
       <nav className="product-nav">
@@ -47,7 +48,7 @@ export function AdminShell({children}:{children:React.ReactNode}){
 
     {mobileOpen?<button className="mobile-scrim" aria-label="Cerrar menú" onClick={()=>setMobileOpen(false)}/>:null}
     {mobileOpen?<aside ref={drawer} className="mobile-drawer open" role="dialog" aria-modal="true" aria-label="Menú administrativo">
-      <div className="mobile-drawer-head"><strong>Admin Global</strong><button type="button" className="icon-action" onClick={()=>setMobileOpen(false)} aria-label="Cerrar menú">×</button></div>
+      <div className="mobile-drawer-head"><BrandLogo size="sm"/><strong>Admin Global</strong><button type="button" className="icon-action" onClick={()=>setMobileOpen(false)} aria-label="Cerrar menú">×</button></div>
       {items.map(item=><Link key={item.href} href={item.href} className={"mobile-drawer-link "+(pathname.startsWith(item.href)?"active":"")} aria-current={pathname.startsWith(item.href)?"page":undefined}><span><Icon name={item.key as IconName}/></span>{item.label}</Link>)}
       <SignOutButton className="mobile-drawer-link danger"/>
     </aside>:null}
