@@ -57,6 +57,25 @@ Render Communication Worker
 
 The Vercel preview URL must not be treated as the authoritative production runtime for login/realtime while Redis, BullMQ, Socket.IO and the communication worker are part of the application contract.
 
+## Live deployment evidence checked on 2026-10-01
+
+Render currently exposes only the legacy `ErickRFM/ManeComb` services (`ManeComb` and `manecomb-backend-sandbox`). No `ManeComb-next` web, worker or dedicated Redis resource is provisioned in the connected Render workspace yet.
+
+The legacy production backend was checked through Render logs and its communication runtime reported:
+
+- `emailEnabled: true`
+- `emailDryRun: false`
+- `providerConfigured: true`
+- `queueMode: bullmq`
+- `queueConnected: true`
+- `queueFunctional: true`
+- `workerStarted: true`
+- `idempotencyIndexVerified: true`
+- `durableOutbox: true`
+- `productionDurability: true`
+
+The same Render service also logged successful Resend deliveries for `WELCOME`, `ORDER_CREATED` and `PASSWORD_RESET`. This confirms the legacy ManeComb backend still has a live, functional mail path. It does **not** certify ManeComb Next because the Next Render topology has not been provisioned.
+
 ## Release gates still requiring live infrastructure
 
 These are not code-only checks and must be performed against the deployed environment:
