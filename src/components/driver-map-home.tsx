@@ -30,11 +30,11 @@ export function DriverMapHome(){
 
   useEffect(()=>{
     let mounted=true;
-    const refresh=()=>{const id=++loadId.current;void fetch("/api/operation/navigation",{cache:"no-store"}).then(async response=>{
+    const refresh=()=>{const id=++loadId.current,requestStart=recent.current;void fetch("/api/operation/navigation",{cache:"no-store"}).then(async response=>{
       const body=await response.json();
       if(!response.ok)throw new Error(body.error||"No se pudo cargar la operación");
       if(mounted&&id===loadId.current){
-        const snapshots=mergeSnapshots(body.snapshot?[body.snapshot]:[],recent.current);
+        const snapshots=mergeSnapshots(recent.current,body.snapshot?[body.snapshot]:[],requestStart).slice(-20);recent.current=snapshots;
         setData({...body,snapshot:snapshots.find(item=>item.vehicleId===body.journey?.vehicleId)||null});setError("");
       }
     }).catch(()=>{if(mounted&&id===loadId.current)setError("No se pudo cargar la operación. Revisa tu conexión o tu acceso.")})};

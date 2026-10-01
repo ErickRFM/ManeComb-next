@@ -79,12 +79,15 @@ try{
     await page.addInitScript(()=>{
       window.__micStops=0;
       navigator.mediaDevices.getUserMedia=async()=>({getTracks:()=>[{stop:()=>window.__micStops++}]});
-      window.MediaRecorder=class {static isTypeSupported(){return true}state="inactive";start(){this.state="recording"}stop(){this.state="inactive";this.onstop?.()}};
+      window.MediaRecorder=class {static isTypeSupported(){return true}state="inactive";start(){this.state="recording"}stop(){this.state="inactive";queueMicrotask(()=>{this.ondataavailable?.({data:new Blob(["final-ptt-audio"],{type:"audio/webm"})});this.onstop?.()})}};
     });
     await page.goto(base+"/operacion/radio");await page.getByText("Listo para transmitir",{exact:true}).waitFor();
     const ptt=page.getByRole("button",{name:/PULSA Y HABLA/});await ptt.focus();await page.keyboard.down("Space");await page.getByText("Transmitiendo",{exact:true}).waitFor();
+    events.length=0;
     await page.evaluate(()=>window.dispatchEvent(new Event("blur")));
-    await page.waitForFunction(()=>window.__micStops>0,{},{timeout:3000});assert.ok(events.includes("radio:release-floor"));await page.keyboard.up("Space");await page.context().close();
+    await page.waitForFunction(()=>window.__micStops>0,{},{timeout:3000});await page.waitForTimeout(150);
+    assert.ok(events.includes("radio:audio"),"Normal PTT release must flush the final sub-300ms audio chunk");
+    assert.ok(events.indexOf("radio:audio")<events.indexOf("radio:release-floor"),"Flush audio before surrendering the floor");await page.keyboard.up("Space");await page.context().close();
   });
   await run("RTC selects real users and stops late microphone after hangup",async()=>{
     const page=await pageFor("mobile_operations");await realtime(page);

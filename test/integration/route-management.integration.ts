@@ -5,6 +5,8 @@ import {createSessionForUser} from "@/src/lib/auth";
 import {Organization} from "@/src/core/models/Organization";
 import {User} from "@/src/core/models/User";
 import {Route} from "@/src/core/models/Route";
+import {Session} from "@/src/core/models/Session";
+import {DeviceSession} from "@/src/core/models/DeviceSession";
 import {POST} from "@/app/api/routes/route";
 import {GET,PATCH} from "@/app/api/routes/[routeId]/route";
 import {PATCH as editDriver} from "@/app/api/drivers/[driverId]/route";
@@ -41,8 +43,19 @@ it("rejects invalid geometry, viewer writes and another tenant's route",async()=
   expect((await GET(request("GET",otherOwner),{params:Promise.resolve({routeId})})).status).toBe(404);
 });
 it("edits driver identity without changing activation and denies foreign updates",async()=>{
+  const original=await User.findById(driverId);
+  const credential=await createSessionForUser(original);
+  const device=await DeviceSession.create({tokenHash:"driver-edit-qa",organizationId:original.organizationId,userId:driverId,vehicleId:new mongoose.Types.ObjectId(),journeyId:new mongoose.Types.ObjectId(),expiresAt:new Date(Date.now()+3600000)});
   const params=Promise.resolve({driverId});
   const changed=await editDriver(request("PATCH",owner,{name:"Driver corregido",email:"driver-new@example.test"}),{params});expect(changed.status).toBe(200);
   const driver=await User.findById(driverId);expect(driver.name).toBe("Driver corregido");expect(driver.email).toBe("driver-new@example.test");expect(driver.active).toBe(true);expect(driver.roles).toEqual(["driver"]);
+  expect((await Session.findOne({userId:driverId})).revokedAt).toBeNull();
+  expect((await DeviceSession.findById(device._id)).revokedAt).toBeNull();
+  expect(credential.token).toBeTruthy();
   expect((await editDriver(request("PATCH",otherOwner,{name:"Foreign"}),{params})).status).toBe(404);
+});
+it("explicit driver deactivation still revokes web and device credentials",async()=>{
+  expect((await editDriver(request("PATCH",owner,{active:false}),{params:Promise.resolve({driverId})})).status).toBe(200);
+  expect((await Session.findOne({userId:driverId})).revokedAt).toBeInstanceOf(Date);
+  expect((await DeviceSession.findOne({userId:driverId})).revokedAt).toBeInstanceOf(Date);
 });

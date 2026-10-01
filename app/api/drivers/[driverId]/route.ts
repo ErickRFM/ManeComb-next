@@ -22,7 +22,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{driverId:s
     await connectDb();
     const driver=await User.findOneAndUpdate({_id:driverId,organizationId:session.organizationId,channel:"mobile_operations"},{$set:{...input,...(input.email?{email:input.email.toLowerCase()}:{})}},{new:true,runValidators:true}).select("_id name email active");
     if(!driver)return NextResponse.json({error:"Driver not found"},{status:404});
-    if(!input.active){
+    if(input.active===false){
       await Promise.all([
         DeviceSession.updateMany({organizationId:session.organizationId,userId:driverId,revokedAt:null},{$set:{revokedAt:new Date()}}),
         Session.updateMany({userId:driverId,revokedAt:null},{$set:{revokedAt:new Date()}})

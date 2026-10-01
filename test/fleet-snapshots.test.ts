@@ -16,3 +16,13 @@ it("does not describe zero reporting units as stable telemetry",()=>{
   expect(gpsStatusText(2,1)).toBe("1 requieren atención");
   expect(gpsStatusText(2,0)).toBe("Telemetría estable");
 });
+it("keeps a sweeper freshness update received while HTTP was in flight",()=>{
+  const live={...unit("a","2026-09-30T12:00:00Z"),freshness:"live" as const};
+  const lost={...live,freshness:"lost" as const};
+  expect(mergeSnapshots([lost],[live],[live])[0]).toBe(lost);
+});
+it("accepts fresh HTTP state over equal-time realtime cached before the request",()=>{
+  const live={...unit("a","2026-09-30T12:00:00Z"),freshness:"live" as const};
+  const lost={...live,freshness:"lost" as const};
+  expect(mergeSnapshots([live],[lost],[live])[0]).toBe(lost);
+});

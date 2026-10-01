@@ -21,7 +21,7 @@ export function RadioConsole(){
   const attemptRef=useRef(0);
   const [channelId,setChannelId]=useState("general");
   const [retry,setRetry]=useState(0);
-  const [state,setState]=useState<"connecting"|"listening"|"requesting"|"talking"|"busy"|"error">("connecting");
+  const [state,setState]=useState<"connecting"|"listening"|"requesting"|"talking"|"finishing"|"busy"|"error">("connecting");
   const [speaker,setSpeaker]=useState<string|null>(null);
   const [lastRx,setLastRx]=useState<Date|null>(null);
   const recorderRef=useRef<MediaRecorder|null>(null);
@@ -42,7 +42,7 @@ export function RadioConsole(){
       void audio.play().catch(()=>setBlockedAudio(chunk));
     };
     const lost=({channelId:lostChannel}:{channelId:string})=>{
-      if(lostChannel===channelId){release();setState("busy");setSpeaker(null)}
+      if(lostChannel===channelId){cancel();setState("busy");setSpeaker(null)}
     };
     const floor=({channelId:floorChannel,userId,active}:{channelId:string;userId:string;active:boolean})=>{
       if(floorChannel!==channelId)return;
@@ -52,7 +52,7 @@ export function RadioConsole(){
     socket.on("radio:audio",play);
     socket.on("radio:floor-lost",lost);
     socket.on("radio:floor",floor);
-    const disconnected=()=>{release();setState("connecting")};
+    const disconnected=()=>{cancel();setState("connecting")};
     socket.on("disconnect",disconnected);
     socket.on("connect_error",disconnected);
     const hidden=()=>{if(document.visibilityState!=="visible")release()};
@@ -93,11 +93,24 @@ export function RadioConsole(){
       streamRef.current=stream;
       const mimeType=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?"audio/webm;codecs=opus":"audio/webm";
       const recorder=new MediaRecorder(stream,{mimeType,audioBitsPerSecond:24000});
+      let pending=Promise.resolve(),deliveryFailed=false;
       recorder.ondataavailable=event=>{
         if(event.data.size===0)return;
-        void blobToDataUrl(event.data).then(chunk=>{if(attempt===attemptRef.current&&pressedRef.current&&socket.connected)socket.emit("radio:audio",{channelId,chunk})}).catch(()=>setState("error"));
+        pending=pending.then(async()=>{
+          const chunk=await blobToDataUrl(event.data);
+          if(attempt!==attemptRef.current||!socket.connected)return;
+          await new Promise<void>((resolve,reject)=>socket.timeout(5000).emit("radio:audio",{channelId,chunk},(error:Error|null,ack:any)=>!error&&ack?.ok?resolve():reject(new Error("RADIO_AUDIO_ERROR"))));
+        }).catch(()=>{deliveryFailed=true});
       };
-      recorder.onstop=()=>{stream.getTracks().forEach(track=>track.stop());if(recorderRef.current===recorder){streamRef.current=null;recorderRef.current=null}};
+      recorder.onstop=()=>{
+        stream.getTracks().forEach(track=>track.stop());
+        void pending.finally(()=>{
+          if(attempt!==attemptRef.current||recorderRef.current!==recorder)return;
+          recorderRef.current=null;streamRef.current=null;
+          if(socket.connected)socket.emit("radio:release-floor",{channelId});
+          setState(socket.connected?(deliveryFailed?"error":"listening"):"connecting");
+        });
+      };
       recorderRef.current=recorder;
       recorder.start(300);
       setState("talking");
@@ -110,7 +123,7 @@ export function RadioConsole(){
     }
   }
 
-  function release(){
+  function cancel(){
     attemptRef.current++;
     pressedRef.current=false;
     if(recorderRef.current?.state==="recording")recorderRef.current.stop();
@@ -119,12 +132,24 @@ export function RadioConsole(){
     if(socket.connected)socket.emit("radio:release-floor",{channelId});
     setState(socket.connected?"listening":"connecting");
   }
+  function release(){
+    pressedRef.current=false;
+    const recorder=recorderRef.current;
+    if(!recorder){cancel();return}
+    // Stop capture immediately; keep this recording valid until its final
+    // dataavailable event is acknowledged, then surrender the floor.
+    if(recorder.state==="recording"){
+      setState("finishing");recorder.stop();
+      streamRef.current?.getTracks().forEach(track=>track.stop());
+    }
+  }
 
   const copy={
     connecting:["Conectando","Preparando canal"],
     listening:["Listo para transmitir","Mantén presionado para hablar"],
     requesting:["Solicitando turno","Esperando disponibilidad"],
     talking:["Transmitiendo","Suelta para escuchar"],
+    finishing:["Terminando transmisión","Entregando último fragmento"],
     busy:["Canal ocupado",speaker?"Otro usuario está hablando":"Espera un momento"],
     error:["Radio no disponible","Revisa micrófono o conexión"]
   }[state];
@@ -132,7 +157,7 @@ export function RadioConsole(){
   return <div className="radio-console">
     <div className="radio-console-head">
       <div><span className="eyebrow">RADIO PTT</span><h3>Canal operativo</h3></div>
-      <select value={channelId} disabled={state==="talking"||state==="requesting"} onChange={e=>setChannelId(e.target.value)} className="radio-channel-select" aria-label="Canal de radio">
+      <select value={channelId} disabled={state==="talking"||state==="requesting"||state==="finishing"} onChange={e=>setChannelId(e.target.value)} className="radio-channel-select" aria-label="Canal de radio">
         <option value="general">General</option>
         <option value="dispatch">Despacho</option>
         <option value="emergencias">Emergencias</option>

@@ -11,12 +11,13 @@ export function DriverNavigation(){
   const [error,setError]=useState("");const recent=useRef<OperationalUnitSnapshot[]>([]),loadId=useRef(0);
 
   const load=useCallback(async()=>{
-    const id=++loadId.current;try{
+    const id=++loadId.current,requestStart=recent.current;try{
     const response=await fetch("/api/operation/navigation");
     const body=await response.json();
     if(!response.ok)throw new Error(body.error||"No se pudo cargar navegación");
     if(id!==loadId.current)return;
-    setData({...body,snapshot:mergeSnapshots(body.snapshot?[body.snapshot]:[],recent.current).find(item=>item.vehicleId===body.journey?.vehicleId)||null});setError("");
+    recent.current=mergeSnapshots(recent.current,body.snapshot?[body.snapshot]:[],requestStart).slice(-20);
+    setData({...body,snapshot:recent.current.find(item=>item.vehicleId===body.journey?.vehicleId)||null});setError("");
     setState(body.journey?"Operación sincronizada":"Sin jornada asignada");
     }catch{if(id===loadId.current)setError("No se pudo cargar la ruta. Revisa tu conexión o tu acceso.")}
   },[]);

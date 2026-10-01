@@ -4,7 +4,7 @@ import {Icon} from "@/src/components/ui/icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
 import { useSocket, useSocketStatus } from "@/src/hooks/useSocket";
-import { fleetMarkerState, fleetToGeoJson, shouldClusterFleet } from "@/src/lib/fleet-density";
+import { fleetMarkerState, fleetToGeoJson, shouldClusterFleet, fleetCameraPadding } from "@/src/lib/fleet-density";
 import { mergeSnapshots } from "@/src/lib/fleet-snapshots";
 import {UnitDetailPanel} from "@/src/components/unit-detail-panel";
 
@@ -17,6 +17,7 @@ export function LiveMap(){
   const markers=useRef(new Map<string,any>());
   const programmaticCamera=useRef(false);
   const unitsRef=useRef<OperationalUnitSnapshot[]>([]);
+  const snapshotsRef=useRef<OperationalUnitSnapshot[]>([]),loadId=useRef(0);
   const socket=useSocket();
   const connection=useSocketStatus(socket);
 
@@ -35,19 +36,19 @@ export function LiveMap(){
 
   useEffect(()=>{
     let cancelled=false;
-    const refresh=()=>void fetch("/api/locations/live").then(async response=>{
+    const refresh=()=>{const id=++loadId.current,requestStart=snapshotsRef.current;return void fetch("/api/locations/live",{cache:"no-store"}).then(async response=>{
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"No se pudo cargar la flota");
-      if(!cancelled){setUnits(current=>mergeSnapshots(current,data.units||[]).filter(unit=>(data.units||[]).some((next:OperationalUnitSnapshot)=>next.vehicleId===unit.vehicleId)));setError("")}
-    }).catch(()=>!cancelled&&setError("No se pudo cargar la flota. Revisa la conexión o tu acceso."))
-      .finally(()=>!cancelled&&setLoading(false));
+      if(!cancelled&&id===loadId.current){snapshotsRef.current=mergeSnapshots(snapshotsRef.current,data.units||[],requestStart).filter(unit=>(data.units||[]).some((next:OperationalUnitSnapshot)=>next.vehicleId===unit.vehicleId)||!requestStart.includes(unit));setUnits(snapshotsRef.current);setError("")}
+    }).catch(()=>!cancelled&&id===loadId.current&&setError("No se pudo cargar la flota. Revisa la conexión o tu acceso."))
+      .finally(()=>!cancelled&&id===loadId.current&&setLoading(false))};
     refresh();socket.on("connect",refresh);
     return()=>{cancelled=true;socket.off("connect",refresh)};
   },[socket,retry]);
 
   useEffect(()=>{
     const onSnapshot=(snapshot:OperationalUnitSnapshot)=>{
-      setUnits(current=>mergeSnapshots(current,[snapshot]));
+      snapshotsRef.current=mergeSnapshots(snapshotsRef.current,[snapshot]);setUnits(snapshotsRef.current);
     };
     socket.on("location:snapshot",onSnapshot);
     return()=>{socket.off("location:snapshot",onSnapshot)};
@@ -175,7 +176,8 @@ export function LiveMap(){
       }else{
         const bounds=new mapboxgl.LngLatBounds();
         located.forEach(unit=>bounds.extend([unit.longitude as number,unit.latitude as number]));
-        map.fitBounds(bounds,{padding:{top:90,right:90,bottom:110,left:390},maxZoom:15,duration:500});
+        const container=map.getContainer();
+        map.fitBounds(bounds,{padding:fleetCameraPadding(container.clientWidth,container.clientHeight,window.matchMedia("(max-width:800px)").matches),maxZoom:15,duration:500});
       }
       window.setTimeout(()=>{programmaticCamera.current=false},600);
     });

@@ -5,11 +5,14 @@ function timestamp(unit:OperationalUnitSnapshot){
   return Number.isFinite(value)?value:-Infinity;
 }
 
-export function mergeSnapshots(current:OperationalUnitSnapshot[],incoming:OperationalUnitSnapshot[]):OperationalUnitSnapshot[]{
+// HTTP supplies the object references present when its request began. An equal-time
+// socket update arriving during that request wins; older cached state does not.
+export function mergeSnapshots(current:OperationalUnitSnapshot[],incoming:OperationalUnitSnapshot[],requestStart?:OperationalUnitSnapshot[]):OperationalUnitSnapshot[]{
   const byId=new Map(current.map(unit=>[unit.vehicleId,unit]));
+  const atStart=requestStart?new Map(requestStart.map(unit=>[unit.vehicleId,unit])):null;
   for(const unit of incoming){
     const previous=byId.get(unit.vehicleId);
-    if(!previous||timestamp(unit)>=timestamp(previous))byId.set(unit.vehicleId,unit);
+    if(!previous||timestamp(unit)>timestamp(previous)||(timestamp(unit)===timestamp(previous)&&(!atStart||previous===atStart.get(unit.vehicleId))))byId.set(unit.vehicleId,unit);
   }
   return [...byId.values()];
 }

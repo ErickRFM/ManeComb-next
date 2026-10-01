@@ -201,7 +201,7 @@ export async function runOperationalFlow() {
     check(busy.reason === 'busy', 'PTT contention did not report busy');
     const chunk = 'data:audio/webm;base64,AAAA';
     await verifyDelivery(ownerSocket, 'radio:audio', data => data.channelId === channelId && data.chunk === chunk && data.userId === driverId,
-      async () => { driverSocket.emit('radio:audio', { channelId, chunk }); });
+      async () => { await ack(driverSocket, 'radio:audio', { channelId, chunk }); });
     await verifyDelivery(ownerSocket, 'radio:floor', data => data.channelId === channelId && data.active === false, () => ack(driverSocket, 'radio:release-floor', { channelId }));
     await ack(ownerSocket, 'radio:request-floor', { channelId });
     await ack(ownerSocket, 'radio:release-floor', { channelId });
