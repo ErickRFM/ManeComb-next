@@ -2,6 +2,14 @@
 
 Fecha: 2026-09-30. Consolidación solicitada para ManeComb-next. No guardar secretos, cookies, contraseñas ni claves TOTP en este registro.
 
+## UX/UI V2 — candidato funcional, no certificado para producción
+
+Rama `feat/uxui-system-v2-map-first`, código final validado `4e28ad930f34a177684c2b8941029c4ed08d65cb`; base/main `f39e040`. Typecheck PASS, 103 unitarias/36 archivos PASS, 47 integraciones/7 archivos Atlas QA/Redis PASS, build 81 páginas PASS, E2E compilado PASS, 22 recorridos browser PASS, 308 checks responsive y 56 fixtures PASS. Auditoría independiente: tres importantes corregidos con RED→GREEN (driver edit/session, empate GPS HTTP/realtime, audio final PTT); además padding de cámara móvil corregido. Ver `FINAL_AUDIT.md` para alcance y evidencias. El SHA documental/CI de entrega se identifica en el PR; CI histórico de abajo no valida V2.
+
+**NOT_READY:** falta imagen aprobada y capturas comerciales definitivas; Mapbox responde HTTP 401; deploy checks web/worker fallan por configuración destino real (Mongo/Redis/HTTPS/email/Push/pagos/Cloudinary/STUN/TURN). Providers live, Android/GPS/audio físicos y capacidad staging siguen pendientes. Mantener PR draft sin merge V2 certificado. No crear ni desplegar Render, no activar auto-deploy ni modificar variables productivas. Recursos preparados siguen siendo sólo web/worker/Key Value indicados abajo.
+
+Lo que sigue conserva evidencia histórica de consolidación y main; no reutilizarla como resultados de esta rama.
+
 ## Git y validación
 
 | Bloque | Decisión/evidencia |
