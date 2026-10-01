@@ -1,0 +1,3 @@
+import Link from "next/link";
+import {COMMERCIAL_PLANS} from "@/src/core/domain/commercial-plans";
+export function PlanCards(){return <div className="grid grid-3">{COMMERCIAL_PLANS.map(plan=><article className="card grid" key={plan.code}><h3>{plan.label}</h3><div className="kpi">{new Intl.NumberFormat("es-MX",{style:"currency",currency:"MXN",maximumFractionDigits:0}).format(plan.monthlyMxn)} <small>MXN / mes</small></div><p className="muted">GPS, rutas, jornadas, Chat, Radio y gestión para {plan.units} unidades.</p><Link className="btn" href={"/checkout/"+plan.code}>Elegir {plan.label}</Link></article>)}</div>}

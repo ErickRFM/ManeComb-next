@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Navigation } from "@/src/components/navigation";
 
-export function ModuleShell(props:{eyebrow?:string;title:string;description:string;children?:React.ReactNode;wide?:boolean}) {
+export function ModuleShell(props:{eyebrow?:string;title:string;description:string;children?:React.ReactNode;wide?:boolean;operation?:boolean}) {
   const pathname=usePathname();
   const embedded=pathname.startsWith("/portal")||pathname.startsWith("/admin")||pathname.startsWith("/operacion");
   const content=<section className={"module-section "+(props.wide?"module-wide":"")}>
@@ -14,5 +14,5 @@ export function ModuleShell(props:{eyebrow?:string;title:string;description:stri
   </section>;
 
   if(embedded)return content;
-  return <div className="shell"><Navigation/><main className="page">{content}</main></div>;
+  return <div className="shell">{!props.operation?<Navigation/>:null}<main id="main-content" className="page">{content}</main></div>;
 }

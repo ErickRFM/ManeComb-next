@@ -1,2 +1,3 @@
 import { ModuleShell } from "@/src/components/module-shell"; import { AuthForm } from "@/src/components/auth-form";
-export default function RegisterPage(){return <ModuleShell eyebrow="ALTA" title="Registra tu línea" description="Crea la organización y la cuenta propietaria en un solo flujo."><AuthForm mode="register"/></ModuleShell>}
+import {getCommercialPlan} from "@/src/core/domain/commercial-plans";
+export default async function RegisterPage({searchParams}:{searchParams:Promise<{plan?:string}>}){const {plan}=await searchParams;const selected=plan?getCommercialPlan(plan):null;return <ModuleShell eyebrow="ALTA" title="Registra tu línea" description="Crea la organización y la cuenta propietaria en un solo flujo.">{selected?<p>Plan seleccionado: {selected.label} · ${selected.monthlyMxn} MXN / mes</p>:null}<AuthForm mode="register" planCode={selected?.code}/></ModuleShell>}

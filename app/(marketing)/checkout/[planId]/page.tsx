@@ -7,5 +7,5 @@ export default async function CheckoutPage({params}:{params:Promise<{planId:stri
   const {planId}=await params;
   const plan=getCommercialPlan(planId);
   if(!plan)notFound();
-  return <ModuleShell eyebrow="CHECKOUT" title={plan.label+" · "+plan.monthlyMxn+" MXN/mes"} description="Suscripción recurrente con tarifa validada por servidor, idempotencia y conciliación por webhook."><CheckoutPanel planId={plan.code}/></ModuleShell>
+  return <ModuleShell eyebrow="CHECKOUT" title={plan.label+" · "+plan.monthlyMxn+" MXN/mes"} description="Revisa tu plan y continúa al pago de tu suscripción mensual."><CheckoutPanel planId={plan.code}/></ModuleShell>
 }

@@ -3,7 +3,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { channelHome } from "@/src/lib/channel-home";
 
-export function AuthForm({mode}:{mode:"login"|"register"}) {
+export function AuthForm({mode,planCode,operation=false}:{mode:"login"|"register";planCode?:string;operation?:boolean}) {
   const router=useRouter();
   const [error,setError]=useState("");
   const [busy,setBusy]=useState(false);
@@ -23,12 +23,12 @@ export function AuthForm({mode}:{mode:"login"|"register"}) {
     if(!response.ok)return setError(result.error||"No fue posible completar la operación");
 
     if(result.mfaRequired){
-      router.push("/mfa");
+      router.push(operation?"/mfa?surface=operation":"/mfa");
       router.refresh();
       return;
     }
 
-    router.push(channelHome(result.user?.channel));
+    router.push(planCode&&result.user?.channel==="company_portal"?"/checkout/"+encodeURIComponent(planCode):channelHome(result.user?.channel));
     router.refresh();
     }catch{setError("No se pudo completar el acceso. Comprueba tu conexión e inténtalo de nuevo.")}
     finally{setBusy(false)}
