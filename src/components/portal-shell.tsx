@@ -9,6 +9,7 @@ import {AppRoleSchema,type AppRole} from "@/src/core/contracts/auth";
 import {hasPermission,type Permission} from "@/src/core/domain/permissions";
 import {Icon,type IconName} from "@/src/components/ui/icon";
 import {SignOutButton} from "@/src/components/sign-out-button";
+import {PortalAccessContext} from "@/src/hooks/usePortalPermission";
 
 const groups=[
   {label:"Operación",items:[
@@ -143,7 +144,7 @@ export function PortalShell({children,initialProfile}:{children:React.ReactNode;
           <ThemeToggle/>
         </div>
       </header>
-      <main id="main-content" className="workspace-content" tabIndex={-1}>{profileError?<p role="alert">{profileError} <button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar acceso</button></p>:null}{children}</main>
+      <main id="main-content" className="workspace-content" tabIndex={-1}>{profileError?<p role="alert">{profileError} <button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar acceso</button></p>:null}<PortalAccessContext.Provider value={profile?.roles||null}>{children}</PortalAccessContext.Provider></main>
     </div>
   </div>;
 }

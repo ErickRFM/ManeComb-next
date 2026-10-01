@@ -5,6 +5,7 @@ import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
 import { useSocket, useSocketStatus } from "@/src/hooks/useSocket";
 import { fleetMarkerState, fleetToGeoJson, shouldClusterFleet } from "@/src/lib/fleet-density";
 import { mergeSnapshots } from "@/src/lib/fleet-snapshots";
+import {UnitDetailPanel} from "@/src/components/unit-detail-panel";
 
 type Filter="all"|"live"|"risk"|"lost";
 const emptyCollection={type:"FeatureCollection" as const,features:[] as any[]};
@@ -273,21 +274,7 @@ export function LiveMap(){
 
       <div ref={container} className="fleet-map-canvas" role="region" aria-label="Mapa de monitoreo en vivo"/>
 
-      {selected?<aside className="unit-detail-panel" aria-label={"Detalle de "+selected.economicNumber}>
-        <div className="unit-detail-head"><div><span className={"unit-status-dot "+fleetMarkerState(selected)}/><div><strong>{selected.economicNumber}</strong><small>{selected.routeName||"Sin ruta asignada"}</small></div></div><button className="icon-action" onClick={()=>setSelectedId(null)} aria-label="Cerrar detalle">×</button></div>
-        <div className="unit-detail-status">
-          <span className={"health-chip "+fleetMarkerState(selected)}>{selected.freshness}</span>
-          {selected.routeState?<span className={"health-chip "+(selected.isOffRoute?"danger":"neutral")}>{selected.isOffRoute?"Fuera de ruta":selected.routeState}</span>:null}
-        </div>
-        <div className="unit-detail-grid">
-          <div><small>Velocidad</small><strong>{selected.speedKmH.toFixed(0)} km/h</strong></div>
-          <div><small>Avance</small><strong>{selected.progressPercent==null?"—":selected.progressPercent.toFixed(0)+"%"}</strong></div>
-          <div><small>ETA</small><strong>{selected.etaMinutes==null?"—":selected.etaMinutes+" min"}</strong></div>
-          <div><small>Corredor</small><strong>{selected.distanceFromRouteM==null?"—":selected.distanceFromRouteM+" m"}</strong></div>
-        </div>
-        {selected.nextStop?<div className="next-stop-card"><small>PRÓXIMA PARADA</small><strong>{selected.nextStop.name}</strong><span>{selected.nextStop.distanceRemainingM} m restantes</span></div>:null}
-        <div className="unit-detail-footer"><span>Último GPS</span><strong>{selected.recordedAt?new Date(selected.recordedAt).toLocaleTimeString():"Sin reporte"}</strong></div>
-      </aside>:null}
+      {selected?<UnitDetailPanel key={selected.vehicleId} unit={selected} onClose={()=>setSelectedId(null)}/>:null}
     </div>
   </div>;
 }

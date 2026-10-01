@@ -63,6 +63,13 @@
 .next-stop-card span{font-size:10px;color:var(--muted)}
 .unit-detail-footer{display:flex;justify-content:space-between;gap:12px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:10px;color:var(--muted)}
 .unit-detail-footer strong{color:var(--text)}
+.unit-sheet{width:360px;max-height:calc(100dvh - 260px);overflow:auto}
+.unit-sheet-levels{display:none}
+.unit-detail-tabs{display:flex;gap:4px;overflow-x:auto;margin:12px 0}
+.unit-detail-tabs button{flex-shrink:0;min-height:44px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text)}
+.unit-detail-tabs button[aria-selected="true"]{background:var(--brand-soft);border-color:var(--brand)}
+.unit-telemetry{display:grid;grid-template-columns:1fr 1fr;gap:10px;overflow-wrap:anywhere}
+.unit-telemetry dd{margin:0}.unit-telemetry dt{color:var(--muted)}
 
 @media (max-width:1180px){
   .dashboard-grid{grid-template-columns:1fr}
@@ -88,6 +95,14 @@
   .fleet-list-item{min-width:245px;grid-template-columns:auto minmax(0,1fr) 44px;border:1px solid var(--border);margin-right:6px}
   .fleet-list-item .fleet-list-stats:last-child{display:none}
   .unit-detail-panel{left:8px;right:8px;top:8px;bottom:auto;width:auto}
+  .unit-detail-panel.unit-sheet{top:auto;bottom:8px;max-height:min(74dvh,calc(100% - 16px));width:auto}
+  .unit-sheet-levels{display:flex;gap:4px;margin-top:8px}
+  .unit-sheet-levels button{min-height:44px;flex:1;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text)}
+  .unit-sheet-levels button[aria-pressed="true"]{border-color:var(--brand)}
+  .unit-detail-panel.unit-sheet.medium{max-height:52dvh}
+  .unit-detail-panel.unit-sheet.compact .unit-sheet-body{display:none}
+  .unit-detail-panel.unit-sheet .next-stop-card{display:grid}
+  .unit-detail-panel.unit-sheet .unit-detail-footer{display:flex}
   .unit-detail-grid{grid-template-columns:repeat(4,1fr)}
   .unit-detail-grid>div{padding:8px}
   .unit-detail-grid strong{font-size:12px}
