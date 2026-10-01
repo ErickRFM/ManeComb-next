@@ -64,3 +64,14 @@
   --shadow-soft:0 10px 28px rgba(26,35,52,.08);
 }
 
+
+:root{
+  --container-max:1280px;
+  --section-desktop:96px;
+  --section-tablet:68px;
+  --section-mobile:44px;
+  --motion-fast:160ms;
+  --motion-normal:280ms;
+  --motion-slow:420ms;
+  --ease-premium:cubic-bezier(.22,1,.36,1);
+}
