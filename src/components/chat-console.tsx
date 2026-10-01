@@ -5,6 +5,7 @@ import { useSocket,useSocketStatus } from "@/src/hooks/useSocket";
 import { uploadManeCombFile } from "@/src/lib/client-upload";
 import {deliverChatMessage,mergeChatMessages,type ChatMessage as Message,type ChatPacket} from "@/src/lib/chat-messages";
 import {Icon} from "@/src/components/ui/icon";
+import {usePresence} from "@/src/hooks/usePresence";
 
 type ChatUser={id:string;name:string;channel:string;roles:string[]};
 type Attachment=Awaited<ReturnType<typeof uploadManeCombFile>>;
@@ -16,6 +17,7 @@ function directChannel(self:string,target:string){
 export function ChatConsole(){
   const socket=useSocket();
   const connection=useSocketStatus(socket);
+  const onlineUsers=usePresence(socket);
   const scrollRef=useRef<HTMLDivElement|null>(null);
   const fileRef=useRef<HTMLInputElement|null>(null);
   const [self,setSelf]=useState<{id:string;name:string}|null>(null);
@@ -161,6 +163,7 @@ export function ChatConsole(){
         {orderedUsers.map(user=><button key={user.id} className={"conversation-row "+(selected===user.id?"active":"")} onClick={()=>choose(user.id)}>
           <span className="conversation-avatar">{user.name.split(/\s+/).slice(0,2).map(part=>part[0]).join("").toUpperCase()}</span>
           <span className="conversation-copy"><strong>{user.name}</strong><small>{user.channel==="mobile_operations"?"Conductor":"Portal"}</small></span>
+          {onlineUsers?.has(user.id)?<span className="presence-dot" aria-label="En línea"/>:null}
         </button>)}
       </div>
     </aside>
@@ -173,6 +176,7 @@ export function ChatConsole(){
       </header>
 
       <div className="chat-messages" ref={scrollRef} role="log" aria-label="Mensajes" aria-live="polite" aria-busy={loading}>
+        {error?<button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar historial</button>:null}
         {!messages.length?<div className="chat-empty"><Icon name="chat"/><strong>{loading?"Cargando conversación…":error?"Historial no disponible":"Comienza la conversación"}</strong><p>{error||"Los mensajes enviados se guardan y se sincronizan en tiempo real."}</p></div>:messages.map((message,index)=>{
           const own=String(message.senderUserId)===String(self?.id);
           const imageUrl=message.attachment&&message._id?"/api/chat/messages/"+message._id+"/attachment":message.body;

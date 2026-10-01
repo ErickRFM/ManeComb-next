@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSocket } from "@/src/hooks/useSocket";
+import { useSocket,useSocketStatus } from "@/src/hooks/useSocket";
+import {Icon} from "@/src/components/ui/icon";
+import {usePresence} from "@/src/hooks/usePresence";
 
 function blobToDataUrl(blob:Blob){
   return new Promise<string>((resolve,reject)=>{
@@ -14,24 +16,30 @@ function blobToDataUrl(blob:Blob){
 
 export function RadioConsole(){
   const socket=useSocket();
+  const connection=useSocketStatus(socket),online=usePresence(socket);
+  const [users,setUsers]=useState<Array<{id:string;name:string}>>([]),[blockedAudio,setBlockedAudio]=useState<string|null>(null);
+  const attemptRef=useRef(0);
   const [channelId,setChannelId]=useState("general");
+  const [retry,setRetry]=useState(0);
   const [state,setState]=useState<"connecting"|"listening"|"requesting"|"talking"|"busy"|"error">("connecting");
   const [speaker,setSpeaker]=useState<string|null>(null);
   const [lastRx,setLastRx]=useState<Date|null>(null);
   const recorderRef=useRef<MediaRecorder|null>(null);
   const streamRef=useRef<MediaStream|null>(null);
   const pressedRef=useRef(false);
+  useEffect(()=>{let active=true;void fetch("/api/chat/users").then(async response=>response.ok?response.json():null).then(data=>{if(active)setUsers(data?.users||[])}).catch(()=>undefined);return()=>{active=false}},[]);
 
   useEffect(()=>{
     setState("connecting");
-    const join=()=>socket.emit("radio:join",{channelId},(ack:any)=>setState(ack?.ok?"listening":"error"));
+    let disposed=false;
+    const join=()=>socket.timeout(5000).emit("radio:join",{channelId},(error:Error|null,ack:any)=>{if(!disposed)setState(!error&&ack?.ok?"listening":"error")});
     socket.on("connect",join);
     if(socket.connected)join();
     const play=({channelId:incomingChannel,chunk}:{channelId:string;chunk:string})=>{
       if(incomingChannel!==channelId)return;
       setLastRx(new Date());
       const audio=new Audio(chunk);
-      void audio.play().catch(()=>undefined);
+      void audio.play().catch(()=>setBlockedAudio(chunk));
     };
     const lost=({channelId:lostChannel}:{channelId:string})=>{
       if(lostChannel===channelId){release();setState("busy");setSpeaker(null)}
@@ -46,46 +54,56 @@ export function RadioConsole(){
     socket.on("radio:floor",floor);
     const disconnected=()=>{release();setState("connecting")};
     socket.on("disconnect",disconnected);
+    socket.on("connect_error",disconnected);
+    const hidden=()=>{if(document.visibilityState!=="visible")release()};
+    document.addEventListener("visibilitychange",hidden);window.addEventListener("blur",release);
     return()=>{
+      disposed=true;attemptRef.current++;
       pressedRef.current=false;
-      recorderRef.current?.stop();
+      if(recorderRef.current?.state==="recording")recorderRef.current.stop();
       streamRef.current?.getTracks().forEach(track=>track.stop());
+      recorderRef.current=null;streamRef.current=null;
       socket.emit("radio:release-floor",{channelId});
       socket.off("disconnect",disconnected);
+      socket.off("connect_error",disconnected);
+      document.removeEventListener("visibilitychange",hidden);window.removeEventListener("blur",release);
       socket.off("connect",join);
       socket.emit("radio:leave",{channelId});
       socket.off("radio:audio",play);
       socket.off("radio:floor-lost",lost);
       socket.off("radio:floor",floor);
     };
-  },[socket,channelId]);
+  },[socket,channelId,retry]);
 
   async function press(){
-    if(recorderRef.current||pressedRef.current)return;
+    if(!socket.connected||recorderRef.current||pressedRef.current||state!=="listening")return;
+    const attempt=++attemptRef.current;
     pressedRef.current=true;
     setState("requesting");
     const granted=await new Promise<boolean>(resolve=>{
       const timer=setTimeout(()=>resolve(false),5000);
       socket.emit("radio:request-floor",{channelId},(ack:any)=>{clearTimeout(timer);resolve(Boolean(ack?.ok))});
     });
-    if(!granted){pressedRef.current=false;setState("busy");return}
-    if(!pressedRef.current){socket.emit("radio:release-floor",{channelId});return}
+    if(attempt!==attemptRef.current||!pressedRef.current){if(granted&&!pressedRef.current)socket.emit("radio:release-floor",{channelId});return}
+    if(!granted){pressedRef.current=false;setState("error");return}
 
     try{
       const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
-      if(!pressedRef.current){stream.getTracks().forEach(track=>track.stop());socket.emit("radio:release-floor",{channelId});return}
+      if(attempt!==attemptRef.current||!pressedRef.current){stream.getTracks().forEach(track=>track.stop());return}
       streamRef.current=stream;
       const mimeType=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?"audio/webm;codecs=opus":"audio/webm";
       const recorder=new MediaRecorder(stream,{mimeType,audioBitsPerSecond:24000});
       recorder.ondataavailable=event=>{
         if(event.data.size===0)return;
-        void blobToDataUrl(event.data).then(chunk=>socket.emit("radio:audio",{channelId,chunk}));
+        void blobToDataUrl(event.data).then(chunk=>{if(attempt===attemptRef.current&&pressedRef.current&&socket.connected)socket.emit("radio:audio",{channelId,chunk})}).catch(()=>setState("error"));
       };
-      recorder.onstop=()=>{stream.getTracks().forEach(track=>track.stop());streamRef.current=null;recorderRef.current=null};
+      recorder.onstop=()=>{stream.getTracks().forEach(track=>track.stop());if(recorderRef.current===recorder){streamRef.current=null;recorderRef.current=null}};
       recorderRef.current=recorder;
       recorder.start(300);
       setState("talking");
     }catch{
+      if(attempt!==attemptRef.current)return;
+      streamRef.current?.getTracks().forEach(track=>track.stop());streamRef.current=null;recorderRef.current=null;
       pressedRef.current=false;
       socket.emit("radio:release-floor",{channelId});
       setState("error");
@@ -93,11 +111,13 @@ export function RadioConsole(){
   }
 
   function release(){
+    attemptRef.current++;
     pressedRef.current=false;
-    recorderRef.current?.stop();
+    if(recorderRef.current?.state==="recording")recorderRef.current.stop();
     streamRef.current?.getTracks().forEach(track=>track.stop());
-    socket.emit("radio:release-floor",{channelId});
-    setState("listening");
+    recorderRef.current=null;streamRef.current=null;
+    if(socket.connected)socket.emit("radio:release-floor",{channelId});
+    setState(socket.connected?"listening":"connecting");
   }
 
   const copy={
@@ -122,18 +142,21 @@ export function RadioConsole(){
     <div className={"ptt-stage "+state}>
       <div className="ptt-wave" aria-hidden="true">{Array.from({length:12}).map((_,index)=><span key={index}/>)}</div>
       <div className="ptt-orbit">
-        <button className="ptt-button" onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);void press()}} onPointerUp={release} onPointerCancel={release} onKeyDown={event=>{if((event.key===" "||event.key==="Enter")&&!event.repeat){event.preventDefault();void press()}}} onKeyUp={event=>{if(event.key===" "||event.key==="Enter"){event.preventDefault();release()}}} onBlur={release}>
-          <span className="ptt-mic">◉</span>
+        <button className="ptt-button" disabled={connection!=="connected"||state==="connecting"||state==="busy"||state==="error"} onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);void press()}} onPointerUp={release} onPointerCancel={release} onKeyDown={event=>{if((event.key===" "||event.key==="Enter")&&!event.repeat){event.preventDefault();void press()}}} onKeyUp={event=>{if(event.key===" "||event.key==="Enter"){event.preventDefault();release()}}} onBlur={release}>
+          <span className="ptt-mic"><Icon name="radio" size={32}/></span>
           <strong>{state==="talking"?"HABLANDO":"PULSA Y HABLA"}</strong>
           <small>{state==="talking"?"Suelta para terminar":"Mantén presionado"}</small>
         </button>
       </div>
     </div>
 
-    <div className="radio-state-card">
+    <div className="radio-state-card" role="status">
       <span className={"radio-state-dot "+state}/>
       <div><strong>{copy[0]}</strong><small>{copy[1]}</small></div>
       <span className="radio-last">{lastRx?"Última RX "+lastRx.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"Sin RX reciente"}</span>
     </div>
+    {state==="error"?<button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar radio</button>:null}
+    {blockedAudio?<button className="btn secondary" onClick={()=>{void new Audio(blockedAudio).play().then(()=>setBlockedAudio(null)).catch(()=>undefined)}}>Escuchar última transmisión</button>:null}
+    <p className="muted">Personal de la empresa en línea: {online===null?"consultando presencia":users.filter(user=>online.has(user.id)).map(user=>user.name).join(", ")||"sin otros usuarios conectados"}</p>
   </div>;
 }
