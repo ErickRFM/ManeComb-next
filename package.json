@@ -24,7 +24,8 @@
     "test:load:gps": "tsx scripts/load/socket-gps.ts",
     "native:prepare": "node scripts/prepare-native-android.mjs",
     "deploy:check": "node scripts/predeploy-check.mjs --role=web",
-    "deploy:check:worker": "node scripts/predeploy-check.mjs --role=worker"
+    "deploy:check:worker": "node scripts/predeploy-check.mjs --role=worker",
+    "verify:email-provider": "node scripts/verify-email-provider.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
