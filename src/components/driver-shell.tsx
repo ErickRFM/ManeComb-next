@@ -9,6 +9,7 @@ import {DriverTools} from "@/src/components/driver-tools";
 import {JourneyPanel} from "@/src/components/journey-panel";
 import {DriverConsole} from "@/src/components/driver-console";
 import {PushOptIn} from "@/src/components/push-opt-in";
+import {BrandLogo} from "@/src/components/brand-logo";
 
 const tabs=[
   {label:"Mapa",href:"/operacion",key:"map",exact:true},
@@ -23,7 +24,7 @@ export function DriverShell({children}:{children:React.ReactNode}){
   const online=useNetworkStatus();
   return <div className="driver-shell">
     <header className="driver-topbar">
-      <Link href="/operacion" className="driver-brand"><span className="brand-mark compact">MC</span><span><strong>ManeComb</strong><small>Operación</small></span></Link>
+      <Link href="/operacion" className="driver-brand" aria-label="ManeComb Operación"><BrandLogo size="sm"/><span><small>Operación</small></span></Link>
       <div className="driver-top-actions"><Link href="/operacion/sos" className="btn secondary" aria-label="Reportar emergencia SOS">SOS</Link><span className="driver-connection" aria-live="polite"><span className="live-dot" style={online===false?{background:"var(--danger)"}:undefined}/>{online===null?"Consultando red":online?"Red disponible":"Sin red"}</span><ThemeToggle/></div>
     </header>
     <main id="main-content" className="driver-workspace" tabIndex={-1}>{children}<section hidden={pathname!=="/operacion"} aria-label="Controles de jornada y GPS"><DriverTools><JourneyPanel/><DriverConsole/><PushOptIn/></DriverTools></section></main>
