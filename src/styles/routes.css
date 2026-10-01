@@ -2,6 +2,17 @@
 .route-coordinate-entry{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:12px}
 .route-coordinate-entry label{flex:1;min-width:120px}
 .route-editor-fields{border:0;padding:0;margin:0;min-width:0}
+.route-workspace{display:grid;grid-template-columns:230px minmax(0,1fr);gap:14px;align-items:start}
+.route-workspace>aside{min-width:0;max-height:calc(100dvh - 210px);overflow:auto}
+.route-index-compact .route-metrics,.route-index-compact .entity-table-head{display:none}
+.route-index-compact .entity-toolbar{display:grid;gap:8px}
+.route-index-compact .entity-search{min-width:0;width:100%}
+.route-index-compact .entity-table-row{grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:10px}
+.route-index-compact .entity-primary{grid-column:1/-1}
+.route-index-compact .entity-capacity{font-size:11px}
+.route-index-compact .entity-actions{grid-column:1/-1}
+@media(max-width:1180px){.route-workspace{grid-template-columns:1fr}.route-workspace>aside{max-height:260px}}
+@media(min-width:1181px) and (max-width:1500px){.route-workspace .route-builder-layout{grid-template-columns:1fr}.route-workspace .route-builder-sidebar{position:static}}
 .route-index,.route-builder{display:grid;gap:14px}
 .route-builder-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
 .route-builder-title h2{margin:8px 0 0;font-size:25px;letter-spacing:-.04em}

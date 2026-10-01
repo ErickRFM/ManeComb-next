@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {usePortalPermission} from "@/src/hooks/usePortalPermission";
 import {Icon} from "@/src/components/ui/icon";
 
-export function RouteList(){
+export function RouteList({compact=false}:{compact?:boolean}={}){
   const canEdit=usePortalPermission("manage_routes");
   const [routes,setRoutes]=useState<any[]>([]);
   const [state,setState]=useState("Cargando rutas...");
@@ -28,7 +28,7 @@ export function RouteList(){
     return routes.filter(route=>!q||route.name.toLowerCase().includes(q)||(route.origin||"").toLowerCase().includes(q)||(route.destination||"").toLowerCase().includes(q));
   },[routes,search]);
 
-  return <div className="route-index">
+  return <div className={"route-index"+(compact?" route-index-compact":"")}>
     <section className="entity-metrics route-metrics">
       <div><small>Activas</small><strong>{routes.filter(route=>route.status==="active").length}</strong></div>
       <div><small>Borradores</small><strong>{routes.filter(route=>route.status==="draft").length}</strong></div>
