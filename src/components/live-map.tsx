@@ -86,7 +86,7 @@ export function LiveMap(){
         zoom:10,
         attributionControl:false
       });
-      map.addControl(new mapboxgl.NavigationControl({showCompass:false}),"bottom-right");
+      map.addControl(new mapboxgl.NavigationControl({showCompass:false}),"top-left");
       const unlock=()=>{if(!programmaticCamera.current)setCameraMode("free")};
       map.on("dragstart",unlock);
       map.on("zoomstart",unlock);
@@ -184,6 +184,19 @@ export function LiveMap(){
   }
 
   useEffect(()=>{
+    const map=mapRef.current;
+    if(!map||!mapReady)return;
+    const resize=()=>{
+      const element=map.getContainer();
+      map.setPadding(fleetCameraPadding(element.clientWidth,element.clientHeight,window.matchMedia("(max-width:800px)").matches));
+      if(cameraMode==="auto")fitToFleet();
+    };
+    map.on("resize",resize);
+    return()=>{map.off("resize",resize)};
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[mapReady,cameraMode,filtered]);
+
+  useEffect(()=>{
     if(!mapReady)return;
     const map=mapRef.current;
     const source=map.getSource("fleet-density") as any;
@@ -229,7 +242,9 @@ export function LiveMap(){
         }else{
           marker.setLngLat([unit.longitude,unit.latitude]);
           const el=marker.getElement();
-          el.className="fleet-marker "+state+(selectedId===unit.vehicleId?" selected":"");
+          el.classList.remove("good","warn","danger","selected");
+          el.classList.add(state);
+          el.classList.toggle("selected",selectedId===unit.vehicleId);
         }
       }
       if(cameraMode==="auto")fitToFleet();

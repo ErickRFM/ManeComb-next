@@ -16,7 +16,7 @@
 .fleet-stage{position:relative;min-height:calc(100dvh - 230px);border:1px solid var(--border);border-radius:20px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow-soft)}
 .fleet-map-canvas{position:absolute;inset:0}
 .fleet-list-panel{
-  position:absolute;left:14px;top:14px;bottom:14px;z-index:5;width:340px;display:flex;flex-direction:column;overflow:hidden;
+  position:absolute;right:14px;top:14px;z-index:5;width:300px;max-height:42%;display:flex;flex-direction:column;overflow:hidden;
   border:1px solid var(--border);border-radius:16px;background:var(--surface-glass);backdrop-filter:blur(18px) saturate(140%);box-shadow:var(--shadow)
 }
 .fleet-panel-heading{min-height:54px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
@@ -117,6 +117,14 @@
   .dashboard-card-head.compact{flex-direction:row}
   .fleet-stage{min-height:58dvh}
   .unit-detail-grid{grid-template-columns:1fr 1fr}
+}
+
+@media (min-width:801px){
+  .fleet-stage{min-height:calc(100dvh - 205px)}
+  .unit-detail-panel.unit-sheet{left:14px;right:14px;top:auto;bottom:14px;width:auto;max-height:42%;overflow:auto}
+  .unit-detail-panel.unit-sheet .unit-detail-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .unit-detail-panel.unit-sheet p{font-size:12px;margin:6px 0}
+  .unit-detail-panel.unit-sheet .unit-sheet-body{font-size:12px}
 }
 
 

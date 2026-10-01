@@ -72,6 +72,10 @@ export function PortalDashboardOverview(){
         <Link className="btn" href="/portal/monitoreo">Abrir monitoreo</Link>
       </div>
       <div className="fleet-glance">
+        <figure className="fleet-distribution" aria-label="Distribución actual de GPS de la flota">
+          <div className="fleet-donut" aria-hidden="true" style={{background:metrics.total?`conic-gradient(var(--success) 0 ${metrics.live/metrics.total*100}%, var(--danger) ${metrics.live/metrics.total*100}% 100%)`:"var(--border)"}}><div><strong>{metrics.total}</strong><small>Unidades</small></div></div>
+          <figcaption><span><i className="unit-status-dot good"/>{metrics.live} GPS en vivo</span><span><i className="unit-status-dot danger"/>{metrics.total-metrics.live} Sin GPS en vivo</span></figcaption>
+        </figure>
         {units.length?units.slice(0,8).map(unit=><Link href="/portal/monitoreo" className="fleet-glance-row" key={unit.vehicleId}>
           <div className={"unit-status-dot "+(unit.isOffRoute||unit.freshness==="lost"?"danger":unit.freshness==="stale"?"warn":"good")}/>
           <div className="fleet-glance-copy"><strong>{unit.economicNumber}</strong><span>{unit.routeName||"Sin ruta asignada"}</span></div>

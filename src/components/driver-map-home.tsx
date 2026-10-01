@@ -70,7 +70,7 @@ export function DriverMapHome(){
         zoom:14,
         attributionControl:false
       });
-      map.addControl(new mapboxgl.NavigationControl({showCompass:true}),"bottom-right");
+      map.addControl(new mapboxgl.NavigationControl({showCompass:true}),"top-right");
       map.on("dragstart",()=>setFollow(false));
       map.on("load",()=>{setMapReady(true);setMapError("")});
       map.on("error",()=>{if(!disposed)setMapError("No se pudo cargar el mapa. Revisa tu conexión.")});

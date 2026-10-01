@@ -34,18 +34,109 @@ async function realtime(page,onEvent=()=>{}){
     });
   });
 }
+async function realMapForQa(page,selector){
+  await page.waitForFunction(selector=>{
+    const node=document.querySelector(selector);if(!node)return false;
+    const key=Object.keys(node).find(key=>key.startsWith("__reactFiber$"));let fiber=node[key];
+    for(let parent=0;fiber&&parent<30;parent++,fiber=fiber.return)for(let hook=fiber.memoizedState,step=0;hook&&step<100;step++,hook=hook.next){
+      const map=hook.memoizedState?.current;if(typeof map?.queryRenderedFeatures==="function"&&typeof map?.getPadding==="function"){window.__qaLiveMap=map;return true}
+    }
+    return false;
+  },selector,{timeout:30000});
+  await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
+}
 try{
   if(process.env.QA_MAPBOX==="1")await run("Mapbox provider renders 0/1/20/100/500 units with bounded DOM markers",async()=>{
-    for(const count of [1,0,20,100,500]){
+    for(const theme of ["dark","light"])for(const count of [1,0,20,100,500]){
       const page=await pageFor("company_portal");await page.setViewportSize({width:1366,height:900});
+      await page.addInitScript(theme=>localStorage.setItem("manecomb.theme",theme),theme);
       const provider=[];page.on("response",response=>{const url=new URL(response.url());if(url.hostname.endsWith("mapbox.com"))provider.push({path:url.pathname,status:response.status()})});page.on("requestfailed",request=>{const url=new URL(request.url());if(url.hostname.endsWith("mapbox.com"))provider.push({path:url.pathname,error:request.failure()?.errorText})});
-      const units=Array.from({length:count},(_,i)=>({...unit,vehicleId:"map-unit-"+i,economicNumber:"MAP-"+String(i).padStart(3,"0"),latitude:19.3+(i%20)*.002,longitude:-98.2+Math.floor(i/20)*.002}));
+      const units=Array.from({length:count},(_,i)=>({...unit,vehicleId:"map-unit-"+i,economicNumber:"MAP-"+String(i).padStart(3,"0"),freshness:i%3===1?"lost":i%3===2?"stale":"live",latitude:19.3+(i%20)*.002,longitude:-98.2+Math.floor(i/20)*.002}));
       await page.route("**/api/locations/live",route=>route.fulfill({json:{units}}));await page.goto(base+"/portal/monitoreo");
       await page.waitForFunction(()=>{const region=document.querySelector('[aria-label="Mapa de monitoreo en vivo"]');return region?.getAttribute("aria-busy")==="false"},{},{timeout:30000});
       assert.equal(await page.getByText(/No se pudo cargar el mapa|El mapa no está disponible/).count(),0,"Mapbox provider did not load: "+JSON.stringify({provider,webgl:await page.evaluate(()=>Boolean(document.createElement("canvas").getContext("webgl2")))}));
-      await page.waitForTimeout(500);assert.equal(await page.locator(".fleet-marker").count(),count>=100?0:count);assert.equal(await page.locator("canvas.mapboxgl-canvas").count(),1);
-      if(count){await page.locator(".fleet-list-item").first().click();await page.getByRole("complementary",{name:"Detalle de MAP-000"}).waitFor();await page.getByRole("button",{name:"Cerrar detalle"}).click();await page.getByRole("textbox",{name:"Buscar unidad o ruta"}).fill("MAP-000");await page.waitForFunction(()=>document.querySelectorAll(".fleet-marker").length===1);assert.equal(await page.locator(".fleet-list-item").count(),1)}
-      checks.push({name:"Mapbox provider density",count,status:"PASS"});await page.context().close();
+      await page.waitForTimeout(800);assert.equal(await page.locator(".fleet-marker").count(),count>=100?0:count);assert.equal(await page.locator("canvas.mapboxgl-canvas").count(),1);
+      // Obtain the actual Mapbox instance through React's development fiber, only in the QA browser.
+      // No runtime hook, provider interception or mock map is added to the product.
+      assert.equal(await page.evaluate(()=>{
+        const node=document.querySelector('[aria-label="Mapa de monitoreo en vivo"]');
+        const key=Object.keys(node).find(key=>key.startsWith("__reactFiber$"));let fiber=node[key];
+        for(let parent=0;fiber&&parent<30;parent++,fiber=fiber.return)for(let hook=fiber.memoizedState,step=0;hook&&step<100;step++,hook=hook.next){
+          const map=hook.memoizedState?.current;if(typeof map?.queryRenderedFeatures==="function"&&typeof map?.getPadding==="function"){window.__qaLiveMap=map;return true}
+        }
+        return false;
+      }),true,"Real Mapbox instance unavailable to QA");
+      await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
+      assert.equal(await page.evaluate(()=>document.documentElement.dataset.theme),theme);
+      if(count>=100){
+        await page.waitForFunction(()=>window.__qaLiveMap.queryRenderedFeatures({layers:["fleet-clusters"]}).length>0,{},{timeout:10000});
+        const cluster=await page.evaluate(()=>{
+          const map=window.__qaLiveMap,rect=map.getCanvas().getBoundingClientRect();
+          for(const feature of map.queryRenderedFeatures({layers:["fleet-clusters"]})){const p=map.project(feature.geometry.coordinates);if(document.elementFromPoint(rect.left+p.x,rect.top+p.y)===map.getCanvas())return {x:p.x,y:p.y,zoom:map.getZoom()}}
+          return null;
+        });
+        assert.ok(cluster,"A real cluster must be visible outside overlays");
+        await page.locator("canvas.mapboxgl-canvas").click({position:{x:cluster.x,y:cluster.y}});
+        await page.waitForFunction(zoom=>window.__qaLiveMap.getZoom()>zoom+.05,cluster.zoom,{timeout:10000});
+      }
+      await page.getByRole("button",{name:/^(Auto|Recentrar)$/,exact:true}).click();
+      await page.getByRole("button",{name:"Auto",exact:true}).waitFor();
+      await page.waitForTimeout(700);
+      const before=await page.evaluate(()=>{const m=window.__qaLiveMap,p=m.getPadding();return {width:m.getCanvas().clientWidth,height:m.getCanvas().clientHeight,p}});
+      assert.ok(before.p.left+before.p.right<before.width&&before.p.top+before.p.bottom<before.height,"Desktop padding must leave a visible camera");
+      const canvas=await page.locator("canvas.mapboxgl-canvas").boundingBox();
+      await page.mouse.move(canvas.x+canvas.width*.4,canvas.y+canvas.height*.35);await page.mouse.down();await page.mouse.move(canvas.x+canvas.width*.4+50,canvas.y+canvas.height*.35+20,{steps:8});await page.mouse.up();
+      await page.getByRole("button",{name:"Recentrar",exact:true}).waitFor();
+      await page.setViewportSize({width:390,height:844});await page.waitForTimeout(900);
+      const mobile=await page.evaluate(()=>{const m=window.__qaLiveMap,p=m.getPadding();return {width:m.getCanvas().clientWidth,height:m.getCanvas().clientHeight,p,overflow:document.documentElement.scrollWidth>innerWidth+1}});
+      assert.ok(mobile.p.left+mobile.p.right<mobile.width&&mobile.p.top+mobile.p.bottom<mobile.height,"Resize must recompute bounded mobile padding");
+      assert.equal(mobile.overflow,false);
+      await page.getByRole("button",{name:"Recentrar",exact:true}).waitFor();await page.getByRole("button",{name:"Recentrar",exact:true}).click();await page.waitForTimeout(700);
+      await mkdir("artifacts/functional-ui-qa/mapbox-screens",{recursive:true});
+      await page.screenshot({path:`artifacts/functional-ui-qa/mapbox-screens/${theme}-${count}-390.png`,fullPage:true});
+      await page.setViewportSize({width:1366,height:900});await page.waitForTimeout(700);
+      if(count>1&&count<100){
+        const geometry=await page.evaluate(units=>{
+          const map=window.__qaLiveMap,canvas=map.getCanvas().getBoundingClientRect();
+          return Array.from(document.querySelectorAll(".fleet-marker")).map((marker,i)=>{const r=marker.getBoundingClientRect(),p=map.project([units[i].longitude,units[i].latitude]);return {error:Math.hypot(r.left+r.width/2-canvas.left-p.x,r.top+r.height/2-canvas.top-p.y),position:getComputedStyle(marker).position}});
+        },units);
+        assert.ok(geometry.every(item=>item.position==="absolute"&&item.error<3),"Real markers must align with projected GPS coordinates: "+JSON.stringify(geometry.slice(0,3)));
+      }
+      await page.screenshot({path:`artifacts/functional-ui-qa/mapbox-screens/${theme}-${count}-1366.png`,fullPage:true});
+      if(count===500)for(const width of [360,390,430,768,1024,1366,1920]){
+        await page.setViewportSize({width,height:900});await page.getByRole("button",{name:/^(Auto|Recentrar)$/,exact:true}).click();await page.waitForTimeout(800);
+        const fitted=await page.evaluate(units=>{const m=window.__qaLiveMap,p=m.getPadding(),w=m.getCanvas().clientWidth,h=m.getCanvas().clientHeight;return {paddingValid:p.left+p.right<w&&p.top+p.bottom<h,overflow:document.documentElement.scrollWidth>innerWidth+1,outside:units.filter(u=>{const q=m.project([u.longitude,u.latitude]);return q.x<-1||q.x>w+1||q.y<-1||q.y>h+1}).length}},units);
+        assert.equal(fitted.paddingValid,true);assert.equal(fitted.overflow,false);assert.equal(fitted.outside,0,"Auto fitBounds must contain all 500 GPS points at "+width);
+      }
+      await page.setViewportSize({width:1366,height:900});await page.waitForTimeout(700);
+      if(count){
+        await page.getByRole("button",{name:/^Sin GPS/}).click();assert.equal(await page.locator(".fleet-list-item").count(),units.filter(item=>item.freshness==="lost").length);
+        await page.getByRole("button",{name:/^Todas/}).click();
+        await page.locator(".fleet-list-item").first().click();await page.getByRole("complementary",{name:"Detalle de MAP-000"}).waitFor();await page.getByRole("button",{name:"Cerrar detalle"}).click();
+        await page.getByRole("textbox",{name:"Buscar unidad o ruta"}).fill("MAP-000");await page.waitForFunction(()=>document.querySelectorAll(".fleet-marker").length===1);assert.equal(await page.locator(".fleet-list-item").count(),1);
+        await page.locator(".fleet-marker").click();await page.getByRole("complementary",{name:"Detalle de MAP-000"}).waitFor();assert.equal(await page.locator('.fleet-list-item[aria-pressed="true"]').count(),1);
+        await page.locator(".mapboxgl-ctrl-zoom-in").click();
+        await page.screenshot({path:`artifacts/functional-ui-qa/mapbox-screens/${theme}-${count}-selected-1366.png`,fullPage:true});
+      }
+      assert.equal(provider.filter(item=>item.status>=400&&!item.path.startsWith("/events/")).length,0,"Mapbox provider request failures: "+JSON.stringify(provider.filter(item=>item.status>=400)));
+      checks.push({name:"Mapbox provider density",theme,count,provider,status:"PASS"});await page.context().close();
+    }
+  });
+  if(process.env.QA_MAPBOX==="1")await run("Mapbox provider home and route editor render in both themes with usable controls",async()=>{
+    for(const theme of ["dark","light"])for(const driver of [true,false]){
+      const page=await pageFor(driver?"mobile_operations":"company_portal");await page.addInitScript(theme=>localStorage.setItem("manecomb.theme",theme),theme);
+      const geometry=[{latitude:19.3,longitude:-98.2},{latitude:19.31,longitude:-98.21}];
+      const route={_id:"ui-route",id:"ui-route",name:"Ruta QA",geometry,stops:[],status:"active",revision:1};
+      await page.route("**/api/operation/navigation",r=>r.fulfill({json:{journey:{id:"ui-journey",vehicleId:"ui-unit",routeId:"ui-route",state:"RUNNING"},route,snapshot:unit}}));
+      await page.route("**/api/routes/ui-route",r=>r.fulfill({json:{route}}));
+      await page.goto(base+(driver?"/operacion":"/portal/rutas/ui-route"));
+      await realMapForQa(page,driver?".driver-map-canvas":".route-map-canvas");
+      assert.equal(await page.getByText(/No se pudo cargar el mapa|El mapa no está disponible/).count(),0);
+      if(driver){assert.equal(await page.locator(".driver-live-marker").count(),1);await page.getByRole("button",{name:/Siguiendo/}).click();await page.getByRole("button",{name:/Seguir/}).click()}
+      await page.locator(".mapboxgl-ctrl-zoom-in").click();
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+      await page.screenshot({path:`artifacts/functional-ui-qa/mapbox-screens/${driver?"operation":"route"}-${theme}-390.png`,fullPage:true});
+      checks.push({name:driver?"Mapbox operation home":"Mapbox route editor",theme,status:"PASS"});await page.context().close();
     }
   });
   await run("RTC real browser peers connect, hang up and reconnect with fresh audio",async()=>{
@@ -340,7 +431,7 @@ try{
     const surfaces=[
       ["company_portal","/","sales"],["company_portal","/planes","plans"],["company_portal","/login","login"],["company_portal","/checkout/fleet-4","checkout"],
       ["company_portal","/portal/monitoreo","map"],["company_portal","/portal/dashboard","summary"],["company_portal","/portal/unidades","vehicles"],["company_portal","/portal/rutas/nueva","routes"],["company_portal","/portal/conductores","drivers"],["company_portal","/portal/documentos","documents"],["company_portal","/portal/incidencias","incidents"],["company_portal","/portal/facturacion","billing"],["company_portal","/portal/chat","chat"],["company_portal","/portal/radio","radio"],
-      ["mobile_operations","/operacion#controles-jornada","operation"],["mobile_operations","/operacion/chat","operation-chat"],["mobile_operations","/operacion/alertas","operation-alerts"],
+      ["mobile_operations","/login?surface=operation","operation-login"],["mobile_operations","/operacion#controles-jornada","operation"],["mobile_operations","/operacion/chat","operation-chat"],["mobile_operations","/operacion/radio","operation-radio"],["mobile_operations","/operacion/alertas","operation-alerts"],
       ["platform_admin","/admin/empresas","admin-organizations"],["platform_admin","/admin/pagos-manuales","admin-payments"],["platform_admin","/admin/versiones","admin-versions"],["platform_admin","/admin/gobernanza","admin-audit"],["platform_admin","/admin/salud","admin-health"]
     ];
     await mkdir("artifacts/functional-ui-qa/screens",{recursive:true});

@@ -8,6 +8,7 @@ const paths={
   document:"M14 2H4v20h16V8l-6-6Zm0 0v6h6M8 12h8m-8 4h8",
   chat:"M21 11a8 8 0 0 1-8 8H7l-5 3V11a9 9 0 0 1 19 0ZM7 10h10m-10 4h6",
   radio:"M7 3v5m10-5v5M5 8h14v14H5V8Zm3 4h8m-4 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4Z",
+  microphone:"M9 5a3 3 0 0 1 6 0v7a3 3 0 0 1-6 0V5Zm-3 6v1a6 6 0 0 0 12 0v-1M12 18v4m-4 0h8",
   alert:"m12 3 10 18H2L12 3Zm0 6v5m0 3v1",
   billing:"M5 2h14v20l-3-2-4 2-4-2-3 2V2Zm3 5h8m-8 5h8m-8 5h4",
   more:"M4 11v2m8-2v2m8-2v2",

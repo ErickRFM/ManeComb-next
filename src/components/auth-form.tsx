@@ -34,7 +34,7 @@ export function AuthForm({mode,planCode,operation=false}:{mode:"login"|"register
     finally{setBusy(false)}
   }
 
-  return <form onSubmit={submit} className="card grid" style={{maxWidth:520}}>
+  return <form onSubmit={submit} className={"card grid"+(operation?" operation-auth-form":"")} style={{maxWidth:520}}>
     {mode==="register"?<>
       <label>Empresa / línea<input className="input" name="organizationName" autoComplete="organization" required/></label>
       <label>Nombre del responsable<input className="input" name="name" autoComplete="name" required/></label>
@@ -42,6 +42,6 @@ export function AuthForm({mode,planCode,operation=false}:{mode:"login"|"register
     <label>Correo<input className="input" name="email" type="email" autoComplete="username" required/></label>
     <label>Contraseña<input className="input" name="password" type="password" autoComplete={mode==="register"?"new-password":"current-password"} minLength={mode==="register"?10:8} required/></label>
     {error?<p role="alert" style={{color:"var(--danger)",margin:0}}>{error}</p>:null}
-    <button className="btn" disabled={busy}>{busy?"Procesando...":mode==="login"?"Entrar":"Crear empresa"}</button>
+    <button className="btn" disabled={busy}>{busy?"Procesando...":mode==="login"?(operation?"Iniciar sesión":"Entrar"):"Crear empresa"}</button>
   </form>;
 }

@@ -190,7 +190,7 @@ export function RadioConsole(){
       <div className="ptt-wave" aria-hidden="true">{Array.from({length:12}).map((_,index)=><span key={index}/>)}</div>
       <div className="ptt-orbit">
         <button className="ptt-button" disabled={connection!=="connected"||state==="connecting"||state==="busy"||state==="error"} onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);void press()}} onPointerUp={release} onPointerCancel={release} onKeyDown={event=>{if((event.key===" "||event.key==="Enter")&&!event.repeat){event.preventDefault();void press()}}} onKeyUp={event=>{if(event.key===" "||event.key==="Enter"){event.preventDefault();release()}}} onBlur={release}>
-          <span className="ptt-mic"><Icon name="radio" size={32}/></span>
+          <span className="ptt-mic"><Icon name="microphone" size={32}/></span>
           <strong>{state==="talking"?"HABLANDO":"PULSA Y HABLA"}</strong>
           <small>{state==="talking"?"Suelta para terminar":"Mantén presionado"}</small>
         </button>
@@ -204,6 +204,6 @@ export function RadioConsole(){
     </div>
     {state==="error"?<button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar radio</button>:null}
     {blockedAudio?<button className="btn secondary" onClick={()=>{void new Audio(blockedAudio).play().then(()=>setBlockedAudio(null)).catch(()=>undefined)}}>Escuchar última transmisión</button>:null}
-    <p className="muted">Personal de la empresa en línea: {online===null?"consultando presencia":users.filter(user=>online.has(user.id)).map(user=>user.name).join(", ")||"sin otros usuarios conectados"}</p>
+    <div className="radio-presence" aria-label="Personal de la empresa en línea">{online===null?<p className="muted">Consultando presencia</p>:users.filter(user=>online.has(user.id)).length?users.filter(user=>online.has(user.id)).map(user=><div key={user.id}><span>{user.name.split(/\s+/).slice(0,2).map(part=>part[0]).join("").toUpperCase()}</span><small>{user.name}</small></div>):<p className="muted">Sin otros usuarios conectados</p>}</div>
   </div>;
 }

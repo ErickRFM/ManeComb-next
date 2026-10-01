@@ -69,5 +69,15 @@ label{color:var(--text-soft);font-size:13px;font-weight:700}
 .module-header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:24px}
 .module-title{margin:10px 0 0;font-size:clamp(30px,4vw,48px);line-height:1.02;letter-spacing:-.045em}
 .module-copy{max-width:760px;color:var(--muted);line-height:1.65;margin:10px 0 0;font-size:15px}
+
+.operation-access{max-width:390px;margin:6dvh auto 0;padding:26px 20px;border:1px solid var(--border);border-radius:18px;background:var(--surface);box-shadow:var(--shadow-soft)}
+.operation-access .module-header{justify-content:center;text-align:center;margin-bottom:22px}
+.operation-wordmark{font:bold italic clamp(30px,7vw,42px) Georgia,serif;letter-spacing:-.05em;margin-bottom:24px}
+.operation-wordmark span{color:var(--brand-text)}
+.operation-access .module-title{font-size:22px;margin:0}
+.operation-access .module-copy{font-size:13px;margin-top:8px}
+.operation-access .operation-auth-form{padding:0;border:0;box-shadow:none;background:transparent;gap:20px}
+.operation-access .module-body>p,.operation-access .module-body>a{font-size:13px}
+.operation-access .module-body>a{display:inline-flex;align-items:center;min-height:44px}
 .module-body{min-width:0}
 

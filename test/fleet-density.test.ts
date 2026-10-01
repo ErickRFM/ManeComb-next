@@ -36,7 +36,10 @@ describe("fleet density strategy",()=>{
       expect(padding.top+padding.bottom).toBeLessThan(height);
       expect(Object.values(padding).every(value=>value>=0)).toBe(true);
     }
-    expect(fleetCameraPadding(1366,900,false).left).toBe(390);
+    const desktop=fleetCameraPadding(1366,900,false);
+    expect(desktop.right).toBeGreaterThan(desktop.left);
+    expect(desktop.bottom).toBeGreaterThan(desktop.top);
+    expect(desktop.right).toBe(340);
   });
   it("keeps small fleets on direct markers",()=>{
     expect(shouldClusterFleet(0)).toBe(false);
