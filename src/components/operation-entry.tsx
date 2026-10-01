@@ -18,5 +18,5 @@ export function OperationEntry(){
       .finally(()=>clearTimeout(timer));
     return()=>{mounted=false;clearTimeout(timer);controller.abort()};
   },[router,retry]);
-  return <main className="page grid" aria-busy={!error}><h1>ManeComb</h1>{error?<><p role="alert">{error}</p><button className="btn" onClick={()=>setRetry(value=>value+1)}>Reintentar</button></>:<p role="status">Comprobando sesión…</p>}</main>;
+  return <main id="main-content" className="page grid" aria-busy={!error}><h1>ManeComb</h1>{error?<><p role="alert">{error}</p><button className="btn" onClick={()=>setRetry(value=>value+1)}>Reintentar</button></>:<p role="status">Comprobando sesión…</p>}</main>;
 }

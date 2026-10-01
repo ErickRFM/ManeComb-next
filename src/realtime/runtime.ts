@@ -30,3 +30,10 @@ export function disconnectUserSessions(userId: string) {
   io?.to("user:" + userId).emit("session:revoked", { reason: "UNAUTHORIZED" });
   io?.in("user:" + userId).disconnectSockets(true);
 }
+export async function disconnectSessionSockets(userId:string,jti:string){
+  const sockets=await runtime.__manecombRealtimeServer?.in("user:"+userId).fetchSockets();
+  for(const socket of sockets||[]){
+    if(socket.data?.session?.jti!==jti)continue;
+    socket.emit("session:revoked",{reason:"UNAUTHORIZED"});socket.disconnect(true);
+  }
+}

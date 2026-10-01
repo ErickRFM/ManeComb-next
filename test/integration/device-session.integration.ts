@@ -9,6 +9,8 @@ import { User } from "@/src/core/models/User";
 import { Vehicle } from "@/src/core/models/Vehicle";
 import { Journey } from "@/src/core/models/Journey";
 import { requireIntegrationDatabase } from "../support/integration-database";
+import {createSessionForUser,requireApiSession} from "@/src/lib/auth";
+import {POST as logout} from "@/app/api/auth/logout/route";
 let ownedDatabase="";let user:any;let vehicle:any;let journey:any;let token="";let stored:any;
 beforeAll(async()=>{
   const database=requireIntegrationDatabase(process.env.MONGODB_URI);await connectDb();
@@ -39,4 +41,11 @@ it.each(["disabled","assignment","closed"])("revokes telemetry credentials after
 it("rejects an expired credential",async()=>{
   await DeviceSession.updateOne({_id:stored._id},{$set:{expiresAt:new Date(Date.now()-1000)}});
   await expect(requireDeviceTelemetrySession(request())).rejects.toThrow("UNAUTHORIZED");
+});
+it("explicit mobile logout revokes its web session and native telemetry credentials",async()=>{
+  const session=await createSessionForUser(user);
+  const signed=new Request("http://localhost/api/auth/logout",{method:"POST",headers:{authorization:"Bearer "+session.token}});
+  expect((await logout(signed)).status).toBe(200);
+  await expect(requireDeviceTelemetrySession(request())).rejects.toThrow("UNAUTHORIZED");
+  await expect(requireApiSession(signed)).rejects.toThrow("UNAUTHORIZED");
 });

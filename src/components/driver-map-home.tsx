@@ -36,8 +36,8 @@ export function DriverMapHome(){
         setData({...body,snapshot:snapshots.find(item=>item.vehicleId===body.journey?.vehicleId)||null});setError("");
       }
     }).catch(()=>mounted&&setError("No se pudo cargar la operación. Revisa tu conexión o tu acceso."));
-    refresh();socket.on("connect",refresh);
-    return()=>{mounted=false;socket.off("connect",refresh)};
+    refresh();socket.on("connect",refresh);socket.on("journey:update",refresh);
+    return()=>{mounted=false;socket.off("connect",refresh);socket.off("journey:update",refresh)};
   },[socket,retry]);
 
   useEffect(()=>{
