@@ -10,7 +10,7 @@ Base `f39e040`; rama `feat/uxui-system-v2-map-first`. La referencia visual exigi
 | Mapa | LiveMap/Mapbox/Socket.IO existentes; selección/filtros y detalle Resumen/Ruta/Incidencias/Documentos/Telemetría | Datos de APIs existentes, 403 diferenciado, tres alturas móviles; sin historial de GPS inventado |
 | App | `/app` valida sesión; manifest/Capacitor raíz → `/app`; Mapa/Chat/Radio/Alertas/Más y SOS | Inicio y deep links conservan login operativo; controles GPS persisten entre tabs |
 | Chat | `/portal/chat` y `/operacion/chat`; general/directo, historial, recepción, imágenes, presencia | Merge/dedup, timeout ACK, reintento con mismo ID, borradores y pendientes en memoria; no se inventa unread |
-| Radio/RTC | Canales/floor/audio y offer/answer/ice/hangup originales; ACK de audio opcional y compatible | PTT libera micrófono al perder foco, entrega fragmento final antes de liberar floor; directorio real; dos peers Chromium conectan, cuelgan y repiten llamada |
+| Radio/RTC | Canales/floor/audio y offer/answer/ice/hangup originales; ACK de audio opcional y compatible | PTT emite clips completos decodificables con una captura de micrófono, entrega audio final antes de liberar floor y detiene captura ante rechazo; directorio real; dos peers Chromium conectan, cuelgan y repiten llamada |
 | Rutas | GET/POST/PATCH originales, geometría/paradas/revisión | Segundo guardado actualiza el mismo ID; edición numérica funciona sin proveedor cartográfico |
 | Gestión | APIs originales de vehículos, drivers, documentos e incidencias | Mutaciones recuperables, permisos, inputs conservados; conductor editable sin modificar activación |
 | Incidencias | Gestores autorizados y usuario reportante; HTTP/socket/push con scope | Driver no ve reportes ajenos. Modelo actual contiene tipo/estado/unidad/reportante/mensaje/coordenadas; no hay ruta, evidencia adjunta ni severidad independiente que se pueda mostrar como dato real |
@@ -21,6 +21,8 @@ Base `f39e040`; rama `feat/uxui-system-v2-map-first`. La referencia visual exigi
 ## Design system y QA
 
 CSS dividido en módulos importados desde `app/globals.css`. El primer refactor conservó las reglas y su orden byte a byte. Cambios posteriores corrigen contraste con `--brand-text` y texto secundario, overflow documental, iconos SVG, foco/labels y responsive; no incorporan framework visual.
+
+Incidencias/Documentos tienen columna `minmax(0,1fr)`; métricas móviles usan tracks sin mínimo intrínseco y permiten ajustar palabras. El overflow de 360 px detectado en Linux se reprodujo con texto ampliado y se corrigió sin ocultar contenido ni reducir QA.
 
 Orden GPS: coordenadas más nuevas prevalecen; para timestamps iguales, HTTP sólo reemplaza estado no modificado desde que inició su petición. Un sweeper recibido durante HTTP no rejuvenece freshness al llegar esa respuesta. La caché anterior sí permite actualización HTTP posterior. Padding de cámara usa dimensiones del contenedor y posición del panel móvil, conservando espacio visible incluso en landscape corto; su render live sigue pendiente.
 

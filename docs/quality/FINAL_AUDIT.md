@@ -1,7 +1,7 @@
 # ManeComb UX/UI V2 — auditoría final
 
 Fecha local: 2026-09-30. Rama: `feat/uxui-system-v2-map-first`. Base/main remoto: `f39e04044cee70f032fe36772edb78c971aa214d`.
-Commit final de código validado: **`4e28ad930f34a177684c2b8941029c4ed08d65cb`**. El commit posterior de documentación no cambia código; su SHA de entrega queda en HEAD y en el PR. Los resultados anteriores de main no certifican esta rama.
+Commit final de código validado: **`ca315ecbf64a5ed7ba92daffb87c7b2605ae65f6`**. El commit posterior de documentación no cambia código; su SHA de entrega queda en HEAD y en el PR. Los resultados anteriores de main no certifican esta rama.
 
 ## Alcance revisado
 
@@ -18,14 +18,15 @@ Node 20.20.2/npm 10.8.2; Next 15.5.27. Ninguna validación cambia producción. A
 | Integración completa | PASS: 47 pruebas, 7 archivos | `artifacts/ux-v2-integration.log`; Atlas + Redis, providers simulados cuando corresponde |
 | `npm run build` | PASS: 81 páginas | `artifacts/ux-v2-build.log`; warning opcional BullMQ/Valkey preexistente |
 | E2E compilado | PASS | `artifacts/ux-v2-production-e2e.log`; registro/activación, ruta/unidad/driver, jornada, GPS orden/dedup/revocation, Chat, PTT con ACK/floor/audio, SOS con aislamiento de otro driver, cierre; QA eliminada |
-| Navegador funcional | PASS: 22 recorridos | `artifacts/functional-ui-qa/report.json`; páginas reales, HTTP/socket aislados; RTC con dos peers Chromium y audio generado |
+| Navegador funcional | PASS: 24 recorridos | `artifacts/functional-ui-qa/report.json`; páginas reales, HTTP/socket aislados; RTC con dos peers Chromium y PTT con MediaRecorder/decodificación reales y audio generado |
 | Responsive | PASS: 308 checks | `artifacts/functional-ui-qa/responsive-report.json`; 22 páginas × 360/390/430/768/1024/1366/1920 × dark/light; cero overflow y cero axe serious/critical |
 | Fixtures de diseño | PASS: 56 checks, cero violaciones | `artifacts/visual-qa/report.json`, capturas y foco/teclado; no certifican imagen aprobada |
+| Texto ampliado Incidencias | PASS: 14 checks | `artifacts/functional-ui-qa/responsive-text-stress-report.json`; 12 px en labels de métricas, siete anchos/dark-light, RED→GREEN |
 | Deploy check web/worker | FAIL esperado de configuración real | `artifacts/ux-v2-deploy-web.log`, `ux-v2-deploy-worker.log`; no se rellenó con valores ficticios |
 | Mapbox live | FAIL: HTTP 401 del estilo; WebGL disponible | `artifacts/ux-v2-mapbox.log`; rutas proveedor sin query/token. No certifica densidades 0/1/20/100/500 ni clusters/cámara reales |
 | CI del PR | Verificar checks del SHA de entrega | Workflows Node 20/24, Docker, UX y Android API 33–36. No usar CI histórico como evidencia de V2 |
 
-El reporte functional precede al ajuste de padding, que tiene una regresión unitaria adicional y build final; el mapa live sigue bloqueado. Ninguna prueba con respuestas aisladas acredita Resend/Mapbox/Mercado Pago/Cloudinary/TURN/Push productivos ni hardware físico.
+El reporte functional se repitió tras las correcciones de Radio/responsive; padding tiene regresión unitaria adicional y el mapa live sigue bloqueado. Ninguna prueba con respuestas aisladas acredita Resend/Mapbox/Mercado Pago/Cloudinary/TURN/Push productivos ni hardware físico.
 
 ## Hallazgos, correcciones y decisiones
 
@@ -36,6 +37,13 @@ Una revisión independiente completa encontró cero críticos confirmados y tres
 3. **PTT perdía audio final.** Soltar invalidaba el intento antes de dataavailable/stop y liberaba el floor. Finalización normal detiene captura, entrega fragmentos secuencialmente con ACK y luego libera; desconexión/pérdida/unmount cancelan. ACK opcional del evento existente se emite después de validación/broadcast, compatible con emisores anteriores sin ACK. Regresión browser produce audio final inferior a 300 ms y comprueba orden; unitaria ACK RED→GREEN y E2E servidor real PASS.
 
 La inspección propia añadió **padding de cámara inválido en móviles**: 480 px horizontales para canvas de 360 px. Ahora el padding usa dimensiones del contenedor y panel móvil, reservando espacio visible en ambos ejes. Regresión sobre ocho anchos/tres alturas, incluyendo landscape, y conservación del padding desktop cuando cabe. El render Mapbox no se certifica sin token autorizado.
+
+Dos comprobaciones posteriores completaron el cierre:
+
+- **Overflow de Incidencias en CI Linux.** El primer [UX CI](https://github.com/ErickRFM/ManeComb-next/actions/runs/36812267619), SHA `3d25d08`, pasó fixtures/functional y Android 33–36, pero detectó ancho 376 px a viewport 360 en ambos temas. Reproducción local con labels de métricas ampliados produjo 372 px. Tracks móviles `minmax(0,1fr)`, columna limitada al contenedor y `overflow-wrap:anywhere` evitan el mínimo intrínseco que expandía el grid. GREEN: 14 checks de texto, matriz completa 308 y fixtures 56; no se ocultó overflow ni se redujo el gate.
+- **Fragmentos PTT no reproducibles.** MediaRecorder real devolvía decodificación `[true,false,false,false]`; el receptor existente reproduce cada payload por separado. El [contrato W3C](https://www.w3.org/TR/mediastream-recording/) permite fragmentos individuales no reproducibles. Se conservan socket/evento/receptor y una sola captura de micrófono, emitiendo grabaciones completas cortas, verificadas con AudioContext. Colas sin muestras se descartan; ACK rechazado detiene captura y mantiene feedback/reintento aun después de floor inactivo. Dos recorridos RED→GREEN y el recorrido blur/fragmento final ahora usan MediaRecorder real. Duración/calidad perceptual en dispositivos y entre redes siguen gates físicos.
+
+El [CI inicial](https://github.com/ErickRFM/ManeComb-next/actions/runs/36812267646) del SHA `3d25d08` pasó Node 20/24, Docker y carga de 500 sockets: 10.000/10.000 y 10.500/10.500 ACK, cero ACK con error, p95 1.667/1.265 ms. Esto no valida por sí solo el SHA de entrega posterior: consultar checks exactos del PR. Staging/Atlas destino continúan pendientes.
 
 El revisor no juzgó fidelidad visual, proveedores/hardware/staging, deploy, cambio local previo, autoaceptación RTC ni ejecución completa de suites. Rulings: imagen/proveedores/hardware siguen gates; Render no autorizado; cambio previo excluido; autoaceptación RTC mantiene comportamiento preexistente y cualquier cambio requiere definición de producto; las suites las ejecutó el implementador y se documentan arriba. Sin hallazgos importantes conocidos pendientes de esa revisión.
 
