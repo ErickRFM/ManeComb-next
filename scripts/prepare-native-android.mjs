@@ -16,11 +16,26 @@ if(parsed.protocol!=="https:"&&!localHosts.has(parsed.hostname)){
   throw new Error("CAPACITOR_SERVER_URL must use HTTPS outside local/emulator development.");
 }
 
+
 function runCap(...args){
-  const executable=process.platform==="win32"?"npx.cmd":"npx";
-  const result=spawnSync(executable,["cap",...args],{cwd:root,stdio:"inherit",env:process.env});
-  if(result.status!==0)throw new Error("Capacitor command failed: "+args.join(" "));
+  const result = process.platform === "win32"
+    ? spawnSync(
+        process.env.ComSpec || "cmd.exe",
+        ["/d", "/s", "/c", "npx", "cap", ...args],
+        { cwd: root, stdio: "inherit", env: process.env }
+      )
+    : spawnSync(
+        "npx",
+        ["cap", ...args],
+        { cwd: root, stdio: "inherit", env: process.env }
+      );
+
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error("Capacitor command failed: " + args.join(" "));
+  }
 }
+
 
 if(!existsSync(androidDir))runCap("add","android");
 runCap("sync","android");
