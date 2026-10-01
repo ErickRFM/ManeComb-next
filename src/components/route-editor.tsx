@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { RouteMapDraw } from "@/src/components/route-map-draw";
+import {usePortalPermission} from "@/src/hooks/usePortalPermission";
 
 type Point={latitude:number;longitude:number};
 type Stop={name:string;order:number;latitude:number;longitude:number;radiusM:number};
@@ -19,24 +20,30 @@ type RouteDto={
 const empty:RouteDto={name:"",origin:"",destination:"",geometry:[],stops:[],status:"draft"};
 
 export function RouteEditor({routeId}:{routeId:string}){
-  const creating=routeId==="nueva";
+  const canEdit=usePortalPermission("manage_routes");
+  const newPage=routeId==="nueva";
   const [route,setRoute]=useState<RouteDto>(empty);
+  const creating=newPage&&!route._id;
   const [status,setStatus]=useState(creating?"Nueva ruta":"Cargando...");
   const [busy,setBusy]=useState(false);
+  const [loading,setLoading]=useState(!newPage),[error,setError]=useState(""),[retry,setRetry]=useState(0);
 
   useEffect(()=>{
-    if(creating)return;
+    if(newPage)return;
+    let active=true;setLoading(true);setError("");
     fetch("/api/routes/"+routeId).then(async response=>{
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"No se pudo cargar la ruta");
+      if(!active)return;
       setRoute({
         ...data.route,
         geometry:data.route.geometry||[],
         stops:(data.route.stops||[]).sort((a:Stop,b:Stop)=>a.order-b.order)
       });
       setStatus("Revisión "+(data.route.revision||1));
-    }).catch(error=>setStatus(error.message));
-  },[creating,routeId]);
+    }).catch(()=>{if(active)setError("No se pudo cargar la ruta. Revisa tu conexión o tu acceso.")}).finally(()=>{if(active)setLoading(false)});
+    return()=>{active=false};
+  },[newPage,routeId,retry]);
 
   const distanceKm=useMemo(()=>Math.round(polylineDistance(route.geometry)/100)/10,[route.geometry]);
 
@@ -66,6 +73,7 @@ export function RouteEditor({routeId}:{routeId:string}){
 
   async function submit(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
+    if(!canEdit||busy)return;
     if(route.geometry.length<2){setStatus("La ruta necesita al menos 2 puntos de geometría");return}
     setBusy(true);setStatus("Validando...");
     try{
@@ -78,7 +86,7 @@ export function RouteEditor({routeId}:{routeId:string}){
         distanceKm,
         status:route.status
       };
-      const response=await fetch(creating?"/api/routes":"/api/routes/"+routeId,{
+      const response=await fetch(creating?"/api/routes":"/api/routes/"+(route._id||routeId),{
         method:creating?"POST":"PATCH",
         headers:{"content-type":"application/json"},
         body:JSON.stringify(body)
@@ -92,17 +100,19 @@ export function RouteEditor({routeId}:{routeId:string}){
     finally{setBusy(false)}
   }
 
+  if(loading)return <p role="status">Cargando ruta…</p>;
+  if(error)return <div role="alert">{error} <button className="btn" onClick={()=>setRetry(value=>value+1)}>Reintentar ruta</button></div>;
   return <form className="route-builder" onSubmit={submit}>
     <section className="route-builder-head">
-      <div className="route-builder-title"><span className="eyebrow">{creating?"NUEVA RUTA":"EDITOR"}</span><h2>{route.name||"Ruta sin nombre"}</h2><p>{status}</p></div>
-      <div className="route-builder-actions"><span className={"state-badge "+(route.status==="active"?"active":route.status==="archived"?"archived":"maintenance")}>{route.status}</span><button className="btn" disabled={busy}>{busy?"Guardando...":"Guardar ruta"}</button></div>
+      <div className="route-builder-title"><span className="eyebrow">{creating?"NUEVA RUTA":"EDITOR"}</span><h2>{route.name||"Ruta sin nombre"}</h2><p role="status">{status}</p></div>
+      <div className="route-builder-actions"><span className={"state-badge "+(route.status==="active"?"active":route.status==="archived"?"archived":"maintenance")}>{route.status}</span>{canEdit?<button className="btn" disabled={busy}>{busy?"Guardando...":"Guardar ruta"}</button>:<span>Consulta de ruta</span>}</div>
     </section>
 
-    <div className="route-builder-layout">
+    <fieldset className="route-editor-fields" disabled={!canEdit||busy} aria-label="Datos de ruta"><div className="route-builder-layout">
       <div className="route-builder-main">
-        <RouteMapDraw points={route.geometry} stops={route.stops} onChange={geometry=>setRoute(current=>({...current,geometry}))}/>
+        <RouteMapDraw points={route.geometry} stops={route.stops} readOnly={!canEdit||busy} onChange={geometry=>setRoute(current=>({...current,geometry}))}/>
         <section className="route-stops-panel">
-          <div className="route-section-head"><div><strong>Paradas</strong><small>El orden define el recorrido operacional y la próxima parada.</small></div><button type="button" className="btn secondary" onClick={addStop}>+ Parada</button></div>
+          <div className="route-section-head"><div><strong>Paradas</strong><small>El orden define el recorrido operacional y la próxima parada.</small></div>{canEdit?<button type="button" className="btn secondary" onClick={addStop}>+ Parada</button>:null}</div>
           <div className="route-stop-list">
             {route.stops.map((stop,index)=><article className="route-stop-row" key={index}>
               <span className="route-stop-order">{index+1}</span>
@@ -137,7 +147,7 @@ export function RouteEditor({routeId}:{routeId:string}){
           {!creating?<div><small>Revisión</small><strong>{route.revision||1}</strong></div>:null}
         </section>
       </aside>
-    </div>
+    </div></fieldset>
   </form>;
 }
 

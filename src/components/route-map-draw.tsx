@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Point={latitude:number;longitude:number};
 type Stop={name:string;order:number;latitude:number;longitude:number;radiusM:number};
 
-export function RouteMapDraw({points,stops=[],onChange}:{points:Point[];stops?:Stop[];onChange:(points:Point[])=>void}){
+export function RouteMapDraw({points,stops=[],onChange,readOnly=false}:{points:Point[];stops?:Stop[];onChange:(points:Point[])=>void;readOnly?:boolean}){
   const containerRef=useRef<HTMLDivElement|null>(null);
   const mapRef=useRef<any>(null);
   const pointsRef=useRef(points);
   const stopsRef=useRef(stops);
   const onChangeRef=useRef(onChange);
+  const readOnlyRef=useRef(readOnly);readOnlyRef.current=readOnly;
+  const [latitude,setLatitude]=useState("");const [longitude,setLongitude]=useState("");const [error,setError]=useState("");
 
   useEffect(()=>{
     pointsRef.current=points;stopsRef.current=stops;onChangeRef.current=onChange;
@@ -38,6 +40,7 @@ export function RouteMapDraw({points,stops=[],onChange}:{points:Point[];stops?:S
       });
       map.addControl(new mapboxgl.NavigationControl({showCompass:false}),"bottom-right");
       mapRef.current=map;
+      map.on("error",()=>{if(!disposed)setError("No se pudo cargar el mapa. Puedes editar puntos por coordenadas.")});
 
       map.on("load",()=>{
         map.addSource("route-draft",{type:"geojson",data:toRouteGeoJson(pointsRef.current)});
@@ -51,24 +54,28 @@ export function RouteMapDraw({points,stops=[],onChange}:{points:Point[];stops?:S
       });
 
       map.on("click",(event:any)=>{
+        if(readOnlyRef.current)return;
         const next=[...pointsRef.current,{latitude:event.lngLat.lat,longitude:event.lngLat.lng}];
         pointsRef.current=next;
         onChangeRef.current(next);
       });
-    });
+    }).catch(()=>{if(!disposed)setError("No se pudo cargar el mapa. Puedes editar puntos por coordenadas.")});
     return()=>{disposed=true;mapRef.current?.remove?.();mapRef.current=null};
   },[]);
 
-  if(!process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN){
-    return <div className="card muted">Configura NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN para editar la ruta en el mapa.</div>;
-  }
-
   return <div className="route-map-editor">
-    <div ref={containerRef} className="route-map-canvas" role="region" aria-label="Mapa de edición de ruta"/>
+    {!process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?<p className="card muted" role="status">El mapa no está disponible. La geometría puede editarse por coordenadas.</p>:null}
+    {process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?<div ref={containerRef} className="route-map-canvas" role="region" aria-label="Mapa de edición de ruta"/>:null}
     <div className="route-map-toolbar">
       <div><strong>{points.length} puntos</strong><small>Haz clic sobre el mapa para extender la geometría.</small></div>
-      <div><button type="button" className="btn secondary" onClick={()=>onChange(points.slice(0,-1))} disabled={!points.length}>Deshacer</button><button type="button" className="btn secondary" onClick={()=>onChange([])} disabled={!points.length}>Limpiar</button></div>
+      {!readOnly?<div><button type="button" className="btn secondary" onClick={()=>onChange(points.slice(0,-1))} disabled={!points.length}>Deshacer</button><button type="button" className="btn secondary" onClick={()=>onChange([])} disabled={!points.length}>Limpiar</button></div>:null}
     </div>
+    {!readOnly?<div className="route-coordinate-entry"><label>Latitud del punto<input className="input" type="number" min="-90" max="90" step="any" value={latitude} onChange={event=>setLatitude(event.target.value)}/></label><label>Longitud del punto<input className="input" type="number" min="-180" max="180" step="any" value={longitude} onChange={event=>setLongitude(event.target.value)}/></label><button type="button" className="btn secondary" onClick={()=>{
+      const lat=Number(latitude),lng=Number(longitude);
+      if(!latitude.trim()||!longitude.trim()||!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180){setError("Ingresa coordenadas válidas para añadir el punto.");return}
+      onChange([...points,{latitude:lat,longitude:lng}]);setError("");setLatitude("");setLongitude("");
+    }}>Añadir punto</button></div>:null}
+    {error?<p role="alert">{error}</p>:null}
   </div>;
 }
 

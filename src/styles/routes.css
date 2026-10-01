@@ -1,4 +1,7 @@
 /* Route builder */
+.route-coordinate-entry{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:12px}
+.route-coordinate-entry label{flex:1;min-width:120px}
+.route-editor-fields{border:0;padding:0;margin:0;min-width:0}
 .route-index,.route-builder{display:grid;gap:14px}
 .route-builder-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
 .route-builder-title h2{margin:8px 0 0;font-size:25px;letter-spacing:-.04em}
