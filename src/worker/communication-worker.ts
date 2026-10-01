@@ -46,7 +46,6 @@ async function sendPushNotification(input: { organizationId?: string | null; pay
   const query: Record<string, unknown> = { active: true };
   if (input.organizationId) query.organizationId = input.organizationId;
   if (input.payload?.userId) query.userId = input.payload.userId;
-  // Scope new and already queued incident notifications to their authorized portal audience.
   if(input.payload?.audience==="incident_managers"||input.payload?.url==="/portal/incidencias"){
     if(!input.organizationId)throw new Error("Incident push requires an organization");
     const users=await User.find({organizationId:input.organizationId,channel:"company_portal",active:true}).select("_id roles").lean();
@@ -89,9 +88,14 @@ export async function startCommunicationWorker() {
     const event = await OutboxEvent.findById(job.data.outboxId);
     if (!event || event.status === "processed") return;
 
+    event.status="processing";
+    event.lastAttemptAt=new Date();
+    await event.save();
+
     try {
       if (job.name === "email.send") {
-        await sendTransactionalEmail(job.data.payload,{idempotencyKey:"outbox/"+String(event._id)});
+        const provider=await sendTransactionalEmail(job.data.payload,{idempotencyKey:"outbox/"+String(event._id)});
+        event.providerMessageId=provider.id;
       } else if (job.name === "push.send") {
         await sendPushNotification({
           organizationId: job.data.organizationId,
@@ -105,7 +109,9 @@ export async function startCommunicationWorker() {
       event.processedAt = new Date();
       await event.save();
     } catch (error) {
-      event.status = "failed";
+      const maxAttempts=Number(job.opts.attempts||1);
+      const finalAttempt=job.attemptsMade+1>=maxAttempts;
+      event.status = finalAttempt ? "failed_final" : "retry_pending";
       event.attempts += 1;
       event.lastError = error instanceof Error ? error.message : "worker failure";
       await event.save();
