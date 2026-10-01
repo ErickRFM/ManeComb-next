@@ -7,6 +7,7 @@ export function MfaForm() {
   const [setup, setSetup] = useState<{ secret: string; uri: string } | null>(null);
   const [state, setState] = useState("Preparando verificación...");
   const [busy, setBusy] = useState(false);
+  const [error,setError]=useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -30,19 +31,21 @@ export function MfaForm() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
+    setError(false);
     setState("Verificando...");
     const code = String(new FormData(event.currentTarget).get("code") || "").replace(/\s+/g, "");
-    const response = await fetch("/api/auth/mfa/verify", {
+    try{const response = await fetch("/api/auth/mfa/verify", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ code })
     });
     const data = await response.json().catch(() => ({}));
-    setBusy(false);
-    if (!response.ok) return setState(data.error || "Código inválido");
+    if (!response.ok){setError(true);return setState(data.error || "Código inválido")}
     setState("Verificación correcta");
     router.push("/admin/salud");
     router.refresh();
+    }catch{setError(true);setState("No se pudo verificar el código. Revisa la conexión y vuelve a intentar.")}
+    finally{setBusy(false)}
   }
 
   return <div className="grid" style={{ maxWidth: 560 }}>
@@ -56,9 +59,9 @@ export function MfaForm() {
       </details>
     </div> : null}
     <form className="card grid" onSubmit={submit}>
-      <input className="input" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="000000" required />
+      <label className="grid">Código de verificación<input className="input" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="000000" required /></label>
       <button className="btn" disabled={busy}>{busy ? "Verificando..." : "Verificar"}</button>
-      <p className="muted" style={{ margin: 0 }}>{state}</p>
+      <p className={error?"danger-text":"muted"} role={error?"alert":"status"} style={{ margin: 0 }}>{state}</p>
     </form>
   </div>;
 }

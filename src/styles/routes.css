@@ -1,0 +1,52 @@
+/* Route builder */
+.route-coordinate-entry{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:12px}
+.route-coordinate-entry label{flex:1;min-width:120px}
+.route-editor-fields{border:0;padding:0;margin:0;min-width:0}
+.route-workspace{display:grid;grid-template-columns:230px minmax(0,1fr);gap:14px;align-items:start}
+.route-workspace>aside{min-width:0;max-height:calc(100dvh - 210px);overflow:auto}
+.route-index-compact .route-metrics,.route-index-compact .entity-table-head{display:none}
+.route-index-compact .entity-toolbar{display:grid;gap:8px}
+.route-index-compact .entity-search{min-width:0;width:100%}
+.route-index-compact .entity-table-row{grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:10px}
+.route-index-compact .entity-primary{grid-column:1/-1}
+.route-index-compact .entity-capacity{font-size:11px}
+.route-index-compact .entity-actions{grid-column:1/-1}
+@media(max-width:1180px){.route-workspace{grid-template-columns:1fr}.route-workspace>aside{max-height:260px}}
+@media(min-width:1181px) and (max-width:1500px){.route-workspace .route-builder-layout{grid-template-columns:1fr}.route-workspace .route-builder-sidebar{position:static}}
+.route-index,.route-builder{display:grid;gap:14px}
+.route-builder-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
+.route-builder-title h2{margin:8px 0 0;font-size:25px;letter-spacing:-.04em}
+.route-builder-title p{margin:4px 0 0;color:var(--muted);font-size:9px}
+.route-builder-actions{display:flex;align-items:center;gap:8px}
+.route-builder-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+.route-builder-main{display:grid;gap:14px;min-width:0}
+.route-builder-sidebar{position:sticky;top:88px;display:grid;gap:12px}
+.route-settings-card,.route-summary-card,.route-stops-panel{display:grid;gap:11px;padding:15px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}
+.route-settings-card label{display:grid;gap:5px}
+.route-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.route-section-head>div{display:grid}
+.route-section-head strong{font-size:13px}
+.route-section-head small{font-size:9px;color:var(--muted);margin-top:2px}
+.route-summary-card>div{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:9px;border-top:1px solid var(--border)}
+.route-summary-card>div:first-of-type{margin-top:3px}
+.route-summary-card small{font-size:9px;color:var(--muted)}
+.route-summary-card strong{font-size:11px}
+.route-map-editor{border:1px solid var(--border);border-radius:18px;overflow:hidden;background:var(--surface);box-shadow:var(--shadow-soft)}
+.route-map-canvas{height:min(58dvh,610px);min-height:440px}
+.route-map-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 13px;border-top:1px solid var(--border)}
+.route-map-toolbar>div:first-child{display:grid}
+.route-map-toolbar strong{font-size:10px}
+.route-map-toolbar small{font-size:8px;color:var(--muted);margin-top:2px}
+.route-map-toolbar>div:last-child{display:flex;gap:6px}
+.route-stop-list{display:grid;gap:7px}
+.route-stop-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--background-soft)}
+.route-stop-order{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand-text);font-size:9px;font-weight:950}
+.route-stop-fields{display:grid;gap:7px}
+.route-stop-coordinates{display:grid;grid-template-columns:1fr 1fr 90px;gap:6px}
+.route-stop-coordinates label{display:grid;gap:3px;font-size:8px;color:var(--muted)}
+.route-stop-coordinates .input{padding:8px;font-size:9px}
+.route-stop-actions{display:flex;gap:4px}
+.route-stop-actions button{width:30px;height:30px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);cursor:pointer}
+.route-stop-actions .danger{color:var(--danger)}
+.route-stop-actions button:disabled{opacity:.35}
+

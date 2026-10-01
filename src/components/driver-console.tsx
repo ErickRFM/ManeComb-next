@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { isNativeLocationAvailable, startNativeLocation, stopNativeLocation } from "@/src/lib/native-location";
+import { getNativeLocationStatus,isNativeLocationAvailable, startNativeLocation, stopNativeLocation } from "@/src/lib/native-location";
 
 export function DriverConsole() {
   const watchRef = useRef<number | null>(null);
@@ -10,6 +10,8 @@ export function DriverConsole() {
   const [journeyId, setJourneyId] = useState("");
   const [status, setStatus] = useState("Detenido");
   const [speed, setSpeed] = useState<number | null>(null);
+  const [busy,setBusy]=useState(false);
+  const [running,setRunning]=useState(false);
 
   useEffect(() => {
     const enrolled = localStorage.getItem("manecomb.vehicleId") || "";
@@ -17,6 +19,14 @@ export function DriverConsole() {
     setVehicleId(enrolled);
     setJourneyId(activeJourney);
     trackingRef.current = { vehicleId: enrolled, journeyId: activeJourney };
+    let mounted=true;
+    if(isNativeLocationAvailable())void getNativeLocationStatus().then(result=>{if(mounted){setRunning(result.running);setStatus(result.running?"GPS nativo en segundo plano":"Detenido")}}).catch(()=>mounted&&setStatus("No se pudo consultar el GPS nativo"));
+    return()=>{
+      mounted=false;
+      // Browser tracking belongs to the persistent operation layout. Native service remains independent.
+      if(watchRef.current!==null)navigator.geolocation.clearWatch(watchRef.current);
+      void wakeLockRef.current?.release?.().catch(()=>undefined);
+    };
   }, []);
 
   async function send(position: GeolocationPosition) {
@@ -32,7 +42,7 @@ export function DriverConsole() {
       recordedAt: new Date(position.timestamp).toISOString()
     };
     setSpeed(payload.speedMps * 3.6);
-    const response = await fetch("/api/locations/telemetry", {
+    try{const response = await fetch("/api/locations/telemetry", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload)
@@ -41,13 +51,18 @@ export function DriverConsole() {
       const data = await response.json().catch(() => ({}));
       setStatus(data.error || "Telemetría rechazada por el servidor");
     }
+    }catch{setStatus("GPS sin conexión. Esperando la siguiente actualización.")}
   }
 
   async function start() {
-    const effectiveVehicleId = vehicleId || localStorage.getItem("manecomb.vehicleId") || "";
-    const effectiveJourneyId = journeyId || localStorage.getItem("manecomb.journeyId") || "";
-    if (!effectiveVehicleId) return setStatus("No hay unidad asignada");
-    if (!effectiveJourneyId) return setStatus("No hay jornada activa");
+    if(watchRef.current!==null||running||busy)return;setBusy(true);
+    try{
+    const response=await fetch("/api/operation/navigation",{cache:"no-store"});
+    if(!response.ok)throw new Error("No se pudo consultar la jornada actual");
+    const current=await response.json();
+    if(current.journey?.state!=="RUNNING")throw new Error("Inicia o reanuda la jornada antes de activar GPS.");
+    const effectiveVehicleId = current.journey.vehicleId;
+    const effectiveJourneyId = current.journey.id;
 
     setVehicleId(effectiveVehicleId);
     setJourneyId(effectiveJourneyId);
@@ -57,6 +72,7 @@ export function DriverConsole() {
 
     if (isNativeLocationAvailable()) {
       await startNativeLocation({ serverUrl: window.location.origin, vehicleId: effectiveVehicleId, journeyId: effectiveJourneyId });
+      setRunning(true);
       setStatus("GPS nativo en segundo plano");
       return;
     }
@@ -68,26 +84,34 @@ export function DriverConsole() {
       () => setStatus("Error de GPS o permisos"),
       { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
     );
+    setRunning(true);
     setStatus("GPS web activo · mantén la pantalla encendida");
+    }catch(error){setStatus(error instanceof Error?error.message:"No se pudo iniciar GPS. Vuelve a intentar.")}
+    finally{setBusy(false)}
   }
 
   async function stop() {
-    if (isNativeLocationAvailable()) await stopNativeLocation().catch(() => undefined);
+    if(busy)return;setBusy(true);
+    try{
+    if (isNativeLocationAvailable()) await stopNativeLocation();
     if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current);
     watchRef.current = null;
     await wakeLockRef.current?.release?.().catch(() => undefined);
     wakeLockRef.current = null;
     setStatus("Detenido");
+    setRunning(false);
+    }catch{setStatus("No se pudo confirmar la detención del GPS. Vuelve a intentar.")}
+    finally{setBusy(false)}
   }
 
   return <div className="driver-panel grid">
-    <div><span className="badge">TELEMETRÍA</span><h2 style={{margin:"10px 0 0"}}>Seguimiento GPS</h2><p className="muted">El servidor sólo acepta ubicación de la unidad asignada durante una jornada RUNNING.</p></div>
+    <div><span className="badge">TELEMETRÍA</span><h2 style={{margin:"10px 0 0"}}>Seguimiento GPS</h2><p className="muted">Inicia o reanuda tu jornada para transmitir la ubicación de la unidad asignada.</p></div>
     <div className="card grid">
-      <input className="input" value={vehicleId} readOnly placeholder="Unidad asignada"/>
-      <input className="input" value={journeyId} readOnly placeholder="Jornada activa"/>
-      <div className="status-row"><span>Estado</span><strong>{status}</strong></div>
+      <label>Unidad asignada<input className="input" value={vehicleId} readOnly/></label>
+      <label>Jornada activa<input className="input" value={journeyId} readOnly/></label>
+      <div className="status-row"><span>Estado</span><strong role="status">{status}</strong></div>
       {speed !== null ? <div className="status-row"><span>Velocidad</span><span className="kpi">{speed.toFixed(0)} km/h</span></div> : null}
-      <div style={{display:"flex",gap:10}}><button className="btn" onClick={()=>void start()}>Iniciar GPS</button><button className="btn secondary" onClick={()=>void stop()}>Detener</button></div>
+      <div style={{display:"flex",gap:10}}><button className="btn" disabled={busy||running} onClick={()=>void start()}>Iniciar GPS</button><button className="btn secondary" disabled={busy||!running} onClick={()=>void stop()}>Detener</button></div>
     </div>
   </div>;
 }

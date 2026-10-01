@@ -1,9 +1,12 @@
 "use client";
+import {Icon} from "@/src/components/ui/icon";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
-import { useSocket } from "@/src/hooks/useSocket";
-import { fleetMarkerState, fleetToGeoJson, shouldClusterFleet } from "@/src/lib/fleet-density";
+import { useSocket, useSocketStatus } from "@/src/hooks/useSocket";
+import { fleetMarkerState, fleetToGeoJson, shouldClusterFleet, fleetCameraPadding } from "@/src/lib/fleet-density";
+import { mergeSnapshots } from "@/src/lib/fleet-snapshots";
+import {UnitDetailPanel} from "@/src/components/unit-detail-panel";
 
 type Filter="all"|"live"|"risk"|"lost";
 const emptyCollection={type:"FeatureCollection" as const,features:[] as any[]};
@@ -14,7 +17,9 @@ export function LiveMap(){
   const markers=useRef(new Map<string,any>());
   const programmaticCamera=useRef(false);
   const unitsRef=useRef<OperationalUnitSnapshot[]>([]);
+  const snapshotsRef=useRef<OperationalUnitSnapshot[]>([]),loadId=useRef(0);
   const socket=useSocket();
+  const connection=useSocketStatus(socket);
 
   const [units,setUnits]=useState<OperationalUnitSnapshot[]>([]);
   const [mapReady,setMapReady]=useState(false);
@@ -23,26 +28,27 @@ export function LiveMap(){
   const [filter,setFilter]=useState<Filter>("all");
   const [cameraMode,setCameraMode]=useState<"auto"|"free">("auto");
   const [error,setError]=useState("");
+  const [mapError,setMapError]=useState("");
+  const [loading,setLoading]=useState(true);
+  const [retry,setRetry]=useState(0);
 
   useEffect(()=>{unitsRef.current=units},[units]);
 
   useEffect(()=>{
     let cancelled=false;
-    fetch("/api/locations/live").then(async response=>{
+    const refresh=()=>{const id=++loadId.current,requestStart=snapshotsRef.current;return void fetch("/api/locations/live",{cache:"no-store"}).then(async response=>{
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"No se pudo cargar la flota");
-      if(!cancelled)setUnits(data.units||[]);
-    }).catch(err=>!cancelled&&setError(err.message));
-    return()=>{cancelled=true};
-  },[]);
+      if(!cancelled&&id===loadId.current){snapshotsRef.current=mergeSnapshots(snapshotsRef.current,data.units||[],requestStart).filter(unit=>(data.units||[]).some((next:OperationalUnitSnapshot)=>next.vehicleId===unit.vehicleId)||!requestStart.includes(unit));setUnits(snapshotsRef.current);setError("")}
+    }).catch(()=>!cancelled&&id===loadId.current&&setError("No se pudo cargar la flota. Revisa la conexión o tu acceso."))
+      .finally(()=>!cancelled&&id===loadId.current&&setLoading(false))};
+    refresh();socket.on("connect",refresh);
+    return()=>{cancelled=true;socket.off("connect",refresh)};
+  },[socket,retry]);
 
   useEffect(()=>{
     const onSnapshot=(snapshot:OperationalUnitSnapshot)=>{
-      setUnits(current=>{
-        const index=current.findIndex(unit=>unit.vehicleId===snapshot.vehicleId);
-        if(index<0)return [...current,snapshot];
-        const next=[...current];next[index]=snapshot;return next;
-      });
+      snapshotsRef.current=mergeSnapshots(snapshotsRef.current,[snapshot]);setUnits(snapshotsRef.current);
     };
     socket.on("location:snapshot",onSnapshot);
     return()=>{socket.off("location:snapshot",onSnapshot)};
@@ -61,7 +67,8 @@ export function LiveMap(){
   },[units,search,filter]);
 
   const clustered=shouldClusterFleet(filtered.length);
-  const selected=units.find(unit=>unit.vehicleId===selectedId)||null;
+  const selected=filtered.find(unit=>unit.vehicleId===selectedId)||null;
+  useEffect(()=>{if(selectedId&&!filtered.some(unit=>unit.vehicleId===selectedId))setSelectedId(null)},[filtered,selectedId]);
 
   useEffect(()=>{
     let disposed=false;
@@ -69,7 +76,7 @@ export function LiveMap(){
       if(disposed||!container.current||mapRef.current)return;
       const mapboxgl=module.default;
       const token=process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-      if(!token){setError("Falta NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN");return}
+      if(!token){setMapError("El mapa no está disponible. Puedes consultar la lista de unidades.");return}
       mapboxgl.accessToken=token;
       const light=document.documentElement.dataset.theme==="light";
       const map=new mapboxgl.Map({
@@ -79,10 +86,11 @@ export function LiveMap(){
         zoom:10,
         attributionControl:false
       });
-      map.addControl(new mapboxgl.NavigationControl({showCompass:false}),"bottom-right");
+      map.addControl(new mapboxgl.NavigationControl({showCompass:false}),"top-left");
       const unlock=()=>{if(!programmaticCamera.current)setCameraMode("free")};
       map.on("dragstart",unlock);
       map.on("zoomstart",unlock);
+      map.on("error",()=>{if(!disposed)setMapError("No se pudo cargar el mapa. La lista sigue disponible.")});
 
       map.on("load",()=>{
         map.addSource("fleet-density",{
@@ -149,10 +157,10 @@ export function LiveMap(){
           map.on("mouseenter",layer,()=>{map.getCanvas().style.cursor="pointer"});
           map.on("mouseleave",layer,()=>{map.getCanvas().style.cursor=""});
         }
-        setMapReady(true);
+        setMapReady(true);setMapError("");
       });
       mapRef.current=map;
-    });
+    }).catch(()=>{if(!disposed)setMapError("No se pudo cargar el mapa. La lista sigue disponible.")});
     return()=>{disposed=true;markers.current.forEach(marker=>marker.remove?.());markers.current.clear();mapRef.current?.remove?.();mapRef.current=null};
   },[]);
 
@@ -168,11 +176,25 @@ export function LiveMap(){
       }else{
         const bounds=new mapboxgl.LngLatBounds();
         located.forEach(unit=>bounds.extend([unit.longitude as number,unit.latitude as number]));
-        map.fitBounds(bounds,{padding:{top:90,right:90,bottom:110,left:390},maxZoom:15,duration:500});
+        const container=map.getContainer();
+        map.fitBounds(bounds,{padding:fleetCameraPadding(container.clientWidth,container.clientHeight,window.matchMedia("(max-width:800px)").matches),maxZoom:15,duration:500});
       }
       window.setTimeout(()=>{programmaticCamera.current=false},600);
     });
   }
+
+  useEffect(()=>{
+    const map=mapRef.current;
+    if(!map||!mapReady)return;
+    const resize=()=>{
+      const element=map.getContainer();
+      map.setPadding(fleetCameraPadding(element.clientWidth,element.clientHeight,window.matchMedia("(max-width:800px)").matches));
+      if(cameraMode==="auto")fitToFleet();
+    };
+    map.on("resize",resize);
+    return()=>{map.off("resize",resize)};
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[mapReady,cameraMode,filtered]);
 
   useEffect(()=>{
     if(!mapReady)return;
@@ -220,7 +242,9 @@ export function LiveMap(){
         }else{
           marker.setLngLat([unit.longitude,unit.latitude]);
           const el=marker.getElement();
-          el.className="fleet-marker "+state+(selectedId===unit.vehicleId?" selected":"");
+          el.classList.remove("good","warn","danger","selected");
+          el.classList.add(state);
+          el.classList.toggle("selected",selectedId===unit.vehicleId);
         }
       }
       if(cameraMode==="auto")fitToFleet();
@@ -242,19 +266,19 @@ export function LiveMap(){
 
   return <div className="fleet-view">
     <div className="fleet-toolbar">
-      <div className="fleet-search"><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar unidad o ruta..." aria-label="Buscar unidad o ruta"/></div>
+      <div className="fleet-search"><span><Icon name="search" size={16}/></span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar unidad o ruta..." aria-label="Buscar unidad o ruta"/></div>
       <div className="fleet-filters" role="group" aria-label="Filtros de flota">
         {([["all","Todas"],["live","En vivo"],["risk","Atención"],["lost","Sin GPS"]] as const).map(([value,label])=><button key={value} className={filter===value?"active":""} onClick={()=>setFilter(value)}>{label}<span>{value==="all"?units.length:value==="live"?units.filter(u=>u.freshness==="live").length:value==="risk"?units.filter(u=>u.isOffRoute||["stale","delayed"].includes(u.freshness)).length:units.filter(u=>u.freshness==="lost").length}</span></button>)}
       </div>
       {clustered?<span className="cluster-mode-badge">Clusters · {filtered.length}</span>:null}
-      <button className={"camera-mode "+(cameraMode==="auto"?"active":"")} onClick={enableAutoCamera}>◎ {cameraMode==="auto"?"Auto":"Recentrar"}</button>
+      <button className={"camera-mode "+(cameraMode==="auto"?"active":"")} onClick={enableAutoCamera}><Icon name="location" size={16}/> {cameraMode==="auto"?"Auto":"Recentrar"}</button>
     </div>
 
-    {error?<div className="fleet-map-error" role="alert">{error}</div>:null}
+    {error?<div className="fleet-map-error" role="alert">{error} <button className="btn secondary" onClick={()=>{setLoading(true);setRetry(value=>value+1)}}>Reintentar</button></div>:mapError?<div className="fleet-map-error" role="status">{mapError}</div>:null}
 
     <div className="fleet-stage">
       <aside className="fleet-list-panel" aria-label="Lista de unidades visibles">
-        <div className="fleet-panel-heading"><div><strong>Flota</strong><span>{filtered.length} visibles</span></div><span className="live-badge"><span className="live-dot"/>Live</span></div>
+        <div className="fleet-panel-heading"><div><strong>Flota</strong><span>{filtered.length} visibles</span></div><span className="live-badge" role="status">{connection==="connected"?"En línea":connection==="connecting"?"Conectando":"Reconectando"}</span></div>
         <div className="fleet-list-scroll">
           {filtered.map(unit=><button key={unit.vehicleId} className={"fleet-list-item "+(selectedId===unit.vehicleId?"selected":"")} onClick={()=>selectUnit(unit)} aria-pressed={selectedId===unit.vehicleId}>
             <span className={"fleet-list-state "+fleetMarkerState(unit)}/>
@@ -262,27 +286,13 @@ export function LiveMap(){
             <span className="fleet-list-stats"><strong>{unit.speedKmH.toFixed(0)}</strong><small>km/h</small></span>
             <span className="fleet-list-stats"><strong>{unit.etaMinutes==null?"—":unit.etaMinutes}</strong><small>min ETA</small></span>
           </button>)}
-          {!filtered.length?<div className="empty-state compact"><strong>Sin coincidencias</strong><span>Ajusta búsqueda o filtros.</span></div>:null}
+          {!filtered.length?<div className="empty-state compact" role="status"><strong>{loading?"Cargando flota…":error?"Flota no disponible":units.length?"Sin coincidencias":"Sin unidades"}</strong><span>{!loading&&!error?(units.length?"Ajusta búsqueda o filtros.":"Registra una unidad para comenzar."):""}</span></div>:null}
         </div>
       </aside>
 
-      <div ref={container} className="fleet-map-canvas" role="region" aria-label="Mapa de monitoreo en vivo"/>
+      <div ref={container} className="fleet-map-canvas" role="region" aria-label="Mapa de monitoreo en vivo" aria-busy={!mapReady&&!mapError}/>
 
-      {selected?<aside className="unit-detail-panel" aria-label={"Detalle de "+selected.economicNumber}>
-        <div className="unit-detail-head"><div><span className={"unit-status-dot "+fleetMarkerState(selected)}/><div><strong>{selected.economicNumber}</strong><small>{selected.routeName||"Sin ruta asignada"}</small></div></div><button className="icon-action" onClick={()=>setSelectedId(null)} aria-label="Cerrar detalle">×</button></div>
-        <div className="unit-detail-status">
-          <span className={"health-chip "+fleetMarkerState(selected)}>{selected.freshness}</span>
-          {selected.routeState?<span className={"health-chip "+(selected.isOffRoute?"danger":"neutral")}>{selected.isOffRoute?"Fuera de ruta":selected.routeState}</span>:null}
-        </div>
-        <div className="unit-detail-grid">
-          <div><small>Velocidad</small><strong>{selected.speedKmH.toFixed(0)} km/h</strong></div>
-          <div><small>Avance</small><strong>{selected.progressPercent==null?"—":selected.progressPercent.toFixed(0)+"%"}</strong></div>
-          <div><small>ETA</small><strong>{selected.etaMinutes==null?"—":selected.etaMinutes+" min"}</strong></div>
-          <div><small>Corredor</small><strong>{selected.distanceFromRouteM==null?"—":selected.distanceFromRouteM+" m"}</strong></div>
-        </div>
-        {selected.nextStop?<div className="next-stop-card"><small>PRÓXIMA PARADA</small><strong>{selected.nextStop.name}</strong><span>{selected.nextStop.distanceRemainingM} m restantes</span></div>:null}
-        <div className="unit-detail-footer"><span>Último GPS</span><strong>{selected.recordedAt?new Date(selected.recordedAt).toLocaleTimeString():"Sin reporte"}</strong></div>
-      </aside>:null}
+      {selected?<UnitDetailPanel key={selected.vehicleId} unit={selected} onClose={()=>setSelectedId(null)}/>:null}
     </div>
   </div>;
 }

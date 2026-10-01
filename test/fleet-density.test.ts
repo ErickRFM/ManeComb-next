@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FLEET_CLUSTER_THRESHOLD, fleetToGeoJson, shouldClusterFleet } from "@/src/lib/fleet-density";
+import { FLEET_CLUSTER_THRESHOLD, fleetToGeoJson, shouldClusterFleet, fleetCameraPadding } from "@/src/lib/fleet-density";
 import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
 
 function unit(index:number):OperationalUnitSnapshot{
@@ -29,6 +29,18 @@ function unit(index:number):OperationalUnitSnapshot{
 }
 
 describe("fleet density strategy",()=>{
+  it("keeps positive camera space at mobile widths and short landscape heights",()=>{
+    for(const width of [300,360,390,430,768,1024,1366,1920])for(const height of [200,400,844]){
+      const padding=fleetCameraPadding(width,height,width<=800);
+      expect(padding.left+padding.right).toBeLessThan(width);
+      expect(padding.top+padding.bottom).toBeLessThan(height);
+      expect(Object.values(padding).every(value=>value>=0)).toBe(true);
+    }
+    const desktop=fleetCameraPadding(1366,900,false);
+    expect(desktop.right).toBeGreaterThan(desktop.left);
+    expect(desktop.bottom).toBeGreaterThan(desktop.top);
+    expect(desktop.right).toBe(340);
+  });
   it("keeps small fleets on direct markers",()=>{
     expect(shouldClusterFleet(0)).toBe(false);
     expect(shouldClusterFleet(1)).toBe(false);

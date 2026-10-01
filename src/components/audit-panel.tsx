@@ -1,4 +1,5 @@
 "use client";
+import {Icon} from "@/src/components/ui/icon";
 
 import { useEffect, useMemo, useState } from "react";
 
@@ -6,15 +7,17 @@ export function AuditPanel(){
   const [events,setEvents]=useState<any[]>([]);
   const [state,setState]=useState("Cargando auditoría...");
   const [search,setSearch]=useState("");
+  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[retry,setRetry]=useState(0);
   const [scope,setScope]=useState<"all"|"security"|"operations"|"billing">("all");
 
   useEffect(()=>{
+    let mounted=true;setLoading(true);setError("");
     fetch("/api/admin/audit?limit=150").then(async response=>{
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"No se pudo cargar auditoría");
-      setEvents(data.events||[]);setState((data.events||[]).length+" eventos");
-    }).catch(error=>setState(error.message));
-  },[]);
+      if(!mounted)return;setEvents(data.events||[]);setState((data.events||[]).length+" eventos");
+    }).catch(()=>{if(mounted)setError("No se pudo cargar la auditoría. Revisa tu conexión o tu acceso.")}).finally(()=>{if(mounted)setLoading(false)});return()=>{mounted=false};
+  },[retry]);
 
   const classify=(action:string)=>{
     const value=String(action||"").toLowerCase();
@@ -35,11 +38,12 @@ export function AuditPanel(){
 
   return <div className="audit-center">
     <div className="entity-toolbar">
-      <div className="entity-search"><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar acción, entidad, organización o actor..."/></div>
+      <div className="entity-search"><span><Icon name="search" size={16}/></span><input value={search} onChange={e=>setSearch(e.target.value)} aria-label="Buscar auditoría" placeholder="Buscar acción, entidad, organización o actor..."/></div>
       <div className="compact-filters">{(["all","security","operations","billing"] as const).map(value=><button key={value} className={scope===value?"active":""} onClick={()=>setScope(value)}>{value==="all"?"Todo":value==="security"?"Seguridad":value==="operations"?"Operación":"Facturación"}</button>)}</div>
-      <span className="entity-state">{state}</span>
+      <span className="entity-state" role="status">{loading?"Cargando auditoría…":state}</span><button className="btn secondary" disabled={loading} onClick={()=>setRetry(value=>value+1)}>Actualizar auditoría</button>
     </div>
 
+    {error?<p role="alert">{error}</p>:null}
     <div className="audit-timeline">
       {visible.map(event=>{
         const category=classify(event.action);
@@ -56,7 +60,7 @@ export function AuditPanel(){
           </div>
         </article>;
       })}
-      {!visible.length?<div className="empty-state"><strong>Sin eventos</strong><span>No hay registros que coincidan con los filtros actuales.</span></div>:null}
+      {!visible.length&&!loading&&!error?<div className="empty-state"><strong>Sin eventos</strong><span>No hay registros que coincidan con los filtros actuales.</span></div>:null}
     </div>
   </div>;
 }

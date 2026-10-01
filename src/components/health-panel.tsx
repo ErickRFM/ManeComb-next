@@ -5,21 +5,23 @@ import { useEffect, useMemo, useState } from "react";
 export function HealthPanel(){
   const [health,setHealth]=useState<any>(null);
   const [error,setError]=useState("");
+  const [retry,setRetry]=useState(0);
 
   useEffect(()=>{
     let mounted=true;
     const load=()=>fetch("/api/health/ready").then(async response=>{
       const data=await response.json();
-      if(mounted)setHealth(data);
-    }).catch(e=>mounted&&setError(e.message));
+      if(!response.ok&&response.status!==503)throw new Error();
+      if(mounted){setHealth(data);setError("")}
+    }).catch(()=>mounted&&setError("No se pudo consultar la salud del sistema. Revisa tu conexión o tu acceso."));
     void load();
     const timer=setInterval(()=>void load(),15_000);
     return()=>{mounted=false;clearInterval(timer)};
-  },[]);
+  },[retry]);
 
   const integrations=useMemo(()=>health?Object.entries(health.integrations||{}):[],[health]);
 
-  if(error)return <div className="system-error-card">{error}</div>;
+  if(error)return <div className="system-error-card" role="alert">{error} <button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Consultar salud</button></div>;
   if(!health)return <div className="admin-health-skeleton"><div/><div/><div/></div>;
 
   const ok=health.status==="ok";
@@ -36,11 +38,11 @@ export function HealthPanel(){
     <div className="service-health-grid">
       <div className={"service-health-card "+(health.database?.ok?"good":"bad")}>
         <div className="service-health-head"><span>DB</span><small>{health.database?.ok?"OPERATIVO":"ERROR"}</small></div>
-        <strong>MongoDB</strong><p>{health.database?.error||"Conexión activa"}</p>
+        <strong>MongoDB</strong><p>{health.database?.error||(health.database?.ok?"Conexión activa":"Sin respuesta confirmada")}</p>
       </div>
       <div className={"service-health-card "+(health.redis?.ok?"good":"bad")}>
         <div className="service-health-head"><span>RD</span><small>{health.redis?.ok?"OPERATIVO":"ERROR"}</small></div>
-        <strong>Redis</strong><p>{health.redis?.error||"Realtime, rate-limit y colas disponibles"}</p>
+        <strong>Redis</strong><p>{health.redis?.error||(health.redis?.ok?"Realtime, rate-limit y colas disponibles":"Sin respuesta confirmada")}</p>
       </div>
       <div className={"service-health-card "+(health.rtc?.ready?"good":"warn")}>
         <div className="service-health-head"><span>RTC</span><small>{health.rtc?.ready?"TURN READY":"STUN ONLY"}</small></div>

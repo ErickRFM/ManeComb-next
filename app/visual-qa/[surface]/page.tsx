@@ -11,7 +11,7 @@ export default async function VisualQaPage({params}:{params:Promise<{surface:str
   const {surface}=await params;
   if(!allowed.has(surface))notFound();
 
-  if(surface==="portal")return <PortalShell><VisualPortal/></PortalShell>;
+  if(surface==="portal")return <PortalShell initialProfile={{name:"QA Portal",roles:["owner"]}}><VisualPortal/></PortalShell>;
   if(surface==="admin")return <AdminShell><VisualAdmin/></AdminShell>;
   if(surface==="driver")return <DriverShell><VisualDriver/></DriverShell>;
   return <><VisualForms/><VisualQaModal/></>;

@@ -66,27 +66,28 @@ export function registerRadioHandler(io: Server, socket: Socket) {
     }
   });
 
-  socket.on("radio:audio", async (payload) => {
-    if(!allowSocketEvent(socket,"radio:audio",40,10_000)) return;
+  socket.on("radio:audio", async (payload, ack) => {
+    if(!allowSocketEvent(socket,"radio:audio",40,10_000)) return ack?.({ok:false,reason:"RATE_LIMITED"});
     const parsed = RadioAudioSchema.safeParse(payload);
-    if (!parsed.success) return;
+    if (!parsed.success) return ack?.({ok:false,reason:"INVALID_AUDIO"});
     try {
       const session = sessionContext();
       const { channelId, chunk } = parsed.data;
-      if (!heldChannels.has(channelId)) return;
+      if (!heldChannels.has(channelId)) return ack?.({ok:false,reason:"NO_FLOOR"});
       const owner = socket.id + ":" + session.sub;
       if (!(await refreshRadioFloor(session.organizationId, channelId, owner))) {
         heldChannels.delete(channelId);
         socket.emit("radio:floor-lost", { channelId });
-        return;
+        return ack?.({ok:false,reason:"FLOOR_LOST"});
       }
       socket.to(radioRoom(session.organizationId, channelId)).emit("radio:audio", {
         channelId,
         userId: session.sub,
         chunk
       });
+      ack?.({ok:true});
     } catch {
-      return;
+      ack?.({ok:false,reason:"RADIO_AUDIO_ERROR"});
     }
   });
 

@@ -8,6 +8,8 @@ import { PushSubscription } from "@/src/core/models/PushSubscription";
 import { sendTransactionalEmail } from "@/src/lib/email";
 import { getEnv } from "@/src/lib/env";
 import { communicationQueueName, communicationQueuePrefix } from "@/src/lib/runtime-namespace";
+import {User} from "@/src/core/models/User";
+import {hasPermission} from "@/src/core/domain/permissions";
 
 export async function flushOutbox() {
   await connectDb();
@@ -44,6 +46,13 @@ async function sendPushNotification(input: { organizationId?: string | null; pay
   const query: Record<string, unknown> = { active: true };
   if (input.organizationId) query.organizationId = input.organizationId;
   if (input.payload?.userId) query.userId = input.payload.userId;
+  // Scope new and already queued incident notifications to their authorized portal audience.
+  if(input.payload?.audience==="incident_managers"||input.payload?.url==="/portal/incidencias"){
+    if(!input.organizationId)throw new Error("Incident push requires an organization");
+    const users=await User.find({organizationId:input.organizationId,channel:"company_portal",active:true}).select("_id roles").lean();
+    const allowed=users.filter((user:any)=>hasPermission(user.roles,"manage_incidents"));
+    query.userId={$in:allowed.filter((user:any)=>!input.payload?.userId||String(user._id)===String(input.payload.userId)).map((user:any)=>user._id)};
+  }
 
   const subscriptions = await PushSubscription.find(query).lean();
 

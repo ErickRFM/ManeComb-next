@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
+  // Keep development tooling from covering the operation bottom navigation in isolated QA.
+  ...(process.env.VISUAL_QA==="1"?{devIndicators:false as const}:{}),
   async headers(){
     return [{source:"/:path*",headers:securityHeaders}];
   }

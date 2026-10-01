@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
-import { useSocket } from "@/src/hooks/useSocket";
+import { useSocket, useSocketStatus } from "@/src/hooks/useSocket";
+import { mergeSnapshots } from "@/src/lib/fleet-snapshots";
+import {Icon} from "@/src/components/ui/icon";
 
 type NavigationData={
   journey:null|{id:string;state:string;vehicleId:string;routeId:string|null;startedAt:string|null};
@@ -13,29 +15,39 @@ type NavigationData={
 
 export function DriverMapHome(){
   const socket=useSocket();
+  const connection=useSocketStatus(socket);
+  const recent=useRef<OperationalUnitSnapshot[]>([]);
+  const loadId=useRef(0);
   const mapContainer=useRef<HTMLDivElement|null>(null);
   const mapRef=useRef<any>(null);
   const markerRef=useRef<any>(null);
   const [data,setData]=useState<NavigationData|null>(null);
   const [error,setError]=useState("");
+  const [mapError,setMapError]=useState("");
+  const [retry,setRetry]=useState(0);
   const [mapReady,setMapReady]=useState(false);
   const [follow,setFollow]=useState(true);
 
   useEffect(()=>{
     let mounted=true;
-    fetch("/api/operation/navigation").then(async response=>{
+    const refresh=()=>{const id=++loadId.current,requestStart=recent.current;void fetch("/api/operation/navigation",{cache:"no-store"}).then(async response=>{
       const body=await response.json();
       if(!response.ok)throw new Error(body.error||"No se pudo cargar la operación");
-      if(mounted)setData(body);
-    }).catch(e=>mounted&&setError(e.message));
-    return()=>{mounted=false};
-  },[]);
+      if(mounted&&id===loadId.current){
+        const snapshots=mergeSnapshots(recent.current,body.snapshot?[body.snapshot]:[],requestStart).slice(-20);recent.current=snapshots;
+        setData({...body,snapshot:snapshots.find(item=>item.vehicleId===body.journey?.vehicleId)||null});setError("");
+      }
+    }).catch(()=>{if(mounted&&id===loadId.current)setError("No se pudo cargar la operación. Revisa tu conexión o tu acceso.")})};
+    refresh();socket.on("connect",refresh);socket.on("journey:update",refresh);
+    return()=>{mounted=false;socket.off("connect",refresh);socket.off("journey:update",refresh)};
+  },[socket,retry]);
 
   useEffect(()=>{
     const update=(snapshot:OperationalUnitSnapshot)=>{
+      recent.current=mergeSnapshots(recent.current,[snapshot]).slice(-20);
       setData(current=>{
         if(!current?.journey||current.journey.vehicleId!==snapshot.vehicleId)return current;
-        return {...current,snapshot};
+        return {...current,snapshot:mergeSnapshots(current.snapshot?[current.snapshot]:[],[snapshot])[0]};
       });
     };
     socket.on("location:snapshot",update);
@@ -44,10 +56,11 @@ export function DriverMapHome(){
 
   useEffect(()=>{
     let disposed=false;
+    setMapReady(false);
     void import("mapbox-gl").then(({default:mapboxgl})=>{
       if(disposed||!mapContainer.current||mapRef.current)return;
       const token=process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-      if(!token){setError("Falta Mapbox para mostrar la ruta.");return}
+      if(!token){setMapError("El mapa no está disponible. Los datos de tu jornada siguen accesibles.");return}
       mapboxgl.accessToken=token;
       const light=document.documentElement.dataset.theme==="light";
       const map=new mapboxgl.Map({
@@ -57,13 +70,14 @@ export function DriverMapHome(){
         zoom:14,
         attributionControl:false
       });
-      map.addControl(new mapboxgl.NavigationControl({showCompass:true}),"bottom-right");
+      map.addControl(new mapboxgl.NavigationControl({showCompass:true}),"top-right");
       map.on("dragstart",()=>setFollow(false));
-      map.on("load",()=>setMapReady(true));
+      map.on("load",()=>{setMapReady(true);setMapError("")});
+      map.on("error",()=>{if(!disposed)setMapError("No se pudo cargar el mapa. Revisa tu conexión.")});
       mapRef.current=map;
-    });
+    }).catch(()=>{if(!disposed)setMapError("No se pudo cargar el mapa. Los datos de tu jornada siguen accesibles.")});
     return()=>{disposed=true;markerRef.current?.remove?.();markerRef.current=null;mapRef.current?.remove?.();mapRef.current=null};
-  },[]);
+  },[data?.journey?.id]);
 
   useEffect(()=>{
     const map=mapRef.current;
@@ -100,14 +114,17 @@ export function DriverMapHome(){
     return value==null?0:Math.max(0,Math.min(100,value));
   },[data?.snapshot?.progressPercent]);
 
-  if(error)return <div className="driver-empty-state"><strong>No se pudo cargar la operación</strong><span>{error}</span></div>;
-  if(!data)return <div className="driver-map-skeleton"/>;
+  if(error&&!data)return <div className="driver-empty-state" role="alert"><strong>No se pudo cargar la operación</strong><span>{error}</span><button className="btn" onClick={()=>setRetry(value=>value+1)}>Reintentar</button></div>;
+  if(!data)return <div className="driver-map-skeleton" role="status" aria-label="Cargando operación"/>;
   if(!data.journey)return <div className="driver-empty-state"><span className="brand-mark">MC</span><strong>Esperando jornada</strong><span>La central debe asignarte una unidad y ruta antes de comenzar.</span></div>;
 
   const snapshot=data.snapshot;
   const risk=snapshot?.isOffRoute||snapshot?.freshness==="lost"||snapshot?.freshness==="stale";
 
   return <section className="driver-command-center">
+    {error?<p role="alert">{error} <button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar</button></p>:null}
+    {mapError?<p role="status">{mapError}</p>:null}
+    <p role="status">{connection==="connected"?"En línea":connection==="connecting"?"Conectando…":"Reconectando. Se muestran los últimos datos recibidos."}</p>
     <div className="driver-map-shell">
       <div ref={mapContainer} className="driver-map-canvas"/>
       <div className="driver-map-top">
@@ -115,7 +132,7 @@ export function DriverMapHome(){
           <span className={"unit-status-dot "+(risk?"danger":"good")}/>
           <div><strong>{data.route?.name||"Jornada activa"}</strong><small>{data.route?.origin||"Origen"} → {data.route?.destination||"Destino"}</small></div>
         </div>
-        <button className={"driver-follow "+(follow?"active":"")} onClick={()=>setFollow(value=>!value)}>◎ {follow?"Siguiendo":"Seguir"}</button>
+        <button className={"driver-follow "+(follow?"active":"")} onClick={()=>setFollow(value=>!value)}><Icon name="location"/> {follow?"Siguiendo":"Seguir"}</button>
       </div>
 
       <div className="driver-progress-track"><span style={{width:routeProgress+"%"}}/></div>
@@ -137,10 +154,10 @@ export function DriverMapHome(){
     </div>
 
     <div className="driver-action-row">
-      <Link href="/operacion/navegacion" className="driver-action-card"><span>↗</span><strong>Ruta</strong><small>Paradas y avance</small></Link>
-      <Link href="/operacion/chat" className="driver-action-card"><span>▤</span><strong>Chat</strong><small>Central de despacho</small></Link>
-      <Link href="/operacion/radio" className="driver-action-card"><span>◉</span><strong>Radio</strong><small>PTT y llamadas</small></Link>
-      <Link href="/operacion/sos" className="driver-action-card danger"><span>!</span><strong>SOS</strong><small>Emergencia</small></Link>
+      <Link href="/operacion/navegacion" className="driver-action-card"><Icon name="route"/><strong>Ruta</strong><small>Paradas y avance</small></Link>
+      <Link href="/operacion/chat" className="driver-action-card"><Icon name="chat"/><strong>Chat</strong><small>Central de despacho</small></Link>
+      <Link href="/operacion/radio" className="driver-action-card"><Icon name="radio"/><strong>Radio</strong><small>PTT y llamadas</small></Link>
+      <Link href="/operacion/sos" className="driver-action-card danger"><Icon name="alert"/><strong>SOS</strong><small>Emergencia</small></Link>
     </div>
   </section>;
 }

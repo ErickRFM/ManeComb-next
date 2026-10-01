@@ -4,13 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import { useNetworkStatus } from "@/src/hooks/useNetworkStatus";
+import {Icon,type IconName} from "@/src/components/ui/icon";
+import {DriverTools} from "@/src/components/driver-tools";
+import {JourneyPanel} from "@/src/components/journey-panel";
+import {DriverConsole} from "@/src/components/driver-console";
+import {PushOptIn} from "@/src/components/push-opt-in";
 
 const tabs=[
-  {label:"Inicio",href:"/operacion",key:"●",exact:true},
-  {label:"Ruta",href:"/operacion/navegacion",key:"↗"},
-  {label:"Chat",href:"/operacion/chat",key:"▤"},
-  {label:"Radio",href:"/operacion/radio",key:"◉"},
-  {label:"SOS",href:"/operacion/sos",key:"!"}
+  {label:"Mapa",href:"/operacion",key:"map",exact:true},
+  {label:"Chat",href:"/operacion/chat",key:"chat"},
+  {label:"Radio",href:"/operacion/radio",key:"radio"},
+  {label:"Alertas",href:"/operacion/alertas",key:"alert"},
+  {label:"Más",href:"/operacion/mas",key:"more"}
 ];
 
 export function DriverShell({children}:{children:React.ReactNode}){
@@ -19,14 +24,14 @@ export function DriverShell({children}:{children:React.ReactNode}){
   return <div className="driver-shell">
     <header className="driver-topbar">
       <Link href="/operacion" className="driver-brand"><span className="brand-mark compact">MC</span><span><strong>ManeComb</strong><small>Operación</small></span></Link>
-      <div className="driver-top-actions"><span className="driver-connection" aria-live="polite"><span className="live-dot" style={online===false?{background:"var(--danger)"}:undefined}/>{online===null?"Consultando red":online?"Red disponible":"Sin red"}</span><ThemeToggle/></div>
+      <div className="driver-top-actions"><Link href="/operacion/sos" className="btn secondary" aria-label="Reportar emergencia SOS">SOS</Link><span className="driver-connection" aria-live="polite"><span className="live-dot" style={online===false?{background:"var(--danger)"}:undefined}/>{online===null?"Consultando red":online?"Red disponible":"Sin red"}</span><ThemeToggle/></div>
     </header>
-    <main id="main-content" className="driver-workspace" tabIndex={-1}>{children}</main>
+    <main id="main-content" className="driver-workspace" tabIndex={-1}>{children}<section hidden={pathname!=="/operacion"} aria-label="Controles de jornada y GPS"><DriverTools><JourneyPanel/><DriverConsole/><PushOptIn/></DriverTools></section></main>
     <nav className="driver-tabbar" aria-label="Navegación de operación">
       {tabs.map(tab=>{
         const active=tab.exact?pathname===tab.href:pathname.startsWith(tab.href);
         return <Link key={tab.href} href={tab.href} className={"driver-tab "+(active?"active":"")+" "+(tab.label==="SOS"?"sos":"")} aria-current={active?"page":undefined}>
-          <span className="driver-tab-icon">{tab.key}</span><span>{tab.label}</span>
+          <span className="driver-tab-icon"><Icon name={tab.key as IconName}/></span><span>{tab.label}</span>
         </Link>;
       })}
     </nav>

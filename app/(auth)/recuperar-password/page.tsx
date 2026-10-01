@@ -1,5 +1,6 @@
 import { ModuleShell } from "@/src/components/module-shell";
 import { PasswordRecovery } from "@/src/components/password-recovery";
-export default function RecoverPage(){
-  return <ModuleShell eyebrow="SEGURIDAD" title="Recuperar acceso" description="El enlace se genera en servidor, se envía por el outbox transaccional y vence en 30 minutos."><PasswordRecovery/></ModuleShell>
+import Link from "next/link";
+export default async function RecoverPage({searchParams}:{searchParams:Promise<{surface?:string}>}){const operation=(await searchParams).surface==="operation";
+  return <ModuleShell operation={operation} eyebrow="SEGURIDAD" title="Recuperar acceso" description="Solicita un enlace para restablecer tu contraseña."><PasswordRecovery/><Link href={operation?"/login?surface=operation":"/login"}>Volver al acceso</Link></ModuleShell>
 }

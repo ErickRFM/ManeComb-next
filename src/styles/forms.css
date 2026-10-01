@@ -1,0 +1,79 @@
+/* Structured entity management */
+.entity-manager{display:grid;gap:14px}
+.entity-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.entity-metrics>div{padding:14px 16px;border:1px solid var(--border);border-radius:14px;background:var(--surface);display:grid}
+.entity-metrics small{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:900;overflow-wrap:anywhere}
+.entity-metrics strong{font-size:28px;letter-spacing:-.04em;margin-top:4px}
+.entity-toolbar{display:flex;align-items:center;gap:10px}
+.entity-search{flex:1;max-width:420px;height:42px;border:1px solid var(--border);border-radius:12px;background:var(--surface);display:flex;align-items:center;gap:8px;padding:0 12px}
+.entity-search span{color:var(--muted)}
+.entity-search input{width:100%;min-width:0;border:0;outline:0;background:transparent;color:var(--text);font-size:12px}
+.entity-state{font-size:10px;color:var(--muted);margin-left:auto}
+.entity-table{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:var(--surface)}
+.entity-table-row{display:grid;grid-template-columns:minmax(240px,1.4fr) minmax(110px,.6fr) minmax(100px,.6fr) minmax(240px,1fr);gap:14px;align-items:center;padding:12px 14px;border-top:1px solid var(--border)}
+.entity-table-row:first-child{border-top:0}
+.entity-table-row:not(.entity-table-head):hover{background:var(--surface-2)}
+.entity-table-head{background:var(--background-soft);color:var(--muted);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}
+.entity-primary{display:flex;align-items:center;gap:10px;min-width:0}
+.entity-primary>div{display:grid;min-width:0}
+.entity-primary strong{font-size:12px}
+.entity-primary small{font-size:9px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entity-avatar{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--brand-soft);border:1px solid color-mix(in srgb,var(--brand) 22%,var(--border));color:var(--brand-text);font-size:9px;font-weight:950;flex:0 0 auto}
+.entity-avatar.person{border-radius:999px}
+.state-badge{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.state-badge.active,.state-badge.running{background:var(--success-soft);border-color:color-mix(in srgb,var(--success) 24%,var(--border));color:var(--success)}
+.state-badge.maintenance{background:var(--warning-soft);border-color:color-mix(in srgb,var(--warning) 24%,var(--border));color:var(--warning)}
+.state-badge.archived{background:var(--surface-2);color:var(--muted)}
+.entity-capacity{display:grid}
+.entity-capacity strong{font-size:11px}
+.entity-capacity small{font-size:8px;color:var(--muted);margin-top:1px}
+.entity-actions{display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+.entity-actions button{height:31px;padding:0 9px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);font-size:9px;font-weight:850;cursor:pointer}
+.entity-actions button:hover{border-color:var(--border-strong);background:var(--surface-3)}
+.entity-actions button.danger{color:var(--danger)}
+.entity-actions button:disabled{opacity:.4;cursor:not-allowed}
+.driver-management-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.management-form{display:grid;gap:10px;padding:16px;border:1px solid var(--border);border-radius:16px;background:var(--surface)}
+.management-form label{display:grid;gap:5px}
+.management-form-head{display:flex;align-items:center;gap:10px;padding-bottom:6px}
+.management-form-head>span{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand-text);font-size:9px;font-weight:950}
+.management-form-head>div{display:grid}
+.management-form-head strong{font-size:13px}
+.management-form-head small{font-size:9px;color:var(--muted)}
+.activation-banner{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 18px;border:1px solid color-mix(in srgb,var(--brand) 28%,var(--border));border-radius:16px;background:linear-gradient(135deg,var(--brand-soft),var(--surface))}
+.activation-banner>div{display:grid;gap:3px}
+.activation-banner strong{font-size:26px;letter-spacing:.04em;overflow-wrap:anywhere}
+.activation-banner small{font-size:9px;color:var(--muted)}
+
+.ui-modal-layer{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:20px;background:rgba(0,0,0,.62);backdrop-filter:blur(6px)}
+.ui-modal{width:min(100%,640px);max-height:min(90dvh,760px);overflow:auto;border:1px solid var(--border);border-radius:22px;background:var(--surface);box-shadow:var(--shadow)}
+.ui-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px;border-bottom:1px solid var(--border)}
+.ui-modal-head h2{margin:8px 0 0;font-size:24px;letter-spacing:-.035em}
+.ui-modal-head p{margin:5px 0 0;color:var(--muted);font-size:10px;line-height:1.45}
+.ui-modal-body{padding:20px}
+.form-stack{display:grid;gap:16px}
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-grid-2 label{display:grid;gap:5px}
+.form-actions{display:flex;justify-content:flex-end;gap:8px;padding-top:4px}
+
+@media (max-width:900px){
+  .entity-table-row{grid-template-columns:minmax(200px,1.2fr) .6fr .6fr}
+  .entity-table-row> :last-child{grid-column:1/-1;justify-content:flex-start}
+  .entity-table-head> :last-child{display:none}
+}
+@media (max-width:700px){
+  .entity-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .entity-toolbar{align-items:stretch;flex-wrap:wrap}
+  .entity-search{max-width:none;flex-basis:100%}
+  .entity-state{margin-left:0;align-self:center}
+  .driver-management-grid{grid-template-columns:1fr}
+  .entity-table-row{display:grid;grid-template-columns:minmax(0,1fr) auto;padding:12px}
+  .entity-table-head{display:none}
+  .entity-table-row> :nth-child(2){justify-self:end}
+  .entity-table-row> :nth-child(3){grid-column:1}
+  .entity-table-row> :last-child{grid-column:1/-1;justify-content:flex-start}
+  .activation-banner{align-items:flex-start;flex-direction:column}
+  .form-grid-2{grid-template-columns:1fr}
+}
+
+

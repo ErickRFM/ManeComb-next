@@ -7,7 +7,7 @@ const uri = process.env.MONGODB_URI;
 const authority = uri?.match(/^(mongodb(?:\+srv)?:\/\/[^/]+)(?:\/[^?]*)?(\?.*)?$/);
 if (!authority || !process.env.REDIS_URL) throw new Error("MongoDB and Redis are required for local integration QA");
 const database = "manecomb_qa_" + randomUUID().replaceAll("-", "").slice(0, 20);
-const result = spawnSync(process.execPath, [fileURLToPath(new URL("../node_modules/vitest/vitest.mjs", import.meta.url)), "run", "--config", "vitest.integration.config.ts"], {
+const result = spawnSync(process.execPath, [fileURLToPath(new URL("../node_modules/vitest/vitest.mjs", import.meta.url)), "run", "--config", "vitest.integration.config.ts",...process.argv.slice(2)], {
   stdio: "inherit",
   env: { ...process.env, REDIS_NAMESPACE: database, MONGODB_URI: authority[1] + "/" + database + (authority[2] || ""), AUTH_SECRET: process.env.AUTH_SECRET || randomUUID().repeat(2) }
 });
