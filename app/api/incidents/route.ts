@@ -6,7 +6,7 @@ import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Incident } from "@/src/core/models/Incident";
 import { Vehicle } from "@/src/core/models/Vehicle";
-import { emitToOrganization } from "@/src/realtime/runtime";
+import { emitIncident } from "@/src/realtime/runtime";
 import { enqueueOutboxEvent } from "@/src/core/services/outbox";
 
 const IncidentInput = z.object({
@@ -41,8 +41,9 @@ export async function POST(request: Request) {
       if(!vehicle)throw new Error("FORBIDDEN");
     }
     const incident = await Incident.create({organizationId: session.organizationId,driverId: session.channel === "mobile_operations" ? session.sub : null,...input});
-    emitToOrganization(session.organizationId, "incident:new", incident.toObject());
+    emitIncident(session.organizationId,incident.driverId?String(incident.driverId):null,"incident:new",incident.toObject());
     await enqueueOutboxEvent("push.send", {
+      audience:"incident_managers",
       title: input.type === "sos" ? "SOS ManeComb" : "Nueva incidencia",
       body: input.message || ("Incidencia " + input.type + " reportada"),
       url: "/portal/incidencias",

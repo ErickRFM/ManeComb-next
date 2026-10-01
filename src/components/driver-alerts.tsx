@@ -13,8 +13,8 @@ export function DriverAlerts(){
       if(active){setAlerts(data.incidents||[]);setError("")}
     }).catch(()=>active&&setError("No se pudieron cargar tus alertas. Revisa tu conexión o tu acceso."))
       .finally(()=>active&&setLoading(false));
-    load();socket.on("connect",load);socket.on("incident:new",load);socket.on("incident:updated",load);
-    return()=>{active=false;socket.off("connect",load);socket.off("incident:new",load);socket.off("incident:updated",load)};
+    load();socket.on("connect",load);socket.on("incident:new",load);socket.on("incident:update",load);
+    return()=>{active=false;socket.off("connect",load);socket.off("incident:new",load);socket.off("incident:update",load)};
   },[socket,retry]);
   return <section className="grid"><div><h1>Alertas</h1><p>Incidencias que has reportado y su estado de seguimiento.</p></div>
     <Link className="btn" href="/operacion/sos">Reportar SOS</Link>

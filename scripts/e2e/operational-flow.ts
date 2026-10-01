@@ -207,12 +207,29 @@ export async function runOperationalFlow() {
     await ack(ownerSocket, 'radio:release-floor', { channelId });
 
     console.log('[e2e] verify SOS in portal and realtime');
+    const otherEmail='other-driver-e2e-'+stamp+'@example.invalid';
+    const otherPassword='Other-driver-'+stamp+'!';
+    await request('/api/drivers',{method:'POST',token:ownerToken,body:{name:'Other E2E Driver',email:otherEmail,pin:otherPassword}});
+    const otherLogin=await request('/api/auth/login',{method:'POST',body:{email:otherEmail,password:otherPassword}});
+    const otherToken=cookieToken(otherLogin.response),otherSocket=await connect(otherToken);
+    let leakedIncidents=0;
+    const recordLeak=()=>{leakedIncidents++};otherSocket.on('incident:new',recordLeak);otherSocket.on('incident:update',recordLeak);
+    const ownDelivery=delivery(driverSocket,'incident:new',data=>data.message==='SOS E2E '+stamp);
     const incident = await verifyDelivery(ownerSocket, 'incident:new', data => data.message === 'SOS E2E ' + stamp, async () => {
       await request('/api/incidents', { method: 'POST', token: driverToken, body: { vehicleId, type: 'sos', message: 'SOS E2E ' + stamp, latitude: second.latitude, longitude: second.longitude } });
     });
     const incidentId = id(incident._id, 'incident');
+    await ownDelivery.promise;
     const incidents = await request('/api/incidents', { token: ownerToken });
     check(incidents.data.incidents?.some((item: any) => item._id === incidentId && item.type === 'sos'), 'SOS not visible in portal');
+    const ownAlerts=await request('/api/incidents',{token:driverToken});
+    const otherAlerts=await request('/api/incidents',{token:otherToken});
+    check(ownAlerts.data.incidents?.some((item:any)=>item._id===incidentId),'Reporting driver cannot see own SOS');
+    check(!otherAlerts.data.incidents?.some((item:any)=>item._id===incidentId),'Other driver can read unrelated SOS');
+    await verifyDelivery(driverSocket,'incident:update',data=>data._id===incidentId&&data.status==='acknowledged',()=>request('/api/incidents/'+incidentId,{method:'PATCH',token:ownerToken,body:{status:'acknowledged'}}));
+    await new Promise(resolve=>setTimeout(resolve,500));
+    check(leakedIncidents===0,'Incident realtime reached an unrelated driver');
+    otherSocket.off('incident:new',recordLeak);otherSocket.off('incident:update',recordLeak);
 
     let load;
     if (process.env.E2E_RUN_LOAD === 'YES') {

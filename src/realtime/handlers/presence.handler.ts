@@ -1,4 +1,5 @@
 import type { Server, Socket } from "socket.io";
+import {incidentRoomForSession} from "@/src/realtime/services/incident-publisher";
 
 const HEARTBEAT_TIMEOUT_MS=55_000;
 const SWEEP_MS=5_000;
@@ -30,6 +31,8 @@ export function registerPresenceHandler(io: Server, socket: Socket) {
   if (session.organizationId) socket.join("org:" + session.organizationId);
   if(session.organizationId&&session.channel==="company_portal")socket.join("org:"+session.organizationId+":monitor");
   socket.join("user:" + session.sub);
+  const incidentRoom=incidentRoomForSession(session);
+  if(incidentRoom)socket.join(incidentRoom);
 
   socket.data.presenceJoined=false;
   socket.data.lastPresenceHeartbeatAt=0;

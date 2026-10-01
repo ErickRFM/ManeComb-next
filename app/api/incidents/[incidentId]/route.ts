@@ -6,7 +6,7 @@ import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
 import { Incident } from "@/src/core/models/Incident";
 import { writeAudit } from "@/src/core/services/audit";
-import { emitToOrganization } from "@/src/realtime/runtime";
+import { emitIncident } from "@/src/realtime/runtime";
 
 const Patch=z.object({status:z.enum(["acknowledged","resolved"])});
 export const runtime="nodejs";
@@ -21,7 +21,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{incidentId
     const incident=await Incident.findOneAndUpdate({_id:incidentId,organizationId:session.organizationId},{$set:{status,...(status==="resolved"?{resolvedAt:new Date()}:{})}},{new:true});
     if(!incident) return NextResponse.json({error:"Incident not found"},{status:404});
     await writeAudit({organizationId:session.organizationId,actorUserId:session.sub,action:"incident."+status,entityType:"Incident",entityId:String(incident._id)});
-    emitToOrganization(session.organizationId,"incident:update",incident.toObject());
+    emitIncident(session.organizationId,incident.driverId?String(incident.driverId):null,"incident:update",incident.toObject());
     return NextResponse.json({incident});
   }catch(error){return apiError(error)}
 }
