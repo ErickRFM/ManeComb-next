@@ -35,7 +35,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{driverId:s
       {_id:driverId,organizationId:session.organizationId,channel:"mobile_operations"},
       {$set:set},
       {new:true,runValidators:true}
-    ).select("_id name email active credentialVersion");
+    ).select("_id name email active credentialVersion updatedAt");
     if(!driver)return NextResponse.json({error:"Driver not found"},{status:404});
 
     if(input.active===false){
