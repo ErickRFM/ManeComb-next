@@ -12,7 +12,7 @@
 .driver-route-chip strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .driver-route-chip small{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .driver-follow{height:38px;border:1px solid var(--border);border-radius:12px;padding:0 11px;background:var(--surface-glass);backdrop-filter:blur(16px);color:var(--muted);font-size:10px;font-weight:900;cursor:pointer}
-.driver-follow.active{background:var(--brand-soft);border-color:color-mix(in srgb,var(--brand) 28%,var(--border));color:var(--brand)}
+.driver-follow.active{background:var(--brand-soft);border-color:color-mix(in srgb,var(--brand) 28%,var(--border));color:var(--brand-text)}
 .driver-progress-track{position:absolute;left:14px;right:14px;bottom:114px;height:4px;z-index:5;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden}
 .driver-progress-track span{display:block;height:100%;border-radius:999px;background:var(--brand);box-shadow:0 0 16px rgba(225,29,72,.55)}
 .driver-bottom-card{
@@ -20,7 +20,7 @@
   padding:13px;border-radius:17px;background:var(--surface-glass);border:1px solid var(--border);backdrop-filter:blur(20px) saturate(145%);box-shadow:var(--shadow)
 }
 .driver-next-stop{display:grid;align-content:center}
-.driver-card-label{font-size:8px;font-weight:950;letter-spacing:.1em;color:var(--brand)}
+.driver-card-label{font-size:8px;font-weight:950;letter-spacing:.1em;color:var(--brand-text)}
 .driver-next-stop strong{font-size:18px;letter-spacing:-.02em;margin-top:2px}
 .driver-next-stop small{font-size:10px;color:var(--muted);margin-top:2px}
 .driver-live-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
@@ -35,7 +35,7 @@
 .driver-action-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
 .driver-action-card{display:flex;align-items:center;gap:10px;padding:11px;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-soft)}
 .driver-action-card:hover{background:var(--surface-2)}
-.driver-action-card>span{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);font-weight:950}
+.driver-action-card>span{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand-text);font-weight:950}
 .driver-action-card strong{font-size:11px}
 .driver-action-card small{display:block;font-size:9px;color:var(--muted);margin-top:1px}
 .driver-action-card.danger>span{background:var(--danger-soft);color:var(--danger)}

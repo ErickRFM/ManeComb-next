@@ -1,4 +1,5 @@
 "use client";
+import {Icon} from "@/src/components/ui/icon";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { UiModal } from "@/src/components/ui-modal";
@@ -102,7 +103,7 @@ export function VehicleManager(){
     </section>
 
     <div className="entity-toolbar">
-      <div className="entity-search"><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar número, placas o modelo..." aria-label="Buscar unidad"/></div>
+      <div className="entity-search"><span><Icon name="search" size={16}/></span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar número, placas o modelo..." aria-label="Buscar unidad"/></div>
       <span className="entity-state" role="status">{loading?"Cargando flota…":status}</span>
       <button className="btn secondary" disabled={loading||busy} onClick={()=>void load()}>Actualizar flota</button>
       {canEdit?<button className="btn" onClick={openCreate}>+ Nueva unidad</button>:null}

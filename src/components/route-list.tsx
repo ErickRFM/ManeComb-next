@@ -36,7 +36,7 @@ export function RouteList(){
     </section>
 
     <div className="entity-toolbar">
-      <div className="entity-search"><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar ruta, origen o destino..." aria-label="Buscar ruta"/></div>
+      <div className="entity-search"><span><Icon name="search" size={16}/></span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar ruta, origen o destino..." aria-label="Buscar ruta"/></div>
       <span className="entity-state" role="status">{loading?"Cargando rutas…":state}</span>
       <button className="btn secondary" disabled={loading} onClick={()=>setRetry(value=>value+1)}>Actualizar rutas</button>
       {canEdit?<><Link className="btn secondary" href="/portal/rutas/candidatas">Rutas aprendidas</Link><Link className="btn" href="/portal/rutas/nueva">+ Nueva ruta</Link></>:null}

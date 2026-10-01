@@ -27,7 +27,7 @@
   radial-gradient(circle at 20% 20%,color-mix(in srgb,var(--brand) 4%,transparent),transparent 32%),
   var(--background-soft)}
 .chat-empty{margin:auto;display:grid;place-items:center;text-align:center;color:var(--muted);max-width:280px}
-.chat-empty>span{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--border);color:var(--brand);font-size:20px}
+.chat-empty>span{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:var(--surface-2);border:1px solid var(--border);color:var(--brand-text);font-size:20px}
 .chat-empty strong{margin-top:10px;color:var(--text);font-size:13px}
 .chat-empty p{font-size:10px;line-height:1.5}
 .message-row{display:flex;align-items:flex-end;gap:7px;max-width:80%}

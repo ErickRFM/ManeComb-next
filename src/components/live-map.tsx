@@ -1,4 +1,5 @@
 "use client";
+import {Icon} from "@/src/components/ui/icon";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
@@ -248,12 +249,12 @@ export function LiveMap(){
 
   return <div className="fleet-view">
     <div className="fleet-toolbar">
-      <div className="fleet-search"><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar unidad o ruta..." aria-label="Buscar unidad o ruta"/></div>
+      <div className="fleet-search"><span><Icon name="search" size={16}/></span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar unidad o ruta..." aria-label="Buscar unidad o ruta"/></div>
       <div className="fleet-filters" role="group" aria-label="Filtros de flota">
         {([["all","Todas"],["live","En vivo"],["risk","Atención"],["lost","Sin GPS"]] as const).map(([value,label])=><button key={value} className={filter===value?"active":""} onClick={()=>setFilter(value)}>{label}<span>{value==="all"?units.length:value==="live"?units.filter(u=>u.freshness==="live").length:value==="risk"?units.filter(u=>u.isOffRoute||["stale","delayed"].includes(u.freshness)).length:units.filter(u=>u.freshness==="lost").length}</span></button>)}
       </div>
       {clustered?<span className="cluster-mode-badge">Clusters · {filtered.length}</span>:null}
-      <button className={"camera-mode "+(cameraMode==="auto"?"active":"")} onClick={enableAutoCamera}>◎ {cameraMode==="auto"?"Auto":"Recentrar"}</button>
+      <button className={"camera-mode "+(cameraMode==="auto"?"active":"")} onClick={enableAutoCamera}><Icon name="location" size={16}/> {cameraMode==="auto"?"Auto":"Recentrar"}</button>
     </div>
 
     {error?<div className="fleet-map-error" role="alert">{error} <button className="btn secondary" onClick={()=>{setLoading(true);setRetry(value=>value+1)}}>Reintentar</button></div>:mapError?<div className="fleet-map-error" role="status">{mapError}</div>:null}
@@ -272,7 +273,7 @@ export function LiveMap(){
         </div>
       </aside>
 
-      <div ref={container} className="fleet-map-canvas" role="region" aria-label="Mapa de monitoreo en vivo"/>
+      <div ref={container} className="fleet-map-canvas" role="region" aria-label="Mapa de monitoreo en vivo" aria-busy={!mapReady&&!mapError}/>
 
       {selected?<UnitDetailPanel key={selected.vehicleId} unit={selected} onClose={()=>setSelectedId(null)}/>:null}
     </div>

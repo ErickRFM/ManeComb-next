@@ -29,7 +29,7 @@
 .route-map-toolbar>div:last-child{display:flex;gap:6px}
 .route-stop-list{display:grid;gap:7px}
 .route-stop-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px;border:1px solid var(--border);border-radius:12px;background:var(--background-soft)}
-.route-stop-order{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand);font-size:9px;font-weight:950}
+.route-stop-order{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand-text);font-size:9px;font-weight:950}
 .route-stop-fields{display:grid;gap:7px}
 .route-stop-coordinates{display:grid;grid-template-columns:1fr 1fr 90px;gap:6px}
 .route-stop-coordinates label{display:grid;gap:3px;font-size:8px;color:var(--muted)}

@@ -16,6 +16,7 @@ const paths={
   close:"m5 5 14 14M19 5 5 19",
   back:"m15 5-7 7 7 7",
   location:"M12 3v3m0 12v3M3 12h3m12 0h3M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z"
+  ,search:"M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm5 12 6 6"
 };
 export type IconName=keyof typeof paths;
 export function Icon({name,size=20,style}:{name:IconName;size?:number;style?:CSSProperties}){

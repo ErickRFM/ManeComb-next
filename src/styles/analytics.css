@@ -11,7 +11,7 @@
 .dashboard-card-head.compact{align-items:center}
 .dashboard-card-head h2{margin:8px 0 0;font-size:22px;letter-spacing:-.03em}
 .dashboard-card-head p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
-.dashboard-card-head>a:not(.btn){color:var(--brand);font-size:12px;font-weight:800}
+.dashboard-card-head>a:not(.btn){color:var(--brand-text);font-size:12px;font-weight:800}
 .fleet-glance{display:grid;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--background-soft)}
 .fleet-glance-row{display:grid;grid-template-columns:auto minmax(0,1fr) 86px 78px;gap:12px;align-items:center;padding:12px 14px;border-top:1px solid var(--border);transition:background .15s ease}
 .fleet-glance-row:first-child{border-top:0}
@@ -38,7 +38,7 @@
 .quick-actions-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .quick-action{display:flex;align-items:center;gap:11px;padding:13px;border:1px solid var(--border);border-radius:13px;background:var(--background-soft);transition:.16s ease}
 .quick-action:hover{background:var(--surface-2);transform:translateY(-1px)}
-.quick-action>span{width:34px;height:34px;border-radius:10px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;font-size:9px;font-weight:950}
+.quick-action>span{width:34px;height:34px;border-radius:10px;background:var(--brand-soft);color:var(--brand-text);display:grid;place-items:center;font-size:9px;font-weight:950}
 .quick-action div{display:grid}
 .quick-action strong{font-size:12px}
 .quick-action small{font-size:10px;color:var(--muted);margin-top:2px}

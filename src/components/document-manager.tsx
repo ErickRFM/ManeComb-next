@@ -122,7 +122,7 @@ export function DocumentManager(){
     </section>
 
     <div className="entity-toolbar">
-      <div className="entity-search"><span>⌕</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar tipo o propietario..." aria-label="Buscar documento"/></div>
+      <div className="entity-search"><span><Icon name="search" size={16}/></span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar tipo o propietario..." aria-label="Buscar documento"/></div>
       <div className="compact-filters">
         {(["all","pending","approved","rejected","expiring","expired"] as const).map(value=><button key={value} className={filter===value?"active":""} onClick={()=>setFilter(value)}>{value==="all"?"Todos":value==="pending"?"Pendientes":value==="approved"?"Aprobados":value==="rejected"?"Rechazados":value==="expired"?"Vencidos":"Por vencer"}</button>)}
       </div>

@@ -31,7 +31,7 @@
 .payment-copy strong,.payment-amount strong{font-size:11px}
 .payment-copy small,.payment-amount small{font-size:8px;color:var(--muted);margin-top:2px}
 .payment-amount{text-align:right}
-.entity-link{font-size:9px;font-weight:850;color:var(--brand)}
+.entity-link{font-size:9px;font-weight:850;color:var(--brand-text)}
 .payment-expected{display:flex;align-items:center;justify-content:space-between;padding:13px;border:1px solid var(--border);border-radius:12px;background:var(--background-soft)}
 .payment-expected span{font-size:10px;color:var(--muted)}
 .payment-expected strong{font-size:17px}
