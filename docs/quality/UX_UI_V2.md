@@ -1,57 +1,48 @@
-# ManeComb UX/UI V2 — aceptación
+# ManeComb UX/UI V2 — comparación y aceptación
 
-Base `f39e040`; rama `feat/uxui-system-v2-map-first`. La referencia visual exigida no está en el adjunto recibido (sólo texto). Se implementan los cambios funcionales y estructurales explícitos; la comparación visual, el diseño definitivo y las capturas comerciales quedan pendientes de esa imagen. No hay certificación visual ni autorización para desplegar Render.
+Fecha: 2026-10-01. HEAD real de código del cierre: `ae5c096a139334aac96ce9969d1d5cf998a82f7a`. Base/main `f39e04044cee70f032fe36772edb78c971aa214d`; rama `feat/uxui-system-v2-map-first`, PR #9.
+[Referencia aprobada](reference/ux-ui-v2-approved.png), recibida en este cierre y conservada byte a byte. Su SHA256 está en FINAL_AUDIT. El HEAD posterior de documentación se verifica en el PR; no se importan validaciones históricas de otros candidatos.
 
-## Superficies y contratos conservados
+## Comparación dirigida de las nueve superficies
 
-| Superficie | Implementación | Evidencia y límite |
+| Superficie | Ajuste / funcionamiento real | Límite de certificación |
 |---|---|---|
-| Portal | `/portal` y login company → `/portal/monitoreo`; Resumen secundario; menú por permisos reales | Redirecciones, viewer y foco del drawer probados |
-| Mapa | LiveMap/Mapbox/Socket.IO existentes; selección/filtros y detalle Resumen/Ruta/Incidencias/Documentos/Telemetría | Datos de APIs existentes, 403 diferenciado, tres alturas móviles; sin historial de GPS inventado |
-| App | `/app` valida sesión; manifest/Capacitor raíz → `/app`; Mapa/Chat/Radio/Alertas/Más y SOS | Inicio y deep links conservan login operativo; controles GPS persisten entre tabs |
-| Chat | `/portal/chat` y `/operacion/chat`; general/directo, historial, recepción, imágenes, presencia | Merge/dedup, timeout ACK, reintento con mismo ID, borradores y pendientes en memoria; no se inventa unread |
-| Radio/RTC | Canales/floor/audio y offer/answer/ice/hangup originales; ACK de audio opcional y compatible | PTT emite clips completos decodificables con una captura de micrófono, entrega audio final antes de liberar floor y detiene captura ante rechazo; directorio real; dos peers Chromium conectan, cuelgan y repiten llamada |
-| Rutas | GET/POST/PATCH originales, geometría/paradas/revisión | Segundo guardado actualiza el mismo ID; edición numérica funciona sin proveedor cartográfico |
-| Gestión | APIs originales de vehículos, drivers, documentos e incidencias | Mutaciones recuperables, permisos, inputs conservados; conductor editable sin modificar activación |
-| Incidencias | Gestores autorizados y usuario reportante; HTTP/socket/push con scope | Driver no ve reportes ajenos. Modelo actual contiene tipo/estado/unidad/reportante/mensaje/coordenadas; no hay ruta, evidencia adjunta ni severidad independiente que se pueda mostrar como dato real |
-| Ventas | Header/Hero/Producto/Funciones/Cómo/Módulos/Planes/FAQ/CTA/Footer | Enlaces funcionales; catálogo `COMMERCIAL_PLANS`; plan persiste registro/login→checkout; sin mockups ni descarga ficticia |
-| Facturación | Suscripción y comprobantes/manual review existentes | Errores/reintentos visibles; ninguna tarifa, conciliación ni autoridad financiera sustituida |
-| Admin | Empresas, salud/métricas, pagos, versiones y auditoría | MFA/autorización existentes; estados recuperables, drawer y logout compartidos |
+| Portal / Mapa | Sidebar y títulos compactados, lista derecha, detalle inferior; Mapbox real, filtros/búsqueda/selección/clusters/cámara | Se usan estilos Mapbox de calle dark/light actuales; no se añadió botón 3D decorativo, batería ni datos de la imagen sin fuente real |
+| Portal / Resumen | Métricas existentes, donut accesible calculado con snapshots GPS reales y estados/alertas actuales | No hay serie histórica 24 h ni actividad/batería inventadas; métricas mantienen su significado original |
+| Portal / Rutas | Listado real lateral dentro del editor, búsqueda/enlaces/permisos actuales, mapa/geom/paradas/guardado/revisión existentes | Columna se apila en pantallas estrechas; formulario real conserva edición accesible, sin acciones decorativas |
+| Ventas / Landing | Hero a la izquierda, jerarquía compacta, catálogo/módulos/planes reales, navegación y checkout conservados | La imagen adjunta es collage de referencia; no hay assets separados del vehículo/logo ni capturas comerciales del destino real. No se fabricaron screenshots/producto |
+| App / Login | Acceso operativo centrado, wordmark tipográfico, campos y submit reales, recuperación/activación funcionales, sin marketing | Conductor se activa con el flujo existente; no se añadió registro comercial, login por teléfono ni persistencia de sesión ficticia |
+| App / Home | Jornada/ruta/GPS existentes, navegación inferior al borde, SOS conservado; mapa y controles reales en ambos temas | GPS/Doze/buffer/red requieren físico; no se inventó botón de llamada sin destinatario/contrato |
+| App / Chat | Título/densidad y bottom nav compactados; directorio real, historial, DM, adjuntos, recepción, ACK/reintento conservados | No existen previews/unread/avatares reales del contrato de la imagen; no se mostraron badges ni personas ficticias |
+| App / Radio/RTC | Superficie PTT con aro/micrófono, presencia con nombres reales e iniciales; floor/ACK/audio y llamadas actuales | Audio entre redes/latencia/calidad físicos y TURN pendientes; iniciales no simulan fotos |
+| App / Documentos | Se revisó alcance real: POST/descarga móvil de documentos propios del driver, listado sólo Portal; no existe pantalla móvil de la referencia | **PENDIENTE DE ALCANCE**: conductor/unidad de la imagen necesitan pantalla y autorización de lectura consistente. Se conservan contratos hasta resolverlo |
 
-## Design system y QA
+Se corrigieron diferencias demostrables de presentación sin sustituir APIs, Socket.IO, almacenamiento, GPS nativo ni pagos. La fidelidad total permanece pendiente; comparar una imagen no equivale a aprobar el resultado implementado.
 
-CSS dividido en módulos importados desde `app/globals.css`. El primer refactor conservó las reglas y su orden byte a byte. Cambios posteriores corrigen contraste con `--brand-text` y texto secundario, overflow documental, iconos SVG, foco/labels y responsive; no incorporan framework visual.
+## Criterios y evidencias
 
-Incidencias/Documentos tienen columna `minmax(0,1fr)`; métricas móviles usan tracks sin mínimo intrínseco y permiten ajustar palabras. El overflow de 360 px detectado en Linux se reprodujo con texto ampliado y se corrigió sin ocultar contenido ni reducir QA.
+**PASS LOCAL:** pruebas funcionales con HTTP/socket QA aislados y MediaRecorder/AudioContext reales; integración con Atlas/Redis QA independientes. Mapbox usa el proveedor real: estilos, tiles/fonts, markers proyectados, 0/1/20/100/500, clusters/expansión, búsqueda/filtros, lista/mapa, auto/manual, padding/resize, dark/light y siete anchuras con 500 puntos. Los resultados finales y contadores están en FINAL_AUDIT; no acreditar proveedores externos con respuestas QA.
 
-Orden GPS: coordenadas más nuevas prevalecen; para timestamps iguales, HTTP sólo reemplaza estado no modificado desde que inició su petición. Un sweeper recibido durante HTTP no rejuvenece freshness al llegar esa respuesta. La caché anterior sí permite actualización HTTP posterior. Padding de cámara usa dimensiones del contenedor y posición del panel móvil, conservando espacio visible incluso en landscape corto; su render live sigue pendiente.
+**PASS CI:** verificar Node 20/24, Docker, UX y Android API 33–36 del HEAD publicado exacto del PR. Snapshot final `artifacts/release-ci-exact-head.json`. Android CI acredita build/install/start/orientación de fixture, no background físico.
 
-QA aislada utiliza datos de prueba únicamente en tests y rutas de fixtures protegidas por `VISUAL_QA`. Las páginas reales usan respuestas HTTP/socket controladas en navegador; esto prueba presentación y contratos, no sustituye providers live. Atlas/Redis se prueban aparte en bases/namespaces QA temporales con propiedad verificada y cleanup.
+**PASS STAGING / PASS FÍSICO:** ninguno acreditado. **BLOCKED EXTERNAL:** entorno aislado/configuración real de proveedores, TURN/dominio/capacidad destino y `PHYSICAL_DEVICE_REQUIRED`. Checklist y estados por proveedor en RELEASE_READINESS.
 
-Comandos reproducibles con Node 20:
+Responsive: 360/390/430/768/1024/1366/1920, dark/light, cero overflow accidental y cero axe serious/critical exigidos. Login operativo y Radio de App añadidos a la matriz; foco, teclado y permisos se conservan. Regresiones Mapbox comprueban geometría real, no sólo existencia de canvas/DOM.
+
+## Reproducción
 
 ```powershell
 npm run typecheck
 npm test
-node --env-file=.env.local scripts/test-local-integration.mjs
-npm run build
-node --env-file=.env.local scripts/test-local-operations.mjs --production
+npm run test:integration:local
+node --env-file=.env.local scripts/test-local-visual.mjs --mapbox
 node scripts/test-local-visual.mjs --functional
 node scripts/test-local-visual.mjs --responsive
-node --env-file=.env.local scripts/test-local-visual.mjs --mapbox
-node --env-file=.env.local scripts/predeploy-check.mjs --role=web
-node --env-file=.env.local scripts/predeploy-check.mjs --role=worker
+node scripts/test-local-visual.mjs
+npm run build
+node --env-file=.env.local scripts/test-local-operations.mjs --production
 ```
 
-No correr servidor dev y build simultáneamente. Después de QA dev, reconstruir antes del E2E `--production`. Playwright 1.55.1/axe 4.10.2 son herramientas QA instaladas sin cambios de package/lock; CI las instala explícitamente.
+Integración local ejecuta el mismo Vitest/config de `npm run test:integration` con DB/namespace QA temporales; no correr la suite contra la DB compartida original. No ejecutar dev y build simultáneamente. Después de QA dev reconstruir antes del E2E compilado. Playwright/axe son herramientas QA; los fixtures sólo se habilitan en QA. El filtro opcional QA_FILTER permite repetir casos dirigidos sin rebajar la matriz completa.
 
-## Gates pendientes
-
-- Imagen aprobada: comparar todas las superficies y producir capturas comerciales del producto final.
-- Mapbox: token local alcanza el proveedor, pero el estilo responde HTTP 401; WebGL disponible. Densidades reales 0/1/20/100/500, clusters/cámara y dominio autorizado siguen sin certificación. Helpers de densidad y comportamiento sin proveedor sí están probados.
-- TURN/audio: llamada entre peers locales con audio generado PASS; Wi-Fi/LTE/NAT y permisos/audio físicos pendientes.
-- Android: Kotlin intacto; no inferir background/Doze/bloqueo/buffer físico por smoke o navegador.
-- Resend, Mercado Pago, Cloudinary y Push live: configuración/credenciales/entregas reales pendientes. Integración con providers simulados no activa este gate.
-- Staging/capacidad: CI anterior pasó 500 sockets, Atlas local anterior falló; repetir en infraestructura equivalente antes de producción.
-
-Estado V2: **NOT_READY** hasta cubrir referencia y gates aplicables. Un PR revisable con checks verdes no autoriza merge como V2 certificado ni creación/despliegue de recursos Render.
+**NOT_READY.** PR en draft. Sin merge, creación/deploy Render ni cambio de producción hasta cerrar los gates requeridos.
