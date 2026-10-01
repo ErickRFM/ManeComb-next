@@ -38,7 +38,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{driverId:s
     ).select("_id name email active credentialVersion");
     if(!driver)return NextResponse.json({error:"Driver not found"},{status:404});
 
-    if(input.active===false||emailChanged){
+    if(input.active===false){
       await Promise.all([
         DeviceSession.updateMany({organizationId:session.organizationId,userId:driverId,revokedAt:null},{$set:{revokedAt:new Date()}}),
         Session.updateMany({userId:driverId,revokedAt:null},{$set:{revokedAt:new Date()}})
@@ -53,7 +53,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{driverId:s
         idempotencyKey:`email-changed:${driverId}:${driver.credentialVersion}`,
         subject:"El correo de tu cuenta ManeComb cambió",
         heading:"Correo actualizado",
-        body:"El correo asociado a tu cuenta de conductor fue actualizado. Tus sesiones anteriores fueron cerradas."
+        body:"El correo asociado a tu cuenta de conductor fue actualizado."
       }).catch(error=>console.error("[email:email-changed]",error));
     }
 
