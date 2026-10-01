@@ -43,9 +43,21 @@ export function UnitDetailPanel({unit,onClose}:{unit:OperationalUnitSnapshot;onC
   const docs=documents.data?.documents?.filter((item:any)=>(item.ownerType==="vehicle"&&String(item.ownerId)===unit.vehicleId)||(unit.driverId&&item.ownerType==="driver"&&String(item.ownerId)===unit.driverId))||[];
   const ready=(resource:Resource)=>!resource.loading&&!resource.denied&&!resource.error&&resource.data;
   return <aside className={"unit-detail-panel unit-sheet "+level} aria-label={"Detalle de "+unit.economicNumber}>
+    <button className="unit-sheet-handle" type="button" aria-label="Cambiar altura del detalle" onClick={()=>setLevel(value=>value==="compact"?"medium":value==="medium"?"expanded":"compact")}><span/></button>
     <div className="unit-detail-head"><div><span className={"unit-status-dot "+fleetMarkerState(unit)}/><div><strong>{unit.economicNumber}</strong><small>{unit.routeName||"Sin ruta asignada"}</small></div></div><button className="icon-action" onClick={onClose} aria-label="Cerrar detalle"><Icon name="close"/></button></div>
     <div className="unit-sheet-levels" role="group" aria-label="Altura del detalle">{(["compact","medium","expanded"] as const).map(value=><button key={value} aria-pressed={level===value} onClick={()=>setLevel(value)}>{value==="compact"?"Compacto":value==="medium"?"Medio":"Expandido"}</button>)}</div>
+    <div className="unit-compact-summary" aria-label="Resumen rápido de unidad">
+      <span><small>Estado</small><strong>{unit.isOffRoute?"Fuera de ruta":unit.status}</strong></span>
+      <span><small>Velocidad</small><strong>{unit.speedKmH.toFixed(0)} km/h</strong></span>
+      <span><small>ETA</small><strong>{unit.etaMinutes==null?"—":unit.etaMinutes+" min"}</strong></span>
+      <span><small>GPS</small><strong className={fleetMarkerState(unit)==="danger"?"danger-text":""}>{unit.freshness}</strong></span>
+    </div>
     <div className="unit-sheet-body">
+      <div className="unit-quick-actions" aria-label="Acciones rápidas de unidad">
+        {unit.routeId?<Link href={"/portal/rutas/"+encodeURIComponent(unit.routeId)}><Icon name="route"/><span>Ruta</span></Link>:<span className="disabled"><Icon name="route"/><span>Sin ruta</span></span>}
+        <Link href="/portal/chat"><Icon name="chat"/><span>Chat</span></Link>
+        <Link href="/portal/incidencias"><Icon name="alert"/><span>Incidencias</span></Link>
+      </div>
       <div className="unit-detail-tabs" role="tablist" aria-label="Información de unidad">{tabs.map((value,index)=><button key={value} role="tab" id={id+"-tab-"+index} aria-controls={id+"-panel"} aria-selected={tab===value} tabIndex={tab===value?0:-1} onClick={()=>setTab(value)} onKeyDown={event=>{
         let next:number|undefined;
         if(event.key==="ArrowRight")next=(index+1)%tabs.length;if(event.key==="ArrowLeft")next=(index+tabs.length-1)%tabs.length;
