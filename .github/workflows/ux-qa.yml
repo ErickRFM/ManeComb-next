@@ -5,6 +5,8 @@ on:
     paths:
       - "app/**"
       - "src/components/**"
+      - "src/styles/**"
+      - "src/hooks/**"
       - "src/lib/fleet-density.ts"
       - "native/android/**"
       - "scripts/**"
@@ -14,6 +16,8 @@ on:
     paths:
       - "app/**"
       - "src/components/**"
+      - "src/styles/**"
+      - "src/hooks/**"
       - "src/lib/fleet-density.ts"
       - "native/android/**"
       - "scripts/**"
@@ -42,26 +46,19 @@ jobs:
         run: npm install --no-save --package-lock=false playwright@1.55.1 @axe-core/playwright@4.10.2
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-      - name: Start ManeComb visual fixture
-        run: |
-          nohup npm run dev > /tmp/manecomb-visual.log 2>&1 &
-          echo $! > /tmp/manecomb-visual.pid
-          for i in {1..60}; do
-            if curl -fsS http://127.0.0.1:3000/visual-qa/portal >/dev/null; then
-              exit 0
-            fi
-            sleep 2
-          done
-          cat /tmp/manecomb-visual.log
-          exit 1
       - name: Responsive, accessibility and screenshot QA
-        run: node scripts/visual-qa.mjs
+        run: node scripts/test-local-visual.mjs
+      - name: Functional browser flows
+        run: node scripts/test-local-visual.mjs --functional
+      - name: Connected pages responsive and accessibility
+        run: node scripts/test-local-visual.mjs --responsive
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: manecomb-visual-qa
           path: |
             artifacts/visual-qa
+            artifacts/functional-ui-qa
             /tmp/manecomb-visual.log
           if-no-files-found: warn
           retention-days: 14

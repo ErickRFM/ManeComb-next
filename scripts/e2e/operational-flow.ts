@@ -215,11 +215,10 @@ export async function runOperationalFlow() {
     let leakedIncidents=0;
     const recordLeak=()=>{leakedIncidents++};otherSocket.on('incident:new',recordLeak);otherSocket.on('incident:update',recordLeak);
     const ownDelivery=delivery(driverSocket,'incident:new',data=>data.message==='SOS E2E '+stamp);
-    const incident = await verifyDelivery(ownerSocket, 'incident:new', data => data.message === 'SOS E2E ' + stamp, async () => {
+    const [incident] = await Promise.all([verifyDelivery(ownerSocket, 'incident:new', data => data.message === 'SOS E2E ' + stamp, async () => {
       await request('/api/incidents', { method: 'POST', token: driverToken, body: { vehicleId, type: 'sos', message: 'SOS E2E ' + stamp, latitude: second.latitude, longitude: second.longitude } });
-    });
+    }),ownDelivery.promise]).finally(ownDelivery.cancel);
     const incidentId = id(incident._id, 'incident');
-    await ownDelivery.promise;
     const incidents = await request('/api/incidents', { token: ownerToken });
     check(incidents.data.incidents?.some((item: any) => item._id === incidentId && item.type === 'sos'), 'SOS not visible in portal');
     const ownAlerts=await request('/api/incidents',{token:driverToken});
