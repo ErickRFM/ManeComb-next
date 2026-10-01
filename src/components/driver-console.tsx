@@ -105,7 +105,7 @@ export function DriverConsole() {
   }
 
   return <div className="driver-panel grid">
-    <div><span className="badge">TELEMETRÍA</span><h2 style={{margin:"10px 0 0"}}>Seguimiento GPS</h2><p className="muted">El servidor sólo acepta ubicación de la unidad asignada durante una jornada RUNNING.</p></div>
+    <div><span className="badge">TELEMETRÍA</span><h2 style={{margin:"10px 0 0"}}>Seguimiento GPS</h2><p className="muted">Inicia o reanuda tu jornada para transmitir la ubicación de la unidad asignada.</p></div>
     <div className="card grid">
       <label>Unidad asignada<input className="input" value={vehicleId} readOnly/></label>
       <label>Jornada activa<input className="input" value={journeyId} readOnly/></label>

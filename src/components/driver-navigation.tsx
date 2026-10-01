@@ -1,37 +1,44 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect,useRef, useState } from "react";
 import { useSocket } from "@/src/hooks/useSocket";
 import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
+import {mergeSnapshots} from "@/src/lib/fleet-snapshots";
 
 export function DriverNavigation(){
   const socket=useSocket();
   const [data,setData]=useState<any>(null);
   const [state,setState]=useState("Cargando ruta...");
+  const [error,setError]=useState("");const recent=useRef<OperationalUnitSnapshot[]>([]),loadId=useRef(0);
 
   const load=useCallback(async()=>{
+    const id=++loadId.current;try{
     const response=await fetch("/api/operation/navigation");
     const body=await response.json();
     if(!response.ok)throw new Error(body.error||"No se pudo cargar navegación");
-    setData(body);
+    if(id!==loadId.current)return;
+    setData({...body,snapshot:mergeSnapshots(body.snapshot?[body.snapshot]:[],recent.current).find(item=>item.vehicleId===body.journey?.vehicleId)||null});setError("");
     setState(body.journey?"Operación sincronizada":"Sin jornada asignada");
+    }catch{if(id===loadId.current)setError("No se pudo cargar la ruta. Revisa tu conexión o tu acceso.")}
   },[]);
 
-  useEffect(()=>{void load().catch(error=>setState(error.message))},[load]);
+  useEffect(()=>{const refresh=()=>void load();refresh();socket.on("connect",refresh);socket.on("journey:update",refresh);return()=>{loadId.current++;socket.off("connect",refresh);socket.off("journey:update",refresh)}},[load,socket]);
   useEffect(()=>{
     const update=(snapshot:OperationalUnitSnapshot)=>{
+      recent.current=mergeSnapshots(recent.current,[snapshot]).slice(-20);
       if(data?.journey?.vehicleId&&snapshot.vehicleId===data.journey.vehicleId){
-        setData((current:any)=>current?{...current,snapshot}:current);
+        setData((current:any)=>current?{...current,snapshot:mergeSnapshots(current.snapshot?[current.snapshot]:[],[snapshot])[0]}:current);
       }
     };
     socket.on("location:snapshot",update);
     return()=>{socket.off("location:snapshot",update)}
   },[socket,data?.journey?.vehicleId]);
 
-  if(!data?.journey)return <div className="card"><strong>{state}</strong><p className="muted">La central debe asignar una jornada y ruta.</p></div>;
+  if(!data?.journey)return <div className="card"><strong role="status">{error||state}</strong><p className="muted">La central debe asignar una jornada y ruta.</p><button className="btn secondary" onClick={()=>void load()}>Consultar ruta</button></div>;
   const snapshot:OperationalUnitSnapshot|null=data.snapshot;
   const route=data.route;
 
   return <div className="grid">
+    {error?<p role="alert">{error} <button className="btn secondary" onClick={()=>void load()}>Consultar ruta</button></p>:null}
     <div className="card">
       <div className="status-row"><div><strong>{route?.name||"Sin ruta"}</strong><p className="muted" style={{marginBottom:0}}>{route?.origin||"Origen"} → {route?.destination||"Destino"}</p></div><span className="badge">{data.journey.state}</span></div>
     </div>
