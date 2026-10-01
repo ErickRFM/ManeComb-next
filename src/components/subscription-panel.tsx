@@ -13,16 +13,19 @@ export function SubscriptionPanel(){
   const [confirmAction,setConfirmAction]=useState<"cancel"|"changePlan"|null>(null);
   const [busy,setBusy]=useState(false);
   const [feedback,setFeedback]=useState("");
+  const [retry,setRetry]=useState(0);
 
   useEffect(()=>{
+    let active=true;setError("");
     fetch("/api/account/subscription").then(async response=>{
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"No se pudo cargar la suscripción");
+      if(!active)return;
       setSubscription(data.subscription);
       setCanManage(Boolean(data.canManageBilling));
       setSelectedPlan(data.subscription?.planCode||COMMERCIAL_PLANS[0].code);
-    }).catch(error=>setError(error.message));
-  },[]);
+    }).catch(()=>{if(active)setError("No se pudo consultar la suscripción. Revisa tu conexión o tu acceso.")});return()=>{active=false};
+  },[retry]);
 
   const plan=useMemo(()=>COMMERCIAL_PLANS.find(item=>item.code===subscription?.planCode)||null,[subscription?.planCode]);
   async function change(){
@@ -37,8 +40,8 @@ export function SubscriptionPanel(){
     finally{setBusy(false)}
   }
 
-  if(error)return <div className="system-error-card">{error}</div>;
-  if(subscription===undefined)return <div className="billing-skeleton"><div/><div/><div/></div>;
+  if(error)return <div className="system-error-card" role="alert">{error} <button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Consultar suscripción</button></div>;
+  if(subscription===undefined)return <div className="billing-skeleton" role="status" aria-label="Cargando suscripción"><div/><div/><div/></div>;
 
   if(!subscription)return <section className="billing-empty">
     <div><span className="eyebrow">SUSCRIPCIÓN</span><h2>Activa un plan para operar</h2><p>El plan define cuántas unidades puede registrar la empresa y mantiene habilitados los módulos operativos.</p></div>
@@ -63,14 +66,15 @@ export function SubscriptionPanel(){
       <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button className="btn" disabled={busy||selectedPlan===subscription.planCode} onClick={()=>setConfirmAction("changePlan")}>Revisar cambio</button><button className="btn secondary" disabled={busy} onClick={()=>setConfirmAction("cancel")}>Cancelar suscripción</button></div>
     </div>:null}
     <UiModal open={confirmAction!==null} title={confirmAction==="cancel"?"Cancelar suscripción":"Confirmar cambio de plan"} description={confirmAction==="cancel"?"Se cancelará el cobro recurrente en Mercado Pago y se deshabilitará el acceso operativo.":"Mercado Pago confirmará la nueva tarifa recurrente y el servidor validará la capacidad de tu flota."} onClose={()=>{if(!busy)setConfirmAction(null)}}>
+      {feedback?<p role="alert">{feedback}</p>:null}
       {confirmAction==="changePlan"?<p>{COMMERCIAL_PLANS.find(item=>item.code===selectedPlan)?.label} · ${COMMERCIAL_PLANS.find(item=>item.code===selectedPlan)?.monthlyMxn} MXN / mes</p>:null}
       <button className="btn" disabled={busy} onClick={()=>void change()}>{busy?"Confirmando...":"Confirmar"}</button>
     </UiModal>
 
     <div className="subscription-facts">
       <div><span className="metric-label">Estado</span><strong>{active?"Servicio activo":status}</strong><small>{active?"La operación está habilitada.":"Requiere atención comercial."}</small></div>
-      <div><span className="metric-label">Capacidad</span><strong>{subscription.vehicleLimit||plan?.units||"—"} unidades</strong><small>Límite aplicado por servidor</small></div>
-      <div><span className="metric-label">Plan</span><strong>{subscription.planCode}</strong><small>Catálogo canónico ManeComb</small></div>
+      <div><span className="metric-label">Capacidad</span><strong>{subscription.vehicleLimit||plan?.units||"—"} unidades</strong><small>Capacidad de tu suscripción</small></div>
+      <div><span className="metric-label">Plan</span><strong>{subscription.planCode}</strong><small>Plan de ManeComb</small></div>
     </div>
   </section>;
 }

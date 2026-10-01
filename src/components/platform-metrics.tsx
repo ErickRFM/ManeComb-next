@@ -5,20 +5,21 @@ import { useEffect, useState } from "react";
 export function PlatformMetrics(){
   const [data,setData]=useState<any>(null);
   const [error,setError]=useState("");
+  const [retry,setRetry]=useState(0);
 
   useEffect(()=>{
     let mounted=true;
     const load=()=>fetch("/api/admin/metrics").then(async response=>{
       const body=await response.json();
       if(!response.ok)throw new Error(body.error||"No se pudieron cargar métricas");
-      if(mounted)setData(body);
-    }).catch(e=>mounted&&setError(e.message));
+      if(mounted){setData(body);setError("")}
+    }).catch(()=>mounted&&setError("No se pudieron consultar las métricas. Revisa tu conexión o tu acceso."));
     void load();
     const timer=setInterval(()=>void load(),10_000);
     return()=>{mounted=false;clearInterval(timer)};
-  },[]);
+  },[retry]);
 
-  if(error)return <div className="system-error-card">{error}</div>;
+  if(error)return <div className="system-error-card" role="alert">{error} <button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Consultar métricas</button></div>;
   if(!data)return <div className="admin-health-skeleton"><div/><div/><div/></div>;
 
   const telemetry=data.metrics?.timers?.find((item:any)=>item.name==="telemetry_capture_to_ingest_ms");
@@ -31,8 +32,8 @@ export function PlatformMetrics(){
     <div className="metric-strip admin-metrics">
       <div className="metric-card"><span className="metric-label">Sockets</span><div className="metric-value">{data.summary.socketsConnected}</div><div className="metric-delta">Conexiones realtime</div></div>
       <div className="metric-card"><span className="metric-label">Error rate</span><div className="metric-value">{data.summary.apiErrorRatePercent}%</div><div className={"metric-delta "+(data.summary.apiErrorRatePercent>2?"bad":"good")}>{data.summary.apiErrors} errores / {data.summary.apiRequests} req</div></div>
-      <div className="metric-card"><span className="metric-label">API p95</span><div className="metric-value">{api?.p95ApproxMs??0}<small> ms</small></div><div className="metric-delta">Latencia aproximada</div></div>
-      <div className="metric-card"><span className="metric-label">GPS p95</span><div className="metric-value">{telemetry?.p95ApproxMs??0}<small> ms</small></div><div className="metric-delta">Captura → ingesta</div></div>
+      <div className="metric-card"><span className="metric-label">API p95</span><div className="metric-value">{api?.p95ApproxMs??"—"}<small> ms</small></div><div className="metric-delta">Latencia aproximada</div></div>
+      <div className="metric-card"><span className="metric-label">GPS p95</span><div className="metric-value">{telemetry?.p95ApproxMs??"—"}<small> ms</small></div><div className="metric-delta">Captura → ingesta</div></div>
     </div>
 
     <div className="queue-panel">

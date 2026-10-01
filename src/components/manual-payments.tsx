@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { uploadManeCombFile } from "@/src/lib/client-upload";
 import { COMMERCIAL_PLANS } from "@/src/core/domain/commercial-plans";
 import { UiModal } from "@/src/components/ui-modal";
@@ -11,14 +11,18 @@ export function ManualPayments(){
   const [planCode,setPlanCode]=useState("fleet-2");
   const [busy,setBusy]=useState(false);
   const [modalOpen,setModalOpen]=useState(false);
+  const [loading,setLoading]=useState(true),[error,setError]=useState("");
+  const idempotencyKey=useRef<string|null>(null);
   const plan=COMMERCIAL_PLANS.find(item=>item.code===planCode)||COMMERCIAL_PLANS[0];
 
   const load=useCallback(async()=>{
+    setLoading(true);try{
     const response=await fetch("/api/manual-payments");
     const data=await response.json();
     if(!response.ok)throw new Error(data.error||"No se pudieron cargar comprobantes");
     setPayments(data.payments||[]);
-    setState((data.payments||[]).length+" comprobantes");
+    setState((data.payments||[]).length+" comprobantes");setError("");
+    }catch{setError("No se pudieron cargar los comprobantes. Revisa tu conexión o tu acceso.")}finally{setLoading(false)}
   },[]);
 
   useEffect(()=>{void load().catch(error=>setState(error.message))},[load]);
@@ -30,7 +34,8 @@ export function ManualPayments(){
   }),[payments]);
 
   async function submit(event:FormEvent<HTMLFormElement>){
-    event.preventDefault();
+    event.preventDefault();if(busy)return;setError("");
+    idempotencyKey.current ||= crypto.randomUUID();
     setBusy(true);setState("Subiendo comprobante...");
     try{
       const form=event.currentTarget;
@@ -47,12 +52,12 @@ export function ManualPayments(){
         receiptBytes:uploaded.bytes,
         receiptMimeType:uploaded.mimeType,
         receiptFileName:uploaded.fileName,
-        idempotencyKey:crypto.randomUUID()
+        idempotencyKey:idempotencyKey.current
       })});
       const data=await response.json();
       if(!response.ok)throw new Error(data.error||"No se pudo enviar");
-      form.reset();setModalOpen(false);setState("Comprobante enviado a revisión");await load();
-    }catch(error){setState(error instanceof Error?error.message:"No se pudo enviar")}
+      form.reset();idempotencyKey.current=null;setModalOpen(false);setState("Comprobante enviado a revisión");await load();
+    }catch{setError("No se pudo confirmar el comprobante. Revisa su estado antes de reintentar.")}
     finally{setBusy(false)}
   }
 
@@ -63,13 +68,14 @@ export function ManualPayments(){
     </div>
 
     <div className="entity-metrics payment-metrics">
-      <div><small>Pendientes</small><strong>{counts.pending}</strong></div>
-      <div><small>Aprobados</small><strong>{counts.approved}</strong></div>
-      <div><small>Rechazados</small><strong>{counts.rejected}</strong></div>
+      <div><small>Pendientes</small><strong>{loading?"—":counts.pending}</strong></div>
+      <div><small>Aprobados</small><strong>{loading?"—":counts.approved}</strong></div>
+      <div><small>Rechazados</small><strong>{loading?"—":counts.rejected}</strong></div>
     </div>
 
     <div className="payment-list">
-      <div className="payment-list-head"><span>{state}</span><span>Historial reciente</span></div>
+      {error&&!modalOpen?<p role="alert">{error}</p>:null}
+      <div className="payment-list-head"><span role="status">{loading?"Cargando comprobantes…":state}</span><button className="btn secondary" disabled={busy||loading} onClick={()=>void load()}>Actualizar comprobantes</button><span>Historial reciente</span></div>
       {payments.length?payments.map(payment=>{
         const paymentPlan=COMMERCIAL_PLANS.find(item=>item.code===payment.planCode);
         return <article className="payment-row" key={payment._id}>
@@ -79,11 +85,12 @@ export function ManualPayments(){
           <span className={"state-badge "+(payment.status==="approved"?"active":payment.status==="rejected"?"archived":"maintenance")}>{payment.status}</span>
           <a className="entity-link" href={"/api/manual-payments/"+payment._id+"/receipt"} target="_blank" rel="noreferrer">Comprobante ↗</a>
         </article>;
-      }):<div className="empty-state"><strong>Sin comprobantes</strong><span>Los pagos enviados aparecerán aquí con su estado de revisión.</span></div>}
+      }):!loading&&!error?<div className="empty-state"><strong>Sin comprobantes</strong><span>Los pagos enviados aparecerán aquí con su estado de revisión.</span></div>:null}
     </div>
 
-    <UiModal open={modalOpen} onClose={()=>setModalOpen(false)} title="Subir comprobante" description="El importe esperado lo calcula ManeComb a partir del plan seleccionado.">
+    <UiModal open={modalOpen} onClose={()=>{if(!busy)setModalOpen(false)}} title="Subir comprobante" description="El importe esperado lo calcula ManeComb a partir del plan seleccionado.">
       <form className="form-stack" onSubmit={submit}>
+        {error?<p role="alert">{error}</p>:null}
         <label>Plan<select className="input" value={planCode} onChange={e=>setPlanCode(e.target.value)}>{COMMERCIAL_PLANS.map(item=><option value={item.code} key={item.code}>{item.label+" · $"+item.monthlyMxn+" MXN/mes"}</option>)}</select></label>
         <div className="payment-expected"><span>Importe esperado</span><strong>{"$"+plan.monthlyMxn+" MXN"}</strong></div>
         <label>Comprobante<input className="input" name="receipt" type="file" accept="image/*,application/pdf" required/></label>

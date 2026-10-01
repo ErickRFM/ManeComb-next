@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import { useNetworkStatus } from "@/src/hooks/useNetworkStatus";
 import {AppRoleSchema,type AppRole} from "@/src/core/contracts/auth";
@@ -10,6 +10,8 @@ import {hasPermission,type Permission} from "@/src/core/domain/permissions";
 import {Icon,type IconName} from "@/src/components/ui/icon";
 import {SignOutButton} from "@/src/components/sign-out-button";
 import {PortalAccessContext} from "@/src/hooks/usePortalPermission";
+
+import {useDrawerFocus} from "@/src/hooks/useDrawerFocus";
 
 const groups=[
   {label:"Operación",items:[
@@ -55,23 +57,8 @@ export function PortalShell({children,initialProfile}:{children:React.ReactNode;
   },[initialProfile,retry]);
   const visibleGroups=groups.map(group=>({...group,items:group.items.filter(item=>profile&&hasPermission(profile.roles,item.permission as Permission))})).filter(group=>group.items.length);
 
-  useEffect(()=>{
-    if(!mobileOpen)return;
-    const previous=document.activeElement as HTMLElement|null;
-    const overflow=document.body.style.overflow;document.body.style.overflow="hidden";
-    const focusable=()=>Array.from(drawer.current?.querySelectorAll<HTMLElement>('a[href],button:not([disabled])')||[]);
-    focusable()[0]?.focus();
-    const key=(event:KeyboardEvent)=>{
-      if(event.key==="Escape"){event.preventDefault();setMobileOpen(false)}
-      if(event.key==="Tab"){
-        const items=focusable(),first=items[0],last=items.at(-1);
-        if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}
-        else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}
-      }
-    };
-    document.addEventListener("keydown",key);
-    return()=>{document.removeEventListener("keydown",key);document.body.style.overflow=overflow;previous?.focus()};
-  },[mobileOpen]);
+  const closeDrawer=useCallback(()=>setMobileOpen(false),[]);
+  useDrawerFocus(mobileOpen,drawer,closeDrawer);
 
   useEffect(()=>{
     setCollapsed(localStorage.getItem("manecomb.portal.sidebar")==="collapsed");
