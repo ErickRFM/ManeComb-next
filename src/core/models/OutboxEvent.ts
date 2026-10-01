@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 const OutboxEventSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: "Organization", default: null, index: true },
   type: { type: String, required: true, index: true },
-  idempotencyKey: { type: String, default: null },
+  idempotencyKey: { type: String },
   payload: { type: Schema.Types.Mixed, required: true },
   status: {
     type: String,
