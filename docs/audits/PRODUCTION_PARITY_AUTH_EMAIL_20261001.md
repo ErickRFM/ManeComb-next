@@ -11,7 +11,7 @@ Work branch: `fix/production-parity-auth-email-20261001`
 - Password reset now confirms the new password in UI.
 - Password reset increments `credentialVersion`, revokes prior sessions and emits a password-changed email event.
 - Recovery and welcome emails now use semantic outbox idempotency keys.
-- Driver email changes revoke prior sessions and emit an email-changed notification.
+- Driver email changes increment credential version and emit an email-changed notification without altering the validated activation/session contract.
 - Driver activation/deactivation emits account status notifications.
 - Platform organization suspension/reactivation emits owner notifications.
 - Outbox now models `processing`, `retry_pending` and `failed_final` separately from `processed`.
@@ -31,7 +31,7 @@ Work branch: `fix/production-parity-auth-email-20261001`
 | ACCOUNT_SUSPENDED | restored for drivers and organizations |
 | ACCOUNT_REACTIVATED | restored for drivers and organizations |
 | Session revocation after password change | restored |
-| Session revocation after driver email change | restored |
+| Driver identity edit preserves activation/session state | preserved from validated Next contract |
 | Provider attempt observability | improved through explicit lifecycle + provider id |
 
 ## Deployment contract
