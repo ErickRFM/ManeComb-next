@@ -9,6 +9,7 @@ import {AppRoleSchema,type AppRole} from "@/src/core/contracts/auth";
 import {hasPermission,type Permission} from "@/src/core/domain/permissions";
 import {Icon,type IconName} from "@/src/components/ui/icon";
 import {SignOutButton} from "@/src/components/sign-out-button";
+import {BrandLogo} from "@/src/components/brand-logo";
 import {PortalAccessContext} from "@/src/hooks/usePortalPermission";
 
 import {useDrawerFocus} from "@/src/hooks/useDrawerFocus";
@@ -114,7 +115,7 @@ export function PortalShell({children,initialProfile}:{children:React.ReactNode;
 
     {mobileOpen?<button className="mobile-scrim" aria-label="Cerrar menú" onClick={()=>setMobileOpen(false)}/>:null}
     {mobileOpen?<aside ref={drawer} className="mobile-drawer open" role="dialog" aria-modal="true" aria-label="Menú móvil">
-      <div className="mobile-drawer-head"><strong>ManeComb</strong><button type="button" className="icon-action" onClick={()=>setMobileOpen(false)} aria-label="Cerrar menú">×</button></div>
+      <div className="mobile-drawer-head"><BrandLogo size="sm"/><button type="button" className="icon-action" onClick={()=>setMobileOpen(false)} aria-label="Cerrar menú">×</button></div>
       {visibleGroups.flatMap(group=>group.items).map(item=><Link key={item.href} href={item.href} className={"mobile-drawer-link "+(pathname.startsWith(item.href)?"active":"")} aria-current={pathname===item.href?"page":undefined}><span><Icon name={item.key as IconName}/></span>{item.label}</Link>)}
       {profile?<p>{profile.name}</p>:null}
       <SignOutButton className="mobile-drawer-link danger"/>
