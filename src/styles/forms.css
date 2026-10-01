@@ -2,7 +2,7 @@
 .entity-manager{display:grid;gap:14px}
 .entity-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .entity-metrics>div{padding:14px 16px;border:1px solid var(--border);border-radius:14px;background:var(--surface);display:grid}
-.entity-metrics small{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:900}
+.entity-metrics small{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:900;overflow-wrap:anywhere}
 .entity-metrics strong{font-size:28px;letter-spacing:-.04em;margin-top:4px}
 .entity-toolbar{display:flex;align-items:center;gap:10px}
 .entity-search{flex:1;max-width:420px;height:42px;border:1px solid var(--border);border-radius:12px;background:var(--surface);display:flex;align-items:center;gap:8px;padding:0 12px}
@@ -62,7 +62,7 @@
   .entity-table-head> :last-child{display:none}
 }
 @media (max-width:700px){
-  .entity-metrics{grid-template-columns:repeat(3,1fr)}
+  .entity-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
   .entity-toolbar{align-items:stretch;flex-wrap:wrap}
   .entity-search{max-width:none;flex-basis:100%}
   .entity-state{margin-left:0;align-self:center}

@@ -47,7 +47,7 @@ export function RadioConsole(){
     const floor=({channelId:floorChannel,userId,active}:{channelId:string;userId:string;active:boolean})=>{
       if(floorChannel!==channelId)return;
       setSpeaker(active?userId:null);
-      if(!recorderRef.current)setState(active?"busy":"listening");
+      if(!recorderRef.current)setState(current=>active?"busy":current==="error"?"error":"listening");
     };
     socket.on("radio:audio",play);
     socket.on("radio:floor-lost",lost);
@@ -87,34 +87,57 @@ export function RadioConsole(){
     if(attempt!==attemptRef.current||!pressedRef.current){if(granted&&!pressedRef.current)socket.emit("radio:release-floor",{channelId});return}
     if(!granted){pressedRef.current=false;setState("error");return}
 
+    let decoder:AudioContext|null=null;
     try{
       const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
       if(attempt!==attemptRef.current||!pressedRef.current){stream.getTracks().forEach(track=>track.stop());return}
       streamRef.current=stream;
+      const audioDecoder=decoder=new AudioContext();
       const mimeType=MediaRecorder.isTypeSupported("audio/webm;codecs=opus")?"audio/webm;codecs=opus":"audio/webm";
-      const recorder=new MediaRecorder(stream,{mimeType,audioBitsPerSecond:24000});
       let pending=Promise.resolve(),deliveryFailed=false;
+      const startSegment=()=>{
+      const recorder=new MediaRecorder(stream,{mimeType,audioBitsPerSecond:24000});
+      let timer:ReturnType<typeof setTimeout>;
       recorder.ondataavailable=event=>{
         if(event.data.size===0)return;
         pending=pending.then(async()=>{
+          if(deliveryFailed||attempt!==attemptRef.current||!socket.connected)return;
+          const audio=await audioDecoder.decodeAudioData(await event.data.arrayBuffer()).catch(()=>null);
+          // A segment stopped before the first audio sample can contain only
+          // container headers. Do not send an unplayable empty tail.
+          if(!audio||audio.duration===0){if(pressedRef.current)deliveryFailed=true;return}
           const chunk=await blobToDataUrl(event.data);
           if(attempt!==attemptRef.current||!socket.connected)return;
           await new Promise<void>((resolve,reject)=>socket.timeout(5000).emit("radio:audio",{channelId,chunk},(error:Error|null,ack:any)=>!error&&ack?.ok?resolve():reject(new Error("RADIO_AUDIO_ERROR"))));
         }).catch(()=>{deliveryFailed=true});
       };
       recorder.onstop=()=>{
+        clearTimeout(timer);
+        if(attempt!==attemptRef.current){void pending.finally(()=>audioDecoder.close().catch(()=>undefined));return}
+        if(pressedRef.current&&socket.connected&&!deliveryFailed){
+          try{startSegment();return}catch{deliveryFailed=true;recorderRef.current=recorder}
+        }
+        pressedRef.current=false;
         stream.getTracks().forEach(track=>track.stop());
-        void pending.finally(()=>{
+        void pending.finally(async()=>{
+          await audioDecoder.close().catch(()=>undefined);
           if(attempt!==attemptRef.current||recorderRef.current!==recorder)return;
           recorderRef.current=null;streamRef.current=null;
           if(socket.connected)socket.emit("radio:release-floor",{channelId});
           setState(socket.connected?(deliveryFailed?"error":"listening"):"connecting");
         });
       };
+      recorder.onerror=()=>{cancel();setState("error")};
       recorderRef.current=recorder;
-      recorder.start(300);
+      // Each complete recording is independently playable by the existing
+      // receiver. Timeslice fragments do not carry independent WebM headers.
+      recorder.start();
+      timer=setTimeout(()=>{if(recorder.state==="recording")recorder.stop()},300);
+      };
+      startSegment();
       setState("talking");
     }catch{
+      void decoder?.close().catch(()=>undefined);
       if(attempt!==attemptRef.current)return;
       streamRef.current?.getTracks().forEach(track=>track.stop());streamRef.current=null;recorderRef.current=null;
       pressedRef.current=false;
@@ -135,13 +158,12 @@ export function RadioConsole(){
   function release(){
     pressedRef.current=false;
     const recorder=recorderRef.current;
-    if(!recorder){cancel();return}
+    if(!recorder){if(state!=="error")cancel();return}
     // Stop capture immediately; keep this recording valid until its final
     // dataavailable event is acknowledged, then surrender the floor.
-    if(recorder.state==="recording"){
-      setState("finishing");recorder.stop();
-      streamRef.current?.getTracks().forEach(track=>track.stop());
-    }
+    setState("finishing");
+    if(recorder.state==="recording")recorder.stop();
+    streamRef.current?.getTracks().forEach(track=>track.stop());
   }
 
   const copy={

@@ -78,16 +78,33 @@ try{
     const page=await pageFor("mobile_operations");const events=[];await realtime(page,event=>events.push(event));
     await page.addInitScript(()=>{
       window.__micStops=0;
-      navigator.mediaDevices.getUserMedia=async()=>({getTracks:()=>[{stop:()=>window.__micStops++}]});
-      window.MediaRecorder=class {static isTypeSupported(){return true}state="inactive";start(){this.state="recording"}stop(){this.state="inactive";queueMicrotask(()=>{this.ondataavailable?.({data:new Blob(["final-ptt-audio"],{type:"audio/webm"})});this.onstop?.()})}};
+      const original=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+      navigator.mediaDevices.getUserMedia=async options=>{const stream=await original(options);for(const track of stream.getTracks()){const stop=track.stop.bind(track);track.stop=()=>{window.__micStops++;stop()}}return stream};
     });
     await page.goto(base+"/operacion/radio");await page.getByText("Listo para transmitir",{exact:true}).waitFor();
     const ptt=page.getByRole("button",{name:/PULSA Y HABLA/});await ptt.focus();await page.keyboard.down("Space");await page.getByText("Transmitiendo",{exact:true}).waitFor();
+    await page.waitForTimeout(160);
     events.length=0;
     await page.evaluate(()=>window.dispatchEvent(new Event("blur")));
     await page.waitForFunction(()=>window.__micStops>0,{},{timeout:3000});await page.waitForTimeout(150);
     assert.ok(events.includes("radio:audio"),"Normal PTT release must flush the final sub-300ms audio chunk");
     assert.ok(events.indexOf("radio:audio")<events.indexOf("radio:release-floor"),"Flush audio before surrendering the floor");await page.keyboard.up("Space");await page.context().close();
+  });
+  await run("PTT real MediaRecorder delivers independently decodable audio clips",async()=>{
+    const page=await pageFor("mobile_operations"),chunks=[];await realtime(page,(event,payload)=>{if(event==="radio:audio")chunks.push(payload.chunk)});
+    await page.goto(base+"/operacion/radio");await page.getByText("Listo para transmitir",{exact:true}).waitFor();
+    await page.getByRole("button",{name:/PULSA Y HABLA/}).focus();await page.keyboard.down("Space");await page.getByText("Transmitiendo",{exact:true}).waitFor();
+    const deadline=Date.now()+5000;while(chunks.length<3&&Date.now()<deadline)await page.waitForTimeout(30);
+    await page.keyboard.up("Space");await page.getByText("Listo para transmitir",{exact:true}).waitFor();assert.ok(chunks.length>=3,"Expected multiple real recorded clips");
+    const decoded=await page.evaluate(async chunks=>{const context=new AudioContext();try{return await Promise.all(chunks.map(async chunk=>{try{const audio=await context.decodeAudioData(await (await fetch(chunk)).arrayBuffer());return audio.duration>0}catch{return false}}))}finally{await context.close()}},chunks);
+    assert.ok(decoded.every(Boolean),"Each PTT clip must decode independently: "+JSON.stringify(decoded));await page.context().close();
+  });
+  await run("radio audio rejection stops capture and preserves retry feedback",async()=>{
+    const page=await pageFor("mobile_operations");
+    await page.addInitScript(()=>{const original=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);navigator.mediaDevices.getUserMedia=async options=>{const stream=await original(options);window.__micStream=stream;return stream}});
+    await page.routeWebSocket("**/socket.io/**",ws=>{ws.send('0'+JSON.stringify({sid:"audio-error",upgrades:[],pingInterval:25000,pingTimeout:20000,maxPayload:1000000}));ws.onMessage(raw=>{const frame=String(raw);if(frame==="40"){ws.send('40'+JSON.stringify({sid:"audio-error-socket"}));return}const match=frame.match(/^42(\d*)(\[.*)$/);if(!match)return;const [event,payload]=JSON.parse(match[2]);if(match[1])ws.send('43'+match[1]+JSON.stringify([{ok:event!=="radio:audio"}]));if(event==="radio:release-floor")ws.send('42'+JSON.stringify(["radio:floor",{channelId:payload.channelId,userId:"ui-qa-user",active:false}]))})});
+    await page.goto(base+"/operacion/radio");await page.getByText("Listo para transmitir",{exact:true}).waitFor();await page.getByRole("button",{name:/PULSA Y HABLA/}).focus();await page.keyboard.down("Space");await page.getByText("Transmitiendo",{exact:true}).waitFor();
+    await page.waitForFunction(()=>window.__micStream?.getTracks().every(track=>track.readyState==="ended"),{},{timeout:3000});await page.keyboard.up("Space");await page.getByRole("button",{name:"Reintentar radio"}).waitFor();await page.waitForTimeout(100);assert.equal(await page.getByText("Radio no disponible",{exact:true}).count(),1);await page.context().close();
   });
   await run("RTC selects real users and stops late microphone after hangup",async()=>{
     const page=await pageFor("mobile_operations");await realtime(page);
@@ -328,6 +345,7 @@ try{
     ];
     await mkdir("artifacts/functional-ui-qa/screens",{recursive:true});
     for(const [channel,path,name] of surfaces){
+      if(process.env.QA_RESPONSIVE_SURFACE&&process.env.QA_RESPONSIVE_SURFACE!==name)continue;
       const page=await pageFor(channel);
       await page.route("**/api/locations/live",route=>route.fulfill({json:{units:[unit]}}));
       await page.route("**/api/operation/navigation",route=>route.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:"RUNNING",routeId:unit.routeId},route:{id:unit.routeId,name:unit.routeName,geometry:[],stops:[]},snapshot:unit}}));
@@ -338,6 +356,7 @@ try{
       await page.route("**/api/admin/organizations",route=>route.fulfill({json:{organizations:[{_id:"org",name:"Organización QA",slug:"organization-qa",status:"active",planCode:"fleet-4"}]}}));
       await page.route("**/api/documents/owners",route=>route.fulfill({json:{drivers:[],vehicles:[]}}));
       await page.goto(base+path);await page.waitForTimeout(250);
+      if(process.env.QA_METRIC_TEXT_STRESS==="1")await page.addStyleTag({content:".entity-metrics small{font-size:12px}"});
       for(const theme of ["dark","light"]){for(const width of [360,390,430,768,1024,1366,1920]){
         await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:"reduce"});await page.evaluate(theme=>{document.documentElement.dataset.theme=theme},theme);
         if(name==="map"&&await page.getByRole("complementary",{name:"Detalle de QA-01"}).count()===0){const unitButton=page.getByRole("button",{name:/QA-01/});if(await unitButton.count())await unitButton.click()}
@@ -353,5 +372,5 @@ try{
   }
 }finally{
   await browser.close();await mkdir("artifacts/functional-ui-qa",{recursive:true});
-  await writeFile(process.env.QA_RESPONSIVE?"artifacts/functional-ui-qa/responsive-report.json":process.env.QA_MAPBOX?"artifacts/functional-ui-qa/mapbox-report.json":"artifacts/functional-ui-qa/report.json",JSON.stringify({generatedAt:new Date().toISOString(),checks,failures},null,2));
+  await writeFile(process.env.QA_RESPONSIVE?(process.env.QA_METRIC_TEXT_STRESS?"artifacts/functional-ui-qa/responsive-text-stress-report.json":process.env.QA_RESPONSIVE_SURFACE?"artifacts/functional-ui-qa/responsive-focused-report.json":"artifacts/functional-ui-qa/responsive-report.json"):process.env.QA_MAPBOX?"artifacts/functional-ui-qa/mapbox-report.json":"artifacts/functional-ui-qa/report.json",JSON.stringify({generatedAt:new Date().toISOString(),checks,failures},null,2));
 }

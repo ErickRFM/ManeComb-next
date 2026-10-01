@@ -1,5 +1,5 @@
 /* Documents */
-.document-center,.incident-center{display:grid;gap:14px;min-width:0}
+.document-center,.incident-center{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
 .compact-filters{display:flex;gap:5px;overflow:auto;min-width:0;max-width:100%}
 .document-center .entity-toolbar{flex-wrap:wrap;min-width:0}
 .compact-filters button{white-space:nowrap;height:36px;padding:0 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:9px;font-weight:850;cursor:pointer}
