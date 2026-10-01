@@ -25,7 +25,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{organizati
     if(patch.planCode&&!plan)return NextResponse.json({error:"Unknown plan"},{status:422});
 
     await connectDb();
-    const before=await Organization.findById(organizationId).lean();
+    const before=await Organization.findById(organizationId).select("status");
     if(!before)return NextResponse.json({error:"Organization not found"},{status:404});
     const organization=await Organization.findByIdAndUpdate(organizationId,{$set:patch},{new:true,runValidators:true});
     if(plan){
