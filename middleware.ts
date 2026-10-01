@@ -27,24 +27,27 @@ export async function middleware(request: NextRequest) {
 
   const rule = protectedPrefixes.find((item) => request.nextUrl.pathname.startsWith(item.prefix));
   if (!rule) return NextResponse.next();
+  const redirectToLogin=()=>{
+    const login=new URL("/login",request.url);login.searchParams.set("next",request.nextUrl.pathname);
+    if(rule.channel==="mobile_operations")login.searchParams.set("surface","operation");
+    return NextResponse.redirect(login);
+  };
 
   const token = request.cookies.get("manecomb_session")?.value;
   const secret = process.env.AUTH_SECRET;
   if (!token || !secret || secret.length < 32) {
-    const login = new URL("/login", request.url);
-    login.searchParams.set("next", request.nextUrl.pathname);
-    return NextResponse.redirect(login);
+    return redirectToLogin();
   }
 
   try {
     const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
-    if (payload.channel !== rule.channel) return NextResponse.redirect(new URL("/login", request.url));
+    if (payload.channel !== rule.channel) return redirectToLogin();
     if (rule.channel === "platform_admin" && payload.mfaVerified !== true) {
       return NextResponse.redirect(new URL("/mfa", request.url));
     }
     return NextResponse.next();
   } catch {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return redirectToLogin();
   }
 }
 
