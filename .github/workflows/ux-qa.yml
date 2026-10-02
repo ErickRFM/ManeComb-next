@@ -87,6 +87,8 @@ jobs:
           distribution: temurin
           java-version: "21"
       - run: npm ci --no-audit --no-fund
+      - name: Audit native bridge contract
+        run: npm run audit:native
       - name: Start web UI for emulator
         run: |
           nohup npm run dev > /tmp/manecomb-android-web.log 2>&1 &
