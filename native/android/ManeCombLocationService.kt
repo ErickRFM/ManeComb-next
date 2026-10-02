@@ -59,6 +59,8 @@ class ManeCombLocationService : Service(), LocationListener {
     private var journeyId = ""
     private var deviceToken = ""
     private var retryDelayMs = RETRY_BASE_MS
+    private var appVersionName = "unknown"
+    private var appVersionCode = 0L
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -83,6 +85,18 @@ class ManeCombLocationService : Service(), LocationListener {
         locationManager = getSystemService(LOCATION_SERVICE) as LocationManager
         connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
         store = ManeCombLocationStore(this)
+        try {
+            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            appVersionName = packageInfo.versionName ?: "unknown"
+            appVersionCode =
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) packageInfo.longVersionCode
+                else {
+                    @Suppress("DEPRECATION")
+                    packageInfo.versionCode.toLong()
+                }
+        } catch (error: Exception) {
+            Log.w(TAG, "Could not read application version for telemetry diagnostics", error)
+        }
         createChannel()
         pendingCount = store.countQueued()
         updateNetworkState()
@@ -234,7 +248,17 @@ class ManeCombLocationService : Service(), LocationListener {
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json")
             connection.setRequestProperty("Authorization", "Bearer " + deviceToken)
-            connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            val enriched = JSONObject(body).apply {
+                put("client", JSONObject().apply {
+                    put("platform", "android")
+                    put("trackingVersion", TRACKING_VERSION)
+                    put("appVersionName", appVersionName)
+                    put("appVersionCode", appVersionCode)
+                    put("queueDepth", store.countQueued())
+                    put("networkState", networkState)
+                })
+            }
+            connection.outputStream.use { it.write(enriched.toString().toByteArray(Charsets.UTF_8)) }
             val code = connection.responseCode
             try { (if (code in 200..299) connection.inputStream else connection.errorStream)?.close() } catch (_: Exception) {}
             when {
