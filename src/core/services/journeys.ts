@@ -59,6 +59,13 @@ export async function applyJourneyAction(input: {
       { _id: journey.vehicleId, organizationId: input.organizationId },
       { $set: { status: "running", driverId: journey.driverId, ...(journey.routeId ? { routeId: journey.routeId } : {}) } }
     );
+  }
+
+  if (next === "PAUSED") {
+    await DeviceSession.updateMany(
+      { journeyId: journey._id, revokedAt: null },
+      { $set: { revokedAt: new Date() } }
+    );
   } else if (next === "FINISHED" || next === "CANCELLED") {
     await Promise.all([
       Vehicle.updateOne(
