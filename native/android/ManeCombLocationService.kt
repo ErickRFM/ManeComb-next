@@ -77,6 +77,8 @@ class ManeCombLocationService : Service(), LocationListener {
     private var retryDelayMs = RETRY_BASE_MS
     private var lastEnqueuedElapsedRealtimeMs = 0L
     private var callbackRegistered = false
+    private var appVersionName = "unknown"
+    private var appVersionCode = 0L
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
@@ -104,6 +106,13 @@ class ManeCombLocationService : Service(), LocationListener {
         networkAvailable = connectivityManager.activeNetwork != null
         store = ManeCombLocationStore(this)
         pendingCount = store.countQueued()
+        try {
+            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            appVersionName = packageInfo.versionName ?: "unknown"
+            appVersionCode = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) packageInfo.longVersionCode else packageInfo.versionCode.toLong()
+        } catch (error: Exception) {
+            Log.w(TAG, "Could not read application version for telemetry diagnostics", error)
+        }
         createChannel()
         emitState(this)
     }
