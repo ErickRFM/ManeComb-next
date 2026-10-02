@@ -1,4 +1,4 @@
-export const NATIVE_TRACKING_CONTRACT_VERSION=2;
+export const NATIVE_TRACKING_CONTRACT_VERSION=3;
 
 export type NativeTrackingState=
   |"created"

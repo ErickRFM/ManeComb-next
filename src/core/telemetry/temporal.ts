@@ -12,6 +12,7 @@ export function resolveTemporalAuthority(input:TelemetryInput,receivedAt:Date,co
   if(evidence?.capturedAt&&evidence.capturedAt.getTime()!==wallMs)return invalid("capture_time_conflict");
   let canonicalMs=wallMs;
   let trustedMonotonic=false;
+  if(context.temporalSource==="android_device_session"&&evidence?.capturedBootCount!==undefined&&evidence.bootCount!==undefined&&evidence.capturedBootCount!==evidence.bootCount)return invalid("boot_discontinuity");
   if(context.temporalSource==="android_device_session"&&evidence?.queueAgeSource==="android_elapsed_realtime"){
     const {queueAgeMs,capturedElapsedRealtimeMs,sentElapsedRealtimeMs,capturedBootCount,bootCount}=evidence;
     if(capturedBootCount===undefined||bootCount===undefined||capturedBootCount!==bootCount)return invalid("boot_discontinuity");

@@ -7,7 +7,7 @@ node_modules/
 artifacts/
 coverage/
 dist/
-android/
+/android/
 *.log
 .DS_Store
 .idea/

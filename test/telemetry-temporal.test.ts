@@ -31,6 +31,9 @@ describe("telemetry temporal authority",()=>{
   it("does not admit evidence copied over a boot change",()=>{
     expect(resolveTemporalAuthority(packet(0,{...monotonic,bootCount:10}),now,{temporalSource:"android_device_session"}).liveEligible).toBe(false);
   });
+  it("does not mark a reboot backlog live when uploader explicitly loses monotonic continuity",()=>{
+    expect(resolveTemporalAuthority(packet(0,{...monotonic,bootCount:10,queueAgeSource:"unknown"}),now,{temporalSource:"android_device_session"}).liveEligible).toBe(false);
+  });
   it("does not admit contradictory monotonic age",()=>{
     expect(resolveTemporalAuthority(packet(0,{...monotonic,queueAgeMs:0}),now,{temporalSource:"android_device_session"}).liveEligible).toBe(false);
   });

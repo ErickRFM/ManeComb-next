@@ -14,6 +14,7 @@ import android.net.Network
 import android.os.Bundle
 import android.os.IBinder
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -27,7 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class ManeCombLocationService : Service(), LocationListener {
     companion object {
-        const val CONTRACT_VERSION = 2
+        const val CONTRACT_VERSION = 3
         const val PREFS_NAME = "manecomb-native-location"
         const val ACTION_STATE = "com.manecomb.location.STATE"
 
@@ -224,6 +225,11 @@ class ManeCombLocationService : Service(), LocationListener {
             if (location.hasBearing()) put("heading", location.bearing.toDouble())
             if (accuracy != null) put("accuracy", accuracy.toDouble())
             put("recordedAt", Instant.ofEpochMilli(capturedAt).toString())
+            put("temporalEvidence", JSONObject().apply {
+                put("capturedAt", Instant.ofEpochMilli(capturedAt).toString())
+                if (location.elapsedRealtimeNanos > 0L) put("capturedElapsedRealtimeMs", elapsed)
+                readBootCount()?.let { put("capturedBootCount", it) }
+            })
         }
 
         store.enqueue(packetId, payload.toString(), capturedAt)
@@ -281,6 +287,17 @@ class ManeCombLocationService : Service(), LocationListener {
             connection.setRequestProperty("Content-Type", "application/json")
             connection.setRequestProperty("Authorization", "Bearer " + deviceToken)
             val enriched = JSONObject(body).apply {
+                val evidence = optJSONObject("temporalEvidence") ?: JSONObject()
+                val capturedElapsed = if (evidence.has("capturedElapsedRealtimeMs")) evidence.optLong("capturedElapsedRealtimeMs") else null
+                val capturedBoot = if (evidence.has("capturedBootCount")) evidence.optInt("capturedBootCount") else null
+                val sentElapsed = SystemClock.elapsedRealtime()
+                val boot = readBootCount()
+                val age = ManeCombLocationTemporal.forUpload(capturedElapsed, capturedBoot, sentElapsed, boot)
+                evidence.put("sentElapsedRealtimeMs", sentElapsed)
+                boot?.let { evidence.put("bootCount", it) }
+                evidence.put("queueAgeSource", age.queueAgeSource)
+                age.queueAgeMs?.let { evidence.put("queueAgeMs", it) }
+                put("temporalEvidence", evidence)
                 put("client", JSONObject().apply {
                     put("platform", "android")
                     put("contractVersion", CONTRACT_VERSION)
@@ -374,6 +391,10 @@ class ManeCombLocationService : Service(), LocationListener {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun readBootCount(): Int? = try {
+        Settings.Global.getInt(contentResolver, "boot_count", -1).takeIf { it >= 0 }
+    } catch (_: Exception) { null }
 
     override fun onProviderEnabled(provider: String) {
         if (running) {

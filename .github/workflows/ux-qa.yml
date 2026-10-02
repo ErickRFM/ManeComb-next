@@ -103,7 +103,7 @@ jobs:
       - name: Verify generated native wrapper
         run: npm run verify:native-generated
       - name: Build real debug APK
-        run: cd android && ./gradlew assembleDebug --no-daemon
+        run: cd android && ./gradlew testDebugUnitTest assembleDebug --no-daemon
       - name: Record native build metadata
         run: npm run report:native-build
       - name: Enable KVM for Linux emulator

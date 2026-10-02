@@ -10,7 +10,9 @@ const files={
   cadence:readFileSync("native/android/ManeCombLocationCadence.kt","utf8"),
   bridge:readFileSync("src/lib/native-location.ts","utf8"),
   journeys:readFileSync("src/core/services/journeys.ts","utf8"),
-  telemetry:readFileSync("src/core/services/telemetry.ts","utf8")
+  telemetry:readFileSync("src/core/telemetry/deduplication.ts","utf8"),
+  temporal:readFileSync("native/android/ManeCombLocationTemporal.kt","utf8"),
+  backendTemporal:readFileSync("src/core/telemetry/temporal.ts","utf8")
 };
 
 const checks=[
@@ -34,7 +36,10 @@ const checks=[
   ["JS bridge requires a running journey id",files.bridge.includes("journeyId is required for native GPS")],
   ["JS bridge exposes native state listener",files.bridge.includes('addListener("trackingState"')],
   ["Backend pauses revoke native telemetry credentials",files.journeys.includes('next === "PAUSED"')&&files.journeys.includes("DeviceSession.updateMany")],
-  ["Backend protects packet replay",files.telemetry.includes("PACKET_ID_CONFLICT")&&files.telemetry.includes("$setOnInsert")]
+  ["Backend protects packet replay",files.telemetry.includes("PACKET_ID_CONFLICT")&&files.telemetry.includes("$setOnInsert")],
+  ["Capture evidence persists with original packet",files.service.includes('put("temporalEvidence"')&&files.service.includes('put("capturedElapsedRealtimeMs"')&&files.store.includes("payload TEXT NOT NULL")],
+  ["Monotonic queue age requires same boot",files.temporal.includes("capturedBootCount == bootCount")&&files.service.includes("ManeCombLocationTemporal.forUpload")&&files.backendTemporal.includes("android_device_session")],
+  ["Native temporal tests are copied",files.prepare.includes("ManeCombLocationTemporalTest.kt")]
 ];
 
 const failed=checks.filter(([,ok])=>!ok);

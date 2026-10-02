@@ -69,9 +69,12 @@ if(existsSync(appGradlePath)){
 const sourceDir=join(root,"native","android");
 const kotlinDir=join(androidDir,"app","src","main","java","com","manecomb","location");
 mkdirSync(kotlinDir,{recursive:true});
-for(const name of ["ManeCombLocationPlugin.kt","ManeCombLocationService.kt","ManeCombLocationStore.kt","ManeCombSecureStore.kt","ManeCombLocationCredentials.kt","ManeCombLocationCadence.kt"]){
+for(const name of ["ManeCombLocationPlugin.kt","ManeCombLocationService.kt","ManeCombLocationStore.kt","ManeCombSecureStore.kt","ManeCombLocationCredentials.kt","ManeCombLocationCadence.kt","ManeCombLocationTemporal.kt"]){
   copyFileSync(join(sourceDir,name),join(kotlinDir,name));
 }
+const temporalTestDir=join(androidDir,"app","src","test","java","com","manecomb","location");
+mkdirSync(temporalTestDir,{recursive:true});
+copyFileSync(join(sourceDir,"test","ManeCombLocationTemporalTest.kt"),join(temporalTestDir,"ManeCombLocationTemporalTest.kt"));
 
 const manifestPath=join(androidDir,"app","src","main","AndroidManifest.xml");
 let manifest=readFileSync(manifestPath,"utf8");
