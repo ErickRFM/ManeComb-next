@@ -39,12 +39,12 @@ export function AuthForm({mode,planCode,operation=false}:{mode:"login"|"register
     }
   }
 
-  return <form onSubmit={submit} className={"card grid"+(operation?" operation-auth-form":"")} style={{maxWidth:520}}>
+  return <form onSubmit={submit} className={"card grid auth-form"+(operation?" operation-auth-form":"")} style={{maxWidth:520}}>
     {mode==="register"?<>
       <label>Empresa / línea<input className="input" name="organizationName" autoComplete="organization" required/></label>
       <label>Nombre del responsable<input className="input" name="name" autoComplete="name" required/></label>
     </>:null}
-    <label>Correo<input className="input" name="email" type="email" autoComplete="username" required/></label>
+    <label>Correo<input className="input" name="email" type="email" inputMode="email" autoComplete="username" spellCheck={false} required/></label>
     <PasswordField
       label="Contraseña"
       name="password"

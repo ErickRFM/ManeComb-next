@@ -16,12 +16,12 @@ export function ContactForm(){
     form.reset();
     setState("Solicitud recibida. Te contactaremos.");
   }
-  return <form className="card grid" style={{maxWidth:620}} onSubmit={submit}>
-    <input className="input" name="name" placeholder="Nombre" required/>
-    <input className="input" name="email" type="email" placeholder="Correo" required/>
-    <input className="input" name="phone" placeholder="Teléfono"/>
-    <input className="input" name="fleetSize" type="number" min="1" placeholder="Número de unidades"/>
-    <textarea className="input" name="message" rows={5} placeholder="Mensaje"/>
+  return <form className="card grid form-stack" style={{maxWidth:620}} onSubmit={submit}>
+    <label>Nombre<input className="input" name="name" autoComplete="name" placeholder="Tu nombre" required/></label>
+    <label>Correo<input className="input" name="email" type="email" inputMode="email" autoComplete="email" spellCheck={false} placeholder="correo@empresa.com" required/></label>
+    <label>Teléfono<input className="input" name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="Teléfono"/></label>
+    <label>Número de unidades<input className="input" name="fleetSize" type="number" min="1" placeholder="Ej. 4"/></label>
+    <label>Mensaje<textarea className="input" name="message" rows={5} placeholder="Cuéntanos sobre tu operación"/></label>
     {state?<p className="muted" style={{margin:0}}>{state}</p>:null}
     <button className="btn" disabled={busy}>{busy?"Enviando...":"Enviar"}</button>
   </form>
