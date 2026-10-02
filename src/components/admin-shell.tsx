@@ -12,6 +12,7 @@ import {hasPlatformPermission,type PlatformPermission} from "@/src/core/platform
 
 const items:Array<{label:string;href:string;key:IconName;permission:PlatformPermission}>=[
   {label:"Empresas",href:"/admin/empresas",key:"users",permission:"platform.organizations.read"},
+  {label:"Comercial",href:"/admin/comercial",key:"billing",permission:"platform.billing.read"},
   {label:"Pagos manuales",href:"/admin/pagos-manuales",key:"billing",permission:"platform.billing.read"},
   {label:"Gobernanza",href:"/admin/gobernanza",key:"document",permission:"platform.audit.read"},
   {label:"Personal interno",href:"/admin/personal",key:"users",permission:"platform.users.read"},
