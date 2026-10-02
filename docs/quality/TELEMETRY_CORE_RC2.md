@@ -1,46 +1,62 @@
-# Telemetry Core RC2
+# Telemetry Core RC2 — candidato RC3
 
-Base: `6744e35cede876b5988a09344cca10acbb648302`. Rama: `feat/telemetry-core-rc2`.
-Especificación: instrucción del usuario del 2026-10-01, fases 1–5; ejecución continua hasta PHYSICAL GATE #1.
+Fecha: 2026-10-01. Rama: `feat/telemetry-core-rc2`.
+Base main: `6744e35cede876b5988a09344cca10acbb648302`.
+Código final validado: `ec044817f970c00057f84504a46550b2ac67584a`.
+El commit posterior cambia únicamente este registro. SHA exacto de entrega, APK/checksum/ruta y procedencia: `artifacts/telemetry-rc2-final.json` y `artifacts/android-smoke/native-build.json`, generados después de construir desde el HEAD limpio de entrega.
 
-## Arquitectura y decisiones
+## Arquitectura final
 
-La entrada existente `src/core/services/telemetry.ts` permanece estable para REST y Socket.IO. El pipeline y las políticas puras se extraen a `src/core/telemetry`; Mongo mantiene idempotencia por organizationId/packetId y actualización condicional por captura. Route projection consume la coordenada canónica; raw y decisiones permanecen en historial.
+Entrada estable `src/core/services/telemetry.ts`, compartida por REST/Socket.IO. Módulos `src/core/telemetry`: contracts, temporal, ordering, deduplication, quality, stabilization, freshness y pipeline. Se reutilizan schema, gps-freshness y route-projection existentes. No Event Engine, simulador nuevo, cámara, MQTT, geofences ni cambios comerciales.
 
-Compatibilidad: clientes antiguos conservan campos y respuesta snapshot; la evidencia temporal nueva es opcional. Hora de recepción nunca sustituye captura. Evidencia monotónica sólo es admisible con credencial DeviceSession validada, fuente Android declarada y continuidad boot consistente; no es atestación hardware y no se confía en queueAge aislado. Tiempo futuro/inconsistente no habilita GPS vivo. Backlog válido se conserva sin mover lastLocation.
+Schema → autorización driver/vehicle/tenant y RUNNING → tiempo → persistencia raw/idempotencia → orden/calidad/jump/estabilización → proyección canónica → CAS de Vehicle → finalización durable de historia → snapshot/ACK. Un conflicto CAS reevalúa el ancla/proyección; si tras tres intentos aún falta aplicar el paquete más nuevo, `TELEMETRY_CANONICAL_RETRY` impide ACK y permite retry FIFO.
 
-Calidad: GOOD ≤15 m, NORMAL ≤50 m, POOR >50 m, UNKNOWN sin accuracy. Jitter <8 m sólo con velocidad detenida y accuracy útil; se compara con ancla estable para no ocultar movimiento acumulado. Saltos físicamente imposibles se conservan raw y se ponen en cuarentena para posición viva; recuperación exige evidencia posterior consistente o intervalo largo. Sin suavizado general ni cambio de intervalos GPS.
+## Decisiones
 
-Nativo: añadir evidencia a JSON persistido y enriquecer edad al enviar usando elapsedRealtime y boot count. Preservar FIFO, retry/backoff, Keystore, callbacks, packetId y limpieza por asignación. Tras reboot, evidencia sin continuidad no es confiable; preservar captura original. Incrementar contrato y build debug, sin signing productivo.
+- Nuevos campos `temporalEvidence` opcionales: capturedAt, queueAgeMs/source, elapsed capture/send y boot capture/send. Clientes antiguos conservan entrada/respuesta. Recepción no reemplaza captura. Backlog 5/20 min válido queda en RouteSessionPosition sin mover lastLocation.
+- Sólo DeviceSession validada habilita la fuente Android monotónica; exige edad coherente y mismo boot. Queue age aislado no rejuvenece ni prueba captura. Tiempo futuro/conflictivo no habilita live; ancla futura legacy se puede reparar. Esta evidencia no es atestación hardware.
+- packetId y PACKET_ID_CONFLICT conservados. Replay usa payload/evidencia originales; paquetes ya finalizados se reconocen sin tocar canónica ni borrar candidato de recuperación. Retry parcial puede finalizar historial/escritura sin rejuvenecer tiempo. Jornada cerrada anterior se rechaza por autorización; nunca se reasigna su paquete a una RUNNING nueva.
+- Raw/evidencia originales son inmutables. Historia separa PENDING/APPLIED/HISTORICAL_ONLY/SUPERSEDED. La decisión y coordenada final reflejan el resultado real tras CAS; sólo APPLIED afirma coordenada aplicada. Fallo de finalización produce error/retry, no ACK prematuro.
+- Calidad GOOD ≤15 m, NORMAL ≤50 m, POOR >50 m, UNKNOWN sin accuracy; >100 m queda en historial. Saltos imposibles en intervalo corto se ponen en cuarentena; un fix distinto, próximo/coherente y de buena accuracy puede recuperar. Intervalo ≥120 s no permite afirmar salto imposible.
+- Jitter <8 m sólo detenido (ambas velocidades <0.8 m/s), con accuracy útil; se conserva ancla pero avanza timestamp/freshness. Desplazamiento acumulado cruza umbral; marcha/giro/aceleración no se suavizan. Proyección usa canónica.
+- Kotlin contrato v3 añade evidencia al JSON FIFO persistido y calcula edad monotónica al enviar. Se conservan foreground service, SQLite, packetId, cadence, retry/backoff, Keystore, callbacks y límites de cola. Boot desconocido/discontinuo no habilita fuente monotónica. Fuentes canónicas/tests se copian y verify compara bytes. `.gitignore` ignora sólo `/android/` generado.
 
-## Plan / registro de ejecución
+## Tests / evidencia automatizada
 
-- [x] 1. Extraer pipeline, persistencia/dedupe, ordering y snapshot; pruebas de caracterización y suite verde, commit por responsabilidad.
-- [x] 2. Extender schema temporal opcional; tests RED→GREEN de clocks, backlog 5/20 min, duplicate/order/boot, live posterior y aislamiento de jornada. Historial guarda raw/evidencia/decisión; snapshot vivo sólo acepta posición elegible.
-- [x] 3. Tests RED→GREEN de quality, jump y estabilización: detenido/jitter, marcha/giro/aceleración, mala accuracy, recuperación e intervalo largo. Proyección usa canónica; escritura protege contra carreras.
-- [x] 4. Contrato Kotlin/bridge/backend y auditoría actualizados; pruebas de evidencia y código generado. Preparar debug rc3 con versionCode incremental y checksum.
-- [ ] 5. Typecheck, unitarias, integración QA aislada, build, auditoría nativa, generated verification y Android build. Revisión independiente final y correcciones verificadas. Commit de candidato; detenerse para validación física.
+| Gate | Resultado local del código final |
+|---|---|
+| Typecheck | PASS |
+| Unitarias | PASS: 147 /42 archivos |
+| Integración | PASS: 62 /9 archivos; wrapper de la misma suite con DB/namespace Atlas/Redis QA aislados y cleanup |
+| Build | PASS: 82 páginas |
+| E2E compilado | PASS: registro, jornada, REST/Socket GPS, orden/dedup, native DeviceSession, Chat, PTT/ACK, SOS aislado, revocación/cierre; cleanup |
+| Native audit | PASS: 24 checks |
+| Verify native generated | PASS: fuentes y contrato generado |
+| Android debug | PASS: testDebugUnitTest + assembleDebug; 7 tests de evidencia Kotlin y 1 test baseline |
 
-Tests dirigidos entre pasos; suite completa al cerrar cada responsabilidad. Integración usa el wrapper existente para evitar DB compartida. No npm ci concurrente con tests ni dev concurrente con build. Sin nuevos precios, providers, eventos, simulador, cámaras, ingest ni infraestructura.
+Logs: `artifacts/telemetry-rc2-final-*`, `telemetry-rc2-native-*-final.log` y build Android HTTPS. Revisión independiente única: tres hallazgos materiales (replay/candidato, ACK tras agotamiento CAS, metadatos divergentes) corregidos RED→GREEN, con regresiones de escritura parcial/retry tardío y ancla futura legacy. Sin findings materiales abiertos.
 
-## Gates y evidencia
+Reproducción: `npm run typecheck`, `npm test`, `npm run test:integration:local`, `npm run build`, `node --env-file=.env.local scripts/test-local-operations.mjs --production`, `npm run audit:native`, `npm run native:prepare`, `npm run verify:native-generated`, `android/gradlew.bat -p android testDebugUnitTest assembleDebug --no-daemon`. No dev/build simultáneos. Usar variables Capacitor/version de abajo al preparar; no tocar secretos/env productivo.
 
-Baseline: 112 tests /39 archivos PASS; main CI PASS; cero PR abiertos y working tree limpio.
-Los resultados del candidato se registrarán aquí al observarlos; logs compactos y manifiesto en artifacts, sin secretos.
-SHA del candidato: pendiente de implementación; no se certifica con SHA de baseline.
+## APK / gates
 
-## Pendiente físico
+Destino autorizado: `CAPACITOR_SERVER_URL=https://mane-comb-next.vercel.app`, entrada `/app`; `MANECOMB_ANDROID_VERSION_NAME=0.1.0-rc3`, `MANECOMB_ANDROID_VERSION_CODE=3`. Variables sólo en proceso de preparación; `.env.local` intacto. Debug, sin release signing ni despliegue.
 
-PHYSICAL_DEVICE_REQUIRED. No avanzar a Event Engine hasta PASS explícito del usuario. Checklist: visible 15 min; Home y lock 30 min; Wi-Fi/datos; offline 10–20 min y drenaje FIFO; lock/unlock; swipe recents; Battery Saver; sin saltos/jitter grave, backlog sin rejuvenecer, dedup, route progress; logout y fin detienen tracking.
+**PENDING_WEB_SHA_PARITY**: lectura de health devolvió HTTP503 y no proporcionó SHA verificable. No atribuir causa ni desplegar para sortear el gate. Antes de PASS físico exigir endpoint sano ejecutando el mismo SHA del candidato y datos QA autorizados. Tests locales/compilación no certifican Vercel, hardware, Doze/OEM ni audio/red reales.
 
-Extracción inicial: typecheck y 112 tests/39 archivos PASS; entrada pública y queries/idempotencia conservadas.
+**PHYSICAL_DEVICE_REQUIRED**. Parte automática completada; Telemetry Core RC2 sigue pendiente de validación física. Sin push/PR/merge antes de ese PASS, según secuencia del usuario. Event Engine/simulador/fases posteriores no iniciados.
 
-Temporal: reloj futuro reproducido como live (RED); integración real 4 fallos RED→8 PASS. Typecheck y 123 unitarias/40 archivos PASS. Contrato opcional y ledger raw/canonical/evidencia; packet conflict, tenant y RUNNING conservados. Jornada anterior cerrada se rechaza por autorización, sin reasignar el paquete a jornada nueva.
+## Checklist físico #1
 
-Quality: jitter/jump reales 2 RED→10 integraciones dirigidas PASS; typecheck y 139 unitarias/41 archivos PASS. Jitter sólo detenido, ancla acumulativa, historial raw; jump queda en cuarentena y exige fix posterior consistente. CAS reevalúa la canónica/proyección tras carreras. Temporal completo: 58 integraciones/9 archivos PASS.
+- [ ] App visible 15 min.
+- [ ] Home/background 30 min.
+- [ ] Pantalla bloqueada 30 min.
+- [ ] Wi-Fi → datos y datos → Wi-Fi.
+- [ ] Sin red 10–20 min; recuperación y vaciado FIFO.
+- [ ] Bloquear/desbloquear; swipe recents; Battery Saver.
+- [ ] Sin saltos extraños ni jitter grave detenido.
+- [ ] Backlog no rejuvenece GPS; sin duplicados.
+- [ ] Route progress correcto.
+- [ ] Logout y finalizar jornada detienen tracking.
 
-Nativo: contrato v3, evidencia guardada junto al JSON FIFO, queueAge recalculada desde captura monotónica original; boot desconocido/discontinuo nunca habilita fuente confiable. Backend boot unknown RED→GREEN. 140 unitarias PASS; audit 24 checks y verify-generated PASS; 7 tests Kotlin de evidencia y assembleDebug rc3/code3 PASS. APK actual apunta a emulador: pendiente endpoint físico autorizado, no PASS físico. .gitignore se ancla a /android/ para conservar nuevas fuentes Kotlin canónicas.
-
-Revisión independiente final: tres hallazgos materiales corregidos en un pase RED→GREEN: replay aplicado no borra candidato posterior; CAS agotado exige retry en vez de ACK falso; finalización de historia refleja decisión/canónica real sin mutar raw/evidencia. Se protegieron escrituras parciales y retry tardío sin rejuvenecer. Regresión adicional: ancla futura legacy ya no bloquea GPS válido. 147 unitarias/42 archivos, typecheck y 12 integraciones dirigidas PASS. Historia separa PENDING/APPLIED/HISTORICAL_ONLY/SUPERSEDED; sólo APPLIED afirma coordenada canónica aplicada.
-
-Destino APK autorizado por usuario: https://mane-comb-next.vercel.app/app; rc3/versionCode3. No modificar .env ni desplegar. Endpoint health HTTP503 sin SHA verificable: PENDING_WEB_SHA_PARITY. No PASS físico hasta paridad y pruebas del usuario.
+Registrar build/SHA/checksum, dispositivo/API, UTC/duración/red, gaps, capturados/enviados/confirmados/FIFO/dedup; logs mínimos `ManeCombLocation`, sin tokens/URIs/payload sensible. Respuesta física del usuario: PASS o fallos observados. No avanzar a Event Engine antes de ella y de paridad web.
