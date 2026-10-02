@@ -2,6 +2,7 @@
 import {useEffect,useState} from "react";
 import {useRouter} from "next/navigation";
 import {channelHome} from "@/src/lib/channel-home";
+import {OperationSessionLoading} from "@/src/components/operation-session-loading";
 
 export function OperationEntry(){
   const router=useRouter();const [retry,setRetry]=useState(0);const [error,setError]=useState("");
@@ -18,5 +19,5 @@ export function OperationEntry(){
       .finally(()=>clearTimeout(timer));
     return()=>{mounted=false;clearTimeout(timer);controller.abort()};
   },[router,retry]);
-  return <main id="main-content" className="page grid" aria-busy={!error}><h1>ManeComb</h1>{error?<><p role="alert">{error}</p><button className="btn" onClick={()=>setRetry(value=>value+1)}>Reintentar</button></>:<p role="status">Comprobando sesión…</p>}</main>;
+  return <OperationSessionLoading error={error} onRetry={()=>setRetry(value=>value+1)}/>;
 }
