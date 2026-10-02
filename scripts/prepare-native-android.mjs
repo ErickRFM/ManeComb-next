@@ -15,6 +15,8 @@ const localHosts=new Set(["localhost","127.0.0.1","10.0.2.2"]);
 if(parsed.protocol!=="https:"&&!localHosts.has(parsed.hostname)){
   throw new Error("CAPACITOR_SERVER_URL must use HTTPS outside local/emulator development.");
 }
+if(parsed.pathname==="/")parsed.pathname="/app";
+const expectedServerUrl=parsed.toString();
 
 
 function runCap(...args){
@@ -39,6 +41,22 @@ function runCap(...args){
 
 if(!existsSync(androidDir))runCap("add","android");
 runCap("sync","android");
+
+const generatedCapConfigPath=join(androidDir,"app","src","main","assets","capacitor.config.json");
+if(!existsSync(generatedCapConfigPath)){
+  throw new Error("Generated Android wrapper is missing assets/capacitor.config.json. Refusing a potentially blank APK.");
+}
+const generatedCapConfig=JSON.parse(readFileSync(generatedCapConfigPath,"utf8"));
+const generatedServerUrl=generatedCapConfig?.server?.url;
+if(!generatedServerUrl){
+  throw new Error("Generated Capacitor config has no server.url. ManeComb Next has no bundled public/index.html, so this APK would open blank.");
+}
+if(new URL(generatedServerUrl).toString()!==expectedServerUrl){
+  throw new Error("Generated Capacitor server URL mismatch. Expected "+expectedServerUrl+" but found "+generatedServerUrl);
+}
+if(!new URL(generatedServerUrl).pathname.startsWith("/app")){
+  throw new Error("Generated Capacitor server URL must enter through /app.");
+}
 
 const rootGradlePath=join(androidDir,"build.gradle");
 if(existsSync(rootGradlePath)){
@@ -131,5 +149,5 @@ if(existsSync(gradlePath)){
 }
 
 console.log("[native] Android wrapper prepared.");
-console.log("[native] server:",serverUrl);
+console.log("[native] server:",expectedServerUrl);
 console.log("[native] Kotlin bridge:",kotlinDir);
