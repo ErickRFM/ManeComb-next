@@ -35,7 +35,7 @@ export async function POST(request: Request) {
       const device = await requireDeviceTelemetrySession(request);
       if (input.vehicleId !== device.vehicleId || input.journeyId !== device.journeyId) throw new Error("FORBIDDEN");
       await requireActiveSubscription(device.organizationId);
-      const snapshot = await recordTelemetry(device.organizationId, input, { driverId: device.userId });
+      const snapshot = await recordTelemetry(device.organizationId, input, { driverId: device.userId,temporalSource:"android_device_session" });
 
       const seenAt=new Date();
       const diagnostics=diagnosticsFromInput(input,seenAt);

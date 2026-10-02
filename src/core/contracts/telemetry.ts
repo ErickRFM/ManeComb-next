@@ -10,6 +10,16 @@ export const NativeTelemetryClientSchema = z.object({
   state: z.string().min(1).max(48).optional()
 }).optional();
 
+export const TemporalEvidenceSchema = z.object({
+  capturedAt: z.coerce.date().optional(),
+  queueAgeMs: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+  queueAgeSource: z.enum(["android_elapsed_realtime","device_wall_clock","unknown"]).optional(),
+  capturedElapsedRealtimeMs: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+  sentElapsedRealtimeMs: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional(),
+  capturedBootCount: z.number().int().min(0).optional(),
+  bootCount: z.number().int().min(0).optional()
+});
+
 export const TelemetrySchema = z.object({
   packetId: z.string().uuid().optional(),
   vehicleId: z.string().min(1),
@@ -20,7 +30,8 @@ export const TelemetrySchema = z.object({
   heading: z.number().min(0).max(360).optional(),
   accuracy: z.number().min(0).max(5000).optional(),
   recordedAt: z.coerce.date().default(() => new Date()),
-  client: NativeTelemetryClientSchema
+  client: NativeTelemetryClientSchema,
+  temporalEvidence: TemporalEvidenceSchema.optional()
 });
 export type TelemetryInput = z.infer<typeof TelemetrySchema>;
 export type NativeTelemetryClient = NonNullable<TelemetryInput["client"]>;

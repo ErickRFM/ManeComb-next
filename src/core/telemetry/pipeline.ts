@@ -1,11 +1,14 @@
-import type { TelemetryInput, OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
+import { TelemetrySchema, type TelemetryInput, type OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
 import { getGpsFreshness } from "@/src/core/domain/gps-freshness";
-import { observeDuration } from "@/src/lib/metrics";
+import { observeDuration,incrementMetric } from "@/src/lib/metrics";
 import { Vehicle } from "@/src/core/models/Vehicle";
 import { Journey } from "@/src/core/models/Journey";
 import { persistTelemetryPosition } from "./deduplication";
 import { calculateOperationalRouteProgress } from "@/src/core/services/route-projection";
 import { vehicleToSnapshot } from "./freshness";
+import { resolveTemporalAuthority } from "./temporal";
+import { classifyOrdering } from "./ordering";
+import type { TelemetryContext } from "./contracts";
 
 async function timed<T>(phase:string,operation:()=>PromiseLike<T>):Promise<T>{
   const started=performance.now();
@@ -15,8 +18,10 @@ async function timed<T>(phase:string,operation:()=>PromiseLike<T>):Promise<T>{
 export async function recordTelemetry(
   organizationId: string,
   input: TelemetryInput,
-  context?: { driverId?: string }
+  context?: TelemetryContext
 ): Promise<OperationalUnitSnapshot> {
+  const receivedAt=new Date();
+  input=TelemetrySchema.parse(input);
   const vehicleQuery: Record<string, unknown> = { _id: input.vehicleId, organizationId };
   if (context?.driverId) vehicleQuery.driverId = context.driverId;
   const vehicle = await timed<any>("vehicle_read",()=>Vehicle.findOne(vehicleQuery,null,{lean:true}));
@@ -31,11 +36,18 @@ export async function recordTelemetry(
     canonicalJourneyId = String(journey._id);
   }
 
-  let recordedAt = input.recordedAt instanceof Date ? input.recordedAt : new Date(input.recordedAt);
-  observeDuration("telemetry_capture_to_ingest_ms", Math.max(0, Date.now() - recordedAt.getTime()));
-
-  input = await persistTelemetryPosition(organizationId,vehicle._id,canonicalJourneyId,input,timed);
-  recordedAt = input.recordedAt;
+  const temporal=classifyOrdering(resolveTemporalAuthority(input,receivedAt,context),vehicle.lastLocation?.recordedAt);
+  observeDuration("telemetry_capture_to_ingest_ms", Math.max(0, receivedAt.getTime() - temporal.canonicalRecordedAt.getTime()));
+  const persisted=await persistTelemetryPosition(organizationId,vehicle._id,canonicalJourneyId,input,timed,temporal,receivedAt);
+  input=persisted.input;
+  const decision=classifyOrdering(persisted.decision,vehicle.lastLocation?.recordedAt);
+  incrementMetric("telemetry_packets_total",1,{classification:persisted.duplicate?"duplicate":decision.classification});
+  if(!decision.liveEligible){
+    const current=await Vehicle.findOne({_id:vehicle._id,organizationId},null,{lean:true});
+    if(!current)throw new Error("Vehicle no longer exists");
+    return vehicleToSnapshot(current,canonicalJourneyId);
+  }
+  const recordedAt=decision.canonicalRecordedAt;
 
   const routeProgress=await calculateOperationalRouteProgress({
     organizationId,

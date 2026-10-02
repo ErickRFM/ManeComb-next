@@ -9,4 +9,8 @@ describe("gps freshness",()=>{
     expect(getGpsFreshness(new Date(now.getTime()-90_000),now)).toBe("stale");
     expect(getGpsFreshness(new Date(now.getTime()-600_000),now)).toBe("lost");
   });
+  it("never reports an invalid or advanced device clock as live",()=>{
+    expect(getGpsFreshness(new Date(now.getTime()+600_000),now)).toBe("lost");
+    expect(getGpsFreshness(new Date(NaN),now)).toBe("lost");
+  });
 });

@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach,beforeEach, expect, it, vi } from "vitest";
 const fixture=vi.hoisted(()=>({vehicle:{_id:"vehicle",organizationId:"org",economicNumber:"C-1",driverId:"driver",lastLocation:null as any},pauseOld:null as null|(()=>Promise<void>)}));
 vi.mock("@/src/core/models/Vehicle",()=>({Vehicle:{
   findOne:async()=>structuredClone(fixture.vehicle),
@@ -13,10 +13,11 @@ vi.mock("@/src/core/models/Vehicle",()=>({Vehicle:{
   }
 }}));
 vi.mock("@/src/core/models/Journey",()=>({Journey:{findOne:()=>({select:async()=>({_id:"journey"})})}}));
-vi.mock("@/src/core/models/RouteSessionPosition",()=>({RouteSessionPosition:{create:async()=>undefined,updateOne:async()=>undefined,findOneAndUpdate:async(_filter:any,update:any)=>update.$setOnInsert}}));
+vi.mock("@/src/core/models/RouteSessionPosition",()=>({RouteSessionPosition:{create:async()=>undefined,updateOne:async()=>undefined,findOneAndUpdate:async(_filter:any,update:any)=>({value:update.$setOnInsert,lastErrorObject:{updatedExisting:false}})}}));
 vi.mock("@/src/core/services/route-projection",()=>({calculateOperationalRouteProgress:async()=>null}));
 import { recordTelemetry } from "@/src/core/services/telemetry";
-beforeEach(()=>{fixture.vehicle.lastLocation=null;fixture.pauseOld=null});
+beforeEach(()=>{vi.useFakeTimers({toFake:["Date"]});vi.setSystemTime(new Date("2026-09-30T00:00:05Z"));fixture.vehicle.lastLocation=null;fixture.pauseOld=null});
+afterEach(()=>vi.useRealTimers());
 it("cannot regress live GPS when an older write completes after a newer packet",async()=>{
   let releaseOld!:()=>void;let oldReached!:()=>void;
   const oldWrite=new Promise<void>(resolve=>releaseOld=resolve);

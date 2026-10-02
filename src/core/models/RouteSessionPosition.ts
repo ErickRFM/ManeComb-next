@@ -11,7 +11,12 @@ const PositionSchema = new Schema({
   speedMps: { type: Number, default: 0 },
   heading: Number,
   accuracy: Number,
-  recordedAt: { type: Date, required: true, index: true }
+  recordedAt: { type: Date, required: true, index: true },
+  receivedAt: Date,
+  canonicalRecordedAt: Date,
+  temporalEvidence: {type:Schema.Types.Mixed,default:null},
+  classification: String,
+  decisionReason: String
 }, { timestamps: true });
 PositionSchema.index({ organizationId: 1, vehicleId: 1, recordedAt: -1 });
 PositionSchema.index({ organizationId: 1, packetId: 1 }, { unique: true, sparse: true });
