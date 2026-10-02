@@ -29,6 +29,7 @@ class ManeCombLocationService : Service(), LocationListener {
     companion object {
         const val CONTRACT_VERSION = 2
         const val PREFS_NAME = "manecomb-native-location"
+        const val ACTION_STATE = "com.manecomb.location.STATE"
 
         @Volatile var running: Boolean = false
         @Volatile var pendingCount: Int = 0
@@ -44,6 +45,22 @@ class ManeCombLocationService : Service(), LocationListener {
         private const val NOTIFICATION_ID = 4101
         private const val RETRY_BASE_MS = 5_000L
         private const val RETRY_MAX_MS = 60_000L
+
+        fun emitState(context: Context) {
+            val intent = Intent(ACTION_STATE).apply {
+                setPackage(context.packageName)
+                putExtra("contractVersion", CONTRACT_VERSION)
+                putExtra("state", serviceState)
+                putExtra("running", running)
+                putExtra("pendingPackets", pendingCount)
+                putExtra("networkAvailable", networkAvailable)
+                putExtra("lastCaptureAtMs", lastCaptureAtMs)
+                putExtra("lastUploadAtMs", lastUploadAtMs)
+                putExtra("retryDelayMs", currentRetryDelayMs)
+                putExtra("lastError", lastError)
+            }
+            context.sendBroadcast(intent)
+        }
     }
 
     private lateinit var locationManager: LocationManager
@@ -65,6 +82,7 @@ class ManeCombLocationService : Service(), LocationListener {
         override fun onAvailable(network: Network) {
             networkAvailable = true
             if (serviceState == "offline" || serviceState == "retry_wait") serviceState = "running"
+            emitState(this@ManeCombLocationService)
             flushQueue()
         }
 
@@ -74,6 +92,7 @@ class ManeCombLocationService : Service(), LocationListener {
                 serviceState = "offline"
                 lastError = "network_unavailable"
             }
+            emitState(this@ManeCombLocationService)
         }
     }
 
@@ -86,6 +105,7 @@ class ManeCombLocationService : Service(), LocationListener {
         store = ManeCombLocationStore(this)
         pendingCount = store.countQueued()
         createChannel()
+        emitState(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -95,6 +115,7 @@ class ManeCombLocationService : Service(), LocationListener {
         if (incomingToken.isNotBlank() && !ManeCombLocationCredentials.writeToken(prefs, incomingToken)) {
             serviceState = "secure_store_error"
             lastError = "credential_write_failed"
+            emitState(this)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -107,6 +128,7 @@ class ManeCombLocationService : Service(), LocationListener {
         if (serverUrl.isBlank() || vehicleId.isBlank() || journeyId.isBlank() || deviceToken.isBlank()) {
             serviceState = "invalid_config"
             lastError = "native_tracking_config_missing"
+            emitState(this)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -131,6 +153,7 @@ class ManeCombLocationService : Service(), LocationListener {
         serviceState = "running"
         lastError = ""
         pendingCount = store.countQueued()
+        emitState(this)
 
         if (!callbackRegistered) {
             try {
@@ -161,6 +184,7 @@ class ManeCombLocationService : Service(), LocationListener {
             Log.w(TAG, "Location permission missing", error)
             serviceState = "permission_error"
             lastError = "location_permission_missing"
+            emitState(this)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -198,6 +222,7 @@ class ManeCombLocationService : Service(), LocationListener {
         pendingCount = store.countQueued()
         serviceState = if (networkAvailable) "running" else "offline"
         refreshNotification()
+        emitState(this)
         flushQueue()
     }
 
@@ -218,6 +243,7 @@ class ManeCombLocationService : Service(), LocationListener {
                             lastError = ""
                             serviceState = "running"
                             refreshNotification()
+                            emitState(this@ManeCombLocationService)
                         }
                         UploadResult.AUTH_FAILURE -> {
                             stopForAuthFailure()
@@ -268,6 +294,7 @@ class ManeCombLocationService : Service(), LocationListener {
         val delay = retryDelayMs
         currentRetryDelayMs = delay
         serviceState = if (networkAvailable) "retry_wait" else "offline"
+        emitState(this)
         retryDelayMs = (retryDelayMs * 2).coerceAtMost(RETRY_MAX_MS)
         network.schedule({
             retryScheduled.set(false)
@@ -284,6 +311,7 @@ class ManeCombLocationService : Service(), LocationListener {
         lastError = "device_session_unauthorized"
         refreshNotification("Sesión GPS vencida · abre ManeComb")
         try { locationManager.removeUpdates(this) } catch (_: Exception) {}
+        emitState(this)
         stopSelf()
     }
 
@@ -319,6 +347,7 @@ class ManeCombLocationService : Service(), LocationListener {
             try { connectivityManager.unregisterNetworkCallback(callback) } catch (_: Exception) {}
             callbackRegistered = false
         }
+        emitState(this)
         network.shutdown()
         store.close()
         super.onDestroy()
@@ -330,11 +359,13 @@ class ManeCombLocationService : Service(), LocationListener {
         if (running) {
             lastError = ""
             serviceState = if (networkAvailable) "running" else "offline"
+            emitState(this)
         }
     }
 
     override fun onProviderDisabled(provider: String) {
         lastError = "provider_disabled:" + provider
+        emitState(this)
     }
 
     @Deprecated("Deprecated in Android")
