@@ -1,11 +1,21 @@
 import type { CapacitorConfig } from "@capacitor/cli";
-import {nativeServerUrl} from "./src/lib/native-server-url";
-const serverUrl=nativeServerUrl(process.env.CAPACITOR_SERVER_URL);
+import {nativeServerTarget} from "./src/lib/native-server-url";
+
+const serverTarget=nativeServerTarget(process.env.CAPACITOR_SERVER_URL);
+
 const config:CapacitorConfig={
   appId:"com.manecomb.app",
   appName:"ManeComb",
   webDir:"public",
-  server:serverUrl?{url:serverUrl,cleartext:serverUrl.startsWith("http://")}:undefined,
+  server:serverTarget?{
+    url:serverTarget.url,
+    appStartPath:serverTarget.appStartPath,
+    errorPath:"native-error.html",
+    cleartext:serverTarget.url.startsWith("http://")
+  }:{
+    errorPath:"native-error.html"
+  },
   android:{allowMixedContent:false}
 };
+
 export default config;
