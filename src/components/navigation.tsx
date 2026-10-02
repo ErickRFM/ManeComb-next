@@ -41,7 +41,6 @@ export function Navigation(){
         <button
           type="button"
           className="marketing-nav-menu-button"
-          data-critical-action
           aria-label={mobileOpen?"Cerrar menú":"Abrir menú"}
           aria-expanded={mobileOpen}
           aria-controls="marketing-mobile-menu"
