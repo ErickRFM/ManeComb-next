@@ -3,6 +3,8 @@
 .fleet-toolbar{display:flex;align-items:center;gap:10px;min-width:0}
 .fleet-search{height:42px;min-width:260px;flex:1;max-width:420px;display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
 .fleet-search span{color:var(--muted);font-size:18px}
+.fleet-search{transition:border-color var(--motion-fast) ease,box-shadow var(--motion-fast) ease,background var(--motion-fast) ease}
+.fleet-search:focus-within{border-color:var(--brand);box-shadow:var(--focus-ring);background:var(--surface-2)}
 .fleet-search input{border:0;outline:0;background:transparent;color:var(--text);width:100%;min-width:0;font-size:13px}
 .fleet-filters{display:flex;align-items:center;gap:6px;overflow:auto;padding-bottom:1px}
 .fleet-filters button,.camera-mode{
