@@ -23,6 +23,8 @@ const report={
   kotlinGradlePlugin:match(rootGradle,/org\.jetbrains\.kotlin:kotlin-gradle-plugin:([^'"]+)/),
   foregroundLocationService:manifest.includes('android:foregroundServiceType="location"'),
   capacitorServerUrl:capacitorConfig?.server?.url??null,
+  capacitorAppStartPath:capacitorConfig?.server?.appStartPath??null,
+  capacitorErrorPath:capacitorConfig?.server?.errorPath??null,
   hasBundledIndexHtml:existsSync("android/app/src/main/assets/public/index.html"),
   permissions:[...manifest.matchAll(/<uses-permission[^>]+android:name="([^"]+)"/g)].map(match=>match[1]),
   apkBytes:existsSync(apk)?statSync(apk).size:null
