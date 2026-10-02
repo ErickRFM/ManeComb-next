@@ -114,7 +114,6 @@
   .unit-detail-panel.unit-sheet.medium{max-height:52dvh}
   .unit-detail-panel.unit-sheet.compact .unit-sheet-body{display:none}
   .unit-detail-panel.unit-sheet.compact{max-height:190px}
-  .unit-detail-panel.unit-sheet.compact .unit-sheet-levels{display:none}
   .unit-detail-panel.unit-sheet .next-stop-card{display:grid}
   .unit-detail-panel.unit-sheet .unit-detail-footer{display:flex}
   .unit-detail-grid{grid-template-columns:repeat(4,1fr)}
