@@ -896,7 +896,7 @@
   .marketing-nav .nav-brand .brand-logo{--brand-logo-width:124px!important}
   .marketing-nav-actions{gap:8px}
   .marketing-nav-login{display:none}
-  .marketing-nav-primary{min-height:42px;padding:0 14px;font-size:12px}
+  .marketing-nav-primary{min-height:44px;padding:0 14px;font-size:12px}
   .marketing-nav-menu-button{display:grid}
   .marketing-v3-section{padding:var(--marketing-section-md) 0}
   .marketing-v3-section-head{margin-bottom:34px}
