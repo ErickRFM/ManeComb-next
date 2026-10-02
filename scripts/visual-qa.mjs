@@ -6,7 +6,7 @@ const baseUrl=process.env.VISUAL_QA_BASE_URL||"http://127.0.0.1:3000";
 const output="artifacts/visual-qa";
 mkdirSync(output,{recursive:true});
 
-const widths=[360,390,430,768,1024,1366,1920];
+const widths=[360,390,430,768,1024,1366,1440,1920];
 const surfaces=["portal","admin","driver","forms","marketing"];
 const report={generatedAt:new Date().toISOString(),checks:[],violations:[]};
 const browser=await chromium.launch({headless:true});
