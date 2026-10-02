@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { getEnv } from "@/src/lib/env";
 import { UPLOAD_POLICY } from "@/src/core/domain/upload-policy";
 
-export type ManeCombUploadKind="document"|"chat"|"payment";
+export type ManeCombUploadKind="document"|"chat"|"payment"|"incident";
 
 export function createCloudinaryUploadSignature(input: {
   organizationId: string;
@@ -74,7 +74,7 @@ export async function verifyTenantCloudinaryAsset(input:TenantAssetInput&{bytes:
   if(!Number.isSafeInteger(metadata.bytes)||metadata.bytes<1||metadata.bytes>UPLOAD_POLICY[input.kind].maxBytes||metadata.bytes!==input.bytes)throw new Error("INVALID_STORAGE_SIZE");
   const format=String(metadata.format||input.publicId.split(".").at(-1)||"").toLowerCase();
   if(!(UPLOAD_POLICY[input.kind].formats as readonly string[]).includes(format))throw new Error("INVALID_STORAGE_FORMAT");
-  const mimeTypes:Record<string,string>={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp",pdf:"application/pdf"};
+  const mimeTypes:Record<string,string>={jpg:"image/jpeg",jpeg:"image/jpeg",png:"image/png",webp:"image/webp",pdf:"application/pdf",mp4:"video/mp4"};
   const mimeType=mimeTypes[format];
   if(input.mimeType&&input.mimeType!==mimeType)throw new Error("INVALID_STORAGE_MIME");
   return {bytes:metadata.bytes as number,mimeType};

@@ -15,7 +15,7 @@ export async function GET(request:Request,{params}:{params:Promise<{documentId:s
     const {documentId}=await params;
     await connectDb();
 
-    const query:Record<string,unknown>={_id:documentId,organizationId:session.organizationId};
+    const query:Record<string,unknown>={_id:documentId,organizationId:session.organizationId,deletedAt:null};
     if(session.channel==="mobile_operations"){
       query.ownerType="driver";
       query.ownerId=session.sub;
