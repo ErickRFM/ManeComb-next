@@ -12,7 +12,15 @@ const passwordHash=await hash(password,12);
 const user=await User.findOneAndUpdate(
   {email},
   {
-    $set:{name,passwordHash,organizationId:null,roles:["owner","admin"],channel:"platform_admin",active:true},
+    $set:{
+      name,
+      passwordHash,
+      organizationId:null,
+      roles:["owner","admin"],
+      platformRoles:["platform_owner"],
+      channel:"platform_admin",
+      active:true
+    },
     $setOnInsert:{mfaEnabled:false}
   },
   {upsert:true,new:true,setDefaultsOnInsert:true}

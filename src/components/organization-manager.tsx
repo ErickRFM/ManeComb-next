@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import {Icon} from "@/src/components/ui/icon";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -62,7 +63,7 @@ export function OrganizationManager(){
         <div className="entity-primary"><span className="entity-avatar">{String(org.name||"MC").split(/\s+/).slice(0,2).map((part:string)=>part[0]).join("").toUpperCase()}</span><div><strong>{org.name}</strong><small>{org.slug}</small></div></div>
         <div><select className="compact-select" disabled={busy} aria-label={"Estado de "+org.name} value={org.status} onChange={e=>void update(org._id,{status:e.target.value})}><option value="active">Activa</option><option value="paused">Pausada</option><option value="suspended">Suspendida</option></select></div>
         <div><select className="compact-select" disabled={busy} aria-label={"Plan de "+org.name} value={COMMERCIAL_PLANS.some(plan=>plan.code===org.planCode)?org.planCode:""} onChange={e=>e.target.value&&void update(org._id,{planCode:e.target.value})}><option value="">Sin plan / legado</option>{COMMERCIAL_PLANS.map(plan=><option value={plan.code} key={plan.code}>{plan.label}</option>)}</select></div>
-        <div className="entity-capacity"><strong>{org.planCode||"sin plan"}</strong><small>{org.updatedAt?"actualizada "+new Date(org.updatedAt).toLocaleDateString():"sin actualización registrada"}</small></div>
+        <div className="entity-capacity"><strong>{org.planCode||"sin plan"}</strong><small>{org.updatedAt?"actualizada "+new Date(org.updatedAt).toLocaleDateString():"sin actualización registrada"}</small><Link className="entity-link" href={"/admin/empresas/"+org._id}>Ver detalle →</Link></div>
       </div>)}
       {!visible.length&&!loading&&!error?<div className="empty-state"><strong>No encontramos empresas</strong><span>Cambia la búsqueda para ampliar los resultados.</span></div>:null}
     </div>

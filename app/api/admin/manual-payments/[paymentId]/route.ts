@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireApiSession } from "@/src/lib/auth";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
+import { assertPlatformPermission } from "@/src/core/platform/permissions";
 import { ManualPayment } from "@/src/core/models/ManualPayment";
 import { Organization } from "@/src/core/models/Organization";
 import { Subscription } from "@/src/core/models/Subscription";
@@ -17,6 +18,7 @@ export const runtime="nodejs";
 export async function PATCH(request:Request,{params}:{params:Promise<{paymentId:string}>}){
   try{
     const session=await requireApiSession(request,["platform_admin"]);
+    assertPlatformPermission(session,"platform.billing.review");
     const {paymentId}=await params;
     const input=Input.parse(await request.json());
     await connectDb();

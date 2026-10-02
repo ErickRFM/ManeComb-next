@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     if (!user || !(await compare(input.password, user.passwordHash))) throw new Error("UNAUTHORIZED");
 
     const userPayload = {
-      id: String(user._id), name: user.name, roles: user.roles, channel: user.channel,
+      id: String(user._id), name: user.name, roles: user.roles, platformRoles: user.platformRoles || [], channel: user.channel,
       organizationId: user.organizationId ? String(user.organizationId) : null
     };
 

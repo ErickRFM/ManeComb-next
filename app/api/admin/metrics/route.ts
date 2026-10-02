@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireApiSession } from "@/src/lib/auth";
 import { apiError } from "@/src/lib/http";
+import { assertPlatformPermission } from "@/src/core/platform/permissions";
 import { getMetricsSnapshot } from "@/src/lib/metrics";
 import { getCommunicationQueue } from "@/src/lib/queue";
 import { OutboxEvent } from "@/src/core/models/OutboxEvent";
@@ -9,7 +10,8 @@ export const runtime="nodejs";
 
 export async function GET(request:Request){
   try{
-    await requireApiSession(request,["platform_admin"]);
+    const session=await requireApiSession(request,["platform_admin"]);
+    assertPlatformPermission(session,"platform.system.read");
     const metrics=getMetricsSnapshot();
     const queue=await getCommunicationQueue();
     const queueCounts=await queue.getJobCounts("waiting","active","delayed","failed","completed","paused");

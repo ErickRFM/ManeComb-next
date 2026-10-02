@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireApiSession } from "@/src/lib/auth";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
+import { assertPlatformPermission } from "@/src/core/platform/permissions";
 import { AppRelease } from "@/src/core/models/AppRelease";
 import { writeAudit } from "@/src/core/services/audit";
 
@@ -22,7 +23,8 @@ export const runtime="nodejs";
 
 export async function GET(request:Request){
   try{
-    await requireApiSession(request,["platform_admin"]);
+    const session=await requireApiSession(request,["platform_admin"]);
+    assertPlatformPermission(session,"platform.releases.read");
     await connectDb();
     const release=await AppRelease.findOne({platform:"android"}).lean();
     return NextResponse.json({release});
@@ -32,6 +34,7 @@ export async function GET(request:Request){
 export async function PUT(request:Request){
   try{
     const session=await requireApiSession(request,["platform_admin"]);
+    assertPlatformPermission(session,"platform.releases.write");
     const input=Input.parse(await request.json());
     await connectDb();
     const release=await AppRelease.findOneAndUpdate(
