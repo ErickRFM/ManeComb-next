@@ -76,6 +76,9 @@
 
 /* Premium navigation */
 .marketing-nav{
+  --mkt-red:var(--marketing-brand);
+  --mkt-red-hover:var(--marketing-brand-hover);
+  --mkt-red-soft:var(--marketing-brand-soft);
   height:76px;
   padding:0 28px;
   border-bottom-color:transparent;
@@ -124,6 +127,7 @@
 .marketing-nav-login:hover{color:var(--text)}
 .marketing-nav-primary{
   min-height:44px;
+  color:#fff;
   padding:0 17px;
   display:inline-flex;
   align-items:center;
