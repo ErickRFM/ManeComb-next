@@ -69,7 +69,7 @@ if(existsSync(appGradlePath)){
 const sourceDir=join(root,"native","android");
 const kotlinDir=join(androidDir,"app","src","main","java","com","manecomb","location");
 mkdirSync(kotlinDir,{recursive:true});
-for(const name of ["ManeCombLocationPlugin.kt","ManeCombLocationService.kt","ManeCombLocationStore.kt"]){
+for(const name of ["ManeCombLocationPlugin.kt","ManeCombLocationService.kt","ManeCombLocationStore.kt","ManeCombSecureStore.kt","ManeCombLocationCredentials.kt","ManeCombLocationCadence.kt"]){
   copyFileSync(join(sourceDir,name),join(kotlinDir,name));
 }
 
