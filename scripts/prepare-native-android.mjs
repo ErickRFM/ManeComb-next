@@ -15,8 +15,8 @@ const localHosts=new Set(["localhost","127.0.0.1","10.0.2.2"]);
 if(parsed.protocol!=="https:"&&!localHosts.has(parsed.hostname)){
   throw new Error("CAPACITOR_SERVER_URL must use HTTPS outside local/emulator development.");
 }
-if(parsed.pathname==="/")parsed.pathname="/app";
-const expectedServerUrl=parsed.toString();
+const expectedAppStartPath=parsed.pathname==="/" ? "/app" : parsed.pathname;
+const expectedServerOrigin=parsed.origin;
 
 
 function runCap(...args){
@@ -48,14 +48,23 @@ if(!existsSync(generatedCapConfigPath)){
 }
 const generatedCapConfig=JSON.parse(readFileSync(generatedCapConfigPath,"utf8"));
 const generatedServerUrl=generatedCapConfig?.server?.url;
+const generatedAppStartPath=generatedCapConfig?.server?.appStartPath;
+const generatedErrorPath=generatedCapConfig?.server?.errorPath;
 if(!generatedServerUrl){
   throw new Error("Generated Capacitor config has no server.url. ManeComb Next has no bundled public/index.html, so this APK would open blank.");
 }
-if(new URL(generatedServerUrl).toString()!==expectedServerUrl){
-  throw new Error("Generated Capacitor server URL mismatch. Expected "+expectedServerUrl+" but found "+generatedServerUrl);
+if(new URL(generatedServerUrl).origin!==expectedServerOrigin){
+  throw new Error("Generated Capacitor server origin mismatch. Expected "+expectedServerOrigin+" but found "+generatedServerUrl);
 }
-if(!new URL(generatedServerUrl).pathname.startsWith("/app")){
-  throw new Error("Generated Capacitor server URL must enter through /app.");
+if(generatedAppStartPath!==expectedAppStartPath){
+  throw new Error("Generated Capacitor appStartPath mismatch. Expected "+expectedAppStartPath+" but found "+generatedAppStartPath);
+}
+if(generatedErrorPath!=="native-error.html"){
+  throw new Error("Generated Capacitor config is missing the native WebView fallback errorPath.");
+}
+const generatedErrorFile=join(androidDir,"app","src","main","assets","public","native-error.html");
+if(!existsSync(generatedErrorFile)){
+  throw new Error("Generated Android wrapper is missing public/native-error.html.");
 }
 
 const rootGradlePath=join(androidDir,"build.gradle");
@@ -149,5 +158,5 @@ if(existsSync(gradlePath)){
 }
 
 console.log("[native] Android wrapper prepared.");
-console.log("[native] server:",expectedServerUrl);
+console.log("[native] server:",expectedServerOrigin+expectedAppStartPath);
 console.log("[native] Kotlin bridge:",kotlinDir);
