@@ -55,7 +55,22 @@ it("does not assign an old journey packet to the current running journey",async(
   expect(await RouteSessionPosition.countDocuments({organizationId:org._id})).toBe(0);
 });
 it("keeps latest GPS under simultaneous ingest",async()=>{
-  const old=sample(3000,{latitude:19});const fresh=sample(1000);
+  const old=sample(3000,{latitude:20.0001});const fresh=sample(1000);
   await Promise.all([ingest(old),ingest(fresh)]);
   expect((await Vehicle.findById(vehicle._id))?.lastLocation.latitude).toBe(20);
+});
+it("stabilizes stopped jitter and keeps raw history with renewed life",async()=>{
+  await ingest(sample(4000,{speedMps:0,accuracy:5}));
+  const input=sample(1000,{latitude:20.00003,speedMps:0,accuracy:5});
+  const result=await ingest(input);
+  expect(result.latitude).toBe(20);expect(result.recordedAt).toBe(input.recordedAt.toISOString());
+  expect((await RouteSessionPosition.findOne({packetId:input.packetId}))?.latitude).toBe(20.00003);
+});
+it("quarantines a jump and recovers only on another consistent fix",async()=>{
+  await ingest(sample(6000,{accuracy:5}));
+  const jump=sample(3000,{latitude:20.01,accuracy:5});
+  expect((await ingest(jump)).latitude).toBe(20);
+  expect((await ingest(jump)).latitude).toBe(20);
+  const recovered=await ingest(sample(0,{latitude:20.01003,accuracy:5}));
+  expect(recovered.latitude).toBe(20.01003);
 });

@@ -26,8 +26,8 @@ it("cannot regress live GPS when an older write completes after a newer packet",
   const sample={vehicleId:"vehicle",journeyId:"journey",latitude:1,longitude:1,speedMps:0,recordedAt:new Date("2026-09-30T00:00:00Z")};
   const old=recordTelemetry("org",sample,{driverId:"driver"});
   await reached;
-  await recordTelemetry("org",{...sample,latitude:2,recordedAt:new Date("2026-09-30T00:00:03Z")},{driverId:"driver"});
+  await recordTelemetry("org",{...sample,latitude:1.0001,recordedAt:new Date("2026-09-30T00:00:03Z")},{driverId:"driver"});
   releaseOld();const result=await old;
-  expect(fixture.vehicle.lastLocation.latitude).toBe(2);
-  expect(result.latitude).toBe(2);
+  expect(fixture.vehicle.lastLocation.latitude).toBe(1.0001);
+  expect(result.latitude).toBe(1.0001);
 });

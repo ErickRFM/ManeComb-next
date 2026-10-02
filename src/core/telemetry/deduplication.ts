@@ -3,14 +3,16 @@ import { RouteSessionPosition } from "@/src/core/models/RouteSessionPosition";
 import type { TelemetryInput } from "@/src/core/contracts/telemetry";
 import type { DatabasePhase, TemporalDecision } from "./contracts";
 import { resolveTemporalAuthority } from "./temporal";
+import type { CanonicalGpsDecision } from "./stabilization";
 
-export async function persistTelemetryPosition(organizationId:string,vehicleId:unknown,journeyId:string|null,input:TelemetryInput,timed:DatabasePhase,decision:TemporalDecision,receivedAt:Date):Promise<{input:TelemetryInput;decision:TemporalDecision;duplicate:boolean}>{
+export async function persistTelemetryPosition(organizationId:string,vehicleId:unknown,journeyId:string|null,input:TelemetryInput,timed:DatabasePhase,decision:TemporalDecision,receivedAt:Date,quality?:CanonicalGpsDecision):Promise<{input:TelemetryInput;decision:TemporalDecision;duplicate:boolean}>{
   const position = {
     organizationId, vehicleId: vehicleId, journeyId: journeyId,
     packetId: input.packetId || randomUUID(), latitude: input.latitude, longitude: input.longitude,
     speedMps: input.speedMps || 0, heading: input.heading, accuracy: input.accuracy, recordedAt:input.recordedAt,
     receivedAt,canonicalRecordedAt:decision.canonicalRecordedAt,temporalEvidence:input.temporalEvidence,
-    classification:decision.classification,decisionReason:decision.reason
+    classification:decision.classification,decisionReason:decision.reason,
+    quality:quality?{level:quality.quality,reason:quality.reason,stabilized:quality.stabilized,canonicalLatitude:quality.position.latitude,canonicalLongitude:quality.position.longitude}:null
   };
 
   if (input.packetId) {

@@ -17,7 +17,7 @@ Nativo: añadir evidencia a JSON persistido y enriquecer edad al enviar usando e
 
 - [x] 1. Extraer pipeline, persistencia/dedupe, ordering y snapshot; pruebas de caracterización y suite verde, commit por responsabilidad.
 - [x] 2. Extender schema temporal opcional; tests RED→GREEN de clocks, backlog 5/20 min, duplicate/order/boot, live posterior y aislamiento de jornada. Historial guarda raw/evidencia/decisión; snapshot vivo sólo acepta posición elegible.
-- [ ] 3. Tests RED→GREEN de quality, jump y estabilización: detenido/jitter, marcha/giro/aceleración, mala accuracy, recuperación e intervalo largo. Proyección usa canónica; escritura protege contra carreras.
+- [x] 3. Tests RED→GREEN de quality, jump y estabilización: detenido/jitter, marcha/giro/aceleración, mala accuracy, recuperación e intervalo largo. Proyección usa canónica; escritura protege contra carreras.
 - [ ] 4. Contrato Kotlin/bridge/backend y auditoría actualizados; pruebas de evidencia y código generado. Preparar debug rc3 con versionCode incremental y checksum.
 - [ ] 5. Typecheck, unitarias, integración QA aislada, build, auditoría nativa, generated verification y Android build. Revisión independiente final y correcciones verificadas. Commit de candidato; detenerse para validación física.
 
@@ -36,3 +36,5 @@ PHYSICAL_DEVICE_REQUIRED. No avanzar a Event Engine hasta PASS explícito del us
 Extracción inicial: typecheck y 112 tests/39 archivos PASS; entrada pública y queries/idempotencia conservadas.
 
 Temporal: reloj futuro reproducido como live (RED); integración real 4 fallos RED→8 PASS. Typecheck y 123 unitarias/40 archivos PASS. Contrato opcional y ledger raw/canonical/evidencia; packet conflict, tenant y RUNNING conservados. Jornada anterior cerrada se rechaza por autorización, sin reasignar el paquete a jornada nueva.
+
+Quality: jitter/jump reales 2 RED→10 integraciones dirigidas PASS; typecheck y 139 unitarias/41 archivos PASS. Jitter sólo detenido, ancla acumulativa, historial raw; jump queda en cuarentena y exige fix posterior consistente. CAS reevalúa la canónica/proyección tras carreras. Temporal completo: 58 integraciones/9 archivos PASS.

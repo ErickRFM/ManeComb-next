@@ -16,7 +16,8 @@ const PositionSchema = new Schema({
   canonicalRecordedAt: Date,
   temporalEvidence: {type:Schema.Types.Mixed,default:null},
   classification: String,
-  decisionReason: String
+  decisionReason: String,
+  quality: {type:Schema.Types.Mixed,default:null}
 }, { timestamps: true });
 PositionSchema.index({ organizationId: 1, vehicleId: 1, recordedAt: -1 });
 PositionSchema.index({ organizationId: 1, packetId: 1 }, { unique: true, sparse: true });

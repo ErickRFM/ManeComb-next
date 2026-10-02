@@ -12,6 +12,7 @@ const VehicleSchema = new Schema({
   driverId: { type: Schema.Types.ObjectId, ref: "User", default: null },
   lastFreshness: { type:String, enum:["live","delayed","stale","lost","never_reported"], default:"never_reported" },
   activeRouteProgress: { type: Schema.Types.Mixed, default: null },
+  telemetryQuality: {type:Schema.Types.Mixed,default:null},
   lastLocation: {
     latitude: Number, longitude: Number, speedMps: Number, heading: Number, accuracy: Number, recordedAt: Date
   }
