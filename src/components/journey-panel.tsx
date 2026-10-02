@@ -1,6 +1,8 @@
 "use client";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import {useSocket} from "@/src/hooks/useSocket";
+import {isNativeLocationAvailable,stopNativeLocation} from "@/src/lib/native-location";
+import {shouldStopNativeTracking} from "@/src/lib/native-tracking-contract";
 
 type Journey={_id:string;vehicleId:string;state:"ASSIGNED"|"READY"|"RUNNING"|"PAUSED"|"FINISHED"|"CANCELLED";checklist?:any};
 
@@ -35,13 +37,26 @@ export function JourneyPanel(){
 
   async function action(action:string,extra:Record<string,unknown>={}){
     if(!journey||busy)return;setBusy(true);setError("");
-    try{const response=await fetch("/api/journeys",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({journeyId:journey._id,action,...extra})});
-    const data=await response.json();
-    if(!response.ok)return setError(data.error||"No se pudo actualizar");
-    setJourney(data.journey);
-    setState("Jornada "+data.journey.state);
-    }catch{setError("No se pudo actualizar la jornada. Revisa la conexión y vuelve a intentar.")}
-    finally{setBusy(false)}
+    try{
+      const response=await fetch("/api/journeys",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({journeyId:journey._id,action,...extra})});
+      const data=await response.json();
+      if(!response.ok)return setError(data.error||"No se pudo actualizar");
+      setJourney(data.journey);
+      setState("Jornada "+data.journey.state);
+
+      if(isNativeLocationAvailable()&&shouldStopNativeTracking(action,data.journey.state)){
+        try{
+          await stopNativeLocation();
+          setState("Jornada "+data.journey.state+" · GPS nativo detenido");
+        }catch{
+          setError("La jornada cambió, pero no se pudo confirmar la detención local del GPS. El servidor bloqueará nueva telemetría.");
+        }
+      }
+    }catch{
+      setError("No se pudo actualizar la jornada. Revisa la conexión y vuelve a intentar.");
+    }finally{
+      setBusy(false);
+    }
   }
 
   async function ready(event:FormEvent<HTMLFormElement>){
