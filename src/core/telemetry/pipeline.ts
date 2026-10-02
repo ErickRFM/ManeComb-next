@@ -111,6 +111,7 @@ export async function recordTelemetry(
     if(!current)throw new Error("Vehicle no longer exists");
   }
   incrementMetric("telemetry_canonical_contention_total");
+  if(await confirmAppliedDuplicate(current))return vehicleToSnapshot(current,canonicalJourneyId);
   if(current.lastLocation?.recordedAt&&new Date(current.lastLocation.recordedAt).getTime()>=recordedAt.getTime()){
     await finalizeTelemetryPosition(organizationId,persisted.packetId,timed,"out_of_order","superseded_during_contention","SUPERSEDED");
     return vehicleToSnapshot(current,canonicalJourneyId);

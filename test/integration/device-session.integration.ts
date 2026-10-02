@@ -12,6 +12,9 @@ import { requireIntegrationDatabase } from "../support/integration-database";
 import {createSessionForUser,requireApiSession} from "@/src/lib/auth";
 import {POST as logout} from "@/app/api/auth/logout/route";
 import {applyJourneyAction} from "@/src/core/services/journeys";
+import {recordTelemetry} from "@/src/core/services/telemetry";
+import {TelemetrySchema} from "@/src/core/contracts/telemetry";
+import {RouteSessionPosition} from "@/src/core/models/RouteSessionPosition";
 let ownedDatabase="";let user:any;let vehicle:any;let journey:any;let token="";let stored:any;
 beforeAll(async()=>{
   const database=requireIntegrationDatabase(process.env.MONGODB_URI);await connectDb();
@@ -61,4 +64,16 @@ it("explicit mobile logout revokes its web session and native telemetry credenti
   expect((await logout(signed)).status).toBe(200);
   await expect(requireDeviceTelemetrySession(request())).rejects.toThrow("UNAUTHORIZED");
   await expect(requireApiSession(signed)).rejects.toThrow("UNAUTHORIZED");
+});
+it("two authorized device credentials for one driver converge on one ordered canonical position",async()=>{
+  const secondToken="mcdev_qa_"+randomUUID();
+  await DeviceSession.create({organizationId:user.organizationId,userId:user._id,vehicleId:vehicle._id,journeyId:journey._id,tokenHash:hashDeviceToken(secondToken),expiresAt:new Date(Date.now()+60_000)});
+  const secondRequest=new Request("http://localhost/api/locations/telemetry",{headers:{authorization:"Bearer "+secondToken}});
+  const [first,second]=await Promise.all([requireDeviceTelemetrySession(request()),requireDeviceTelemetrySession(secondRequest)]);
+  const old=TelemetrySchema.parse({packetId:randomUUID(),vehicleId:first.vehicleId,journeyId:first.journeyId,latitude:20,longitude:-99,speedMps:4,accuracy:5,recordedAt:new Date(Date.now()-4000)});
+  const newer={...old,packetId:randomUUID(),latitude:20.0001,recordedAt:new Date(old.recordedAt.getTime()+2000)};
+  await recordTelemetry(first.organizationId,old,{driverId:first.userId,temporalSource:"android_device_session"});
+  await recordTelemetry(second.organizationId,newer,{driverId:second.userId,temporalSource:"android_device_session"});
+  expect((await recordTelemetry(first.organizationId,old,{driverId:first.userId,temporalSource:"android_device_session"})).latitude).toBe(20.0001);
+  expect(await RouteSessionPosition.countDocuments({organizationId:user.organizationId})).toBe(2);
 });

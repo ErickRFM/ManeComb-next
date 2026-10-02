@@ -108,3 +108,18 @@ it("a different packet with equal capture time cannot replace a partially commit
   expect(state.positions.get(ids[0]).quality.canonicalLatitude).toBe(20);
   expect(state.positions.get(ids[0]).applicationStatus).toBe("APPLIED");
 });
+it("confirms the same packet winning the final CAS race before marking its history superseded",async()=>{
+  await ingest(sample(0,20,0));
+  const target=sample(1,20.0002,8,4);
+  state.beforeCas=()=>{throw new Error("temporary_database_failure")};
+  await expect(ingest(target)).rejects.toThrow("temporary_database_failure");
+  let attempt=0;
+  state.beforeCas=()=>{
+    attempt++;
+    state.vehicle.lastLocation={latitude:attempt===3?target.latitude:20,longitude:-99,speedMps:4,accuracy:5,recordedAt:attempt===3?target.recordedAt:new Date(`2026-10-01T12:00:0${attempt}Z`)};
+    if(attempt===3)state.vehicle.telemetryQuality={appliedPacketId:target.packetId,reason:"movement",level:"GOOD",stabilized:false};
+  };
+  await ingest(target);
+  expect(state.positions.get(ids[1]).applicationStatus).toBe("APPLIED");
+  expect(state.positions.get(ids[1]).quality.canonicalLatitude).toBe(target.latitude);
+});
