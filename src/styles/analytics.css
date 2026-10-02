@@ -45,7 +45,7 @@
 .empty-state{display:grid;place-items:center;text-align:center;gap:4px;padding:28px;color:var(--muted)}
 .empty-state.compact{padding:18px}
 .empty-state strong{color:var(--text);font-size:13px}
-.empty-state span{font-size:11px}
+.empty-state span{font-size:11px;color:var(--text-soft)}
 .dashboard-skeleton{grid-template-columns:1fr}
 .fleet-distribution{display:flex;align-items:center;justify-content:center;gap:24px;margin:0 0 16px;flex-wrap:wrap}
 .fleet-donut{width:156px;height:156px;flex:0 0 auto;border-radius:50%;padding:18px}
