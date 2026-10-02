@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import {randomUUID} from "node:crypto";
 import {afterAll,beforeAll,expect,it} from "vitest";
 import {connectDb} from "@/src/lib/db";
-import {requireIntegrationDatabase} from "./support/integration-database";
+import {requireIntegrationDatabase} from "../support/integration-database";
 import {Organization} from "@/src/core/models/Organization";
 import {User} from "@/src/core/models/User";
 import {Vehicle} from "@/src/core/models/Vehicle";
