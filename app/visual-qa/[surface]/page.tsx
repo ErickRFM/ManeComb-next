@@ -3,8 +3,18 @@ import { PortalShell } from "@/src/components/portal-shell";
 import { AdminShell } from "@/src/components/admin-shell";
 import { DriverShell } from "@/src/components/driver-shell";
 import { VisualQaModal } from "@/src/components/visual-qa-modal";
+import { Navigation } from "@/src/components/navigation";
+import { MarketingHero } from "@/src/components/marketing/marketing-hero";
+import { MarketingProductStory } from "@/src/components/marketing/marketing-product-story";
+import { MarketingBento } from "@/src/components/marketing/marketing-bento";
+import { MarketingProcess } from "@/src/components/marketing/marketing-process";
+import { MarketingFaq } from "@/src/components/marketing/marketing-faq";
+import { MarketingFinalCta } from "@/src/components/marketing/marketing-final-cta";
+import { MarketingFooter } from "@/src/components/marketing/marketing-footer";
+import { PlanCards } from "@/src/components/plan-cards";
+import { Reveal } from "@/src/components/ui/reveal";
 
-const allowed=new Set(["portal","admin","driver","forms"]);
+const allowed=new Set(["portal","admin","driver","forms","marketing"]);
 
 export default async function VisualQaPage({params}:{params:Promise<{surface:string}>}){
   if(process.env.VISUAL_QA!=="1")notFound();
@@ -14,6 +24,7 @@ export default async function VisualQaPage({params}:{params:Promise<{surface:str
   if(surface==="portal")return <PortalShell initialProfile={{name:"QA Portal",roles:["owner"]}}><VisualPortal/></PortalShell>;
   if(surface==="admin")return <AdminShell><VisualAdmin/></AdminShell>;
   if(surface==="driver")return <DriverShell><VisualDriver/></DriverShell>;
+  if(surface==="marketing")return <VisualMarketing/>;
   return <><VisualForms/><VisualQaModal/></>;
 }
 
@@ -53,4 +64,24 @@ function VisualDriver(){
 
 function VisualForms(){
   return <main id="main-content" className="page visual-qa-page"><section className="module-section"><header className="module-header"><div><span className="eyebrow">UI QA</span><h1 className="module-title">Flujos y estados</h1><p className="module-copy">Controles representativos para contraste, foco y targets táctiles.</p></div></header><div className="grid grid-2"><section className="route-settings-card"><div className="route-section-head"><div><strong>Configuración de ruta</strong><small>Campos y selección</small></div></div><label>Nombre<input className="input" defaultValue="Centro → Terminal"/></label><label>Estado<select className="input" defaultValue="active"><option value="active">Activa</option></select></label><button className="btn" data-critical-action>Guardar ruta</button></section><section className="document-card"><div className="document-icon">DOC</div><div className="document-card-main"><div className="document-card-head"><div><strong>Licencia</strong><small>Luis Olvera</small></div><span className="state-badge maintenance">pending</span></div><div className="document-meta"><span>Vigencia <strong>15/10/2026</strong></span><span className="document-expiry">vence en 16 días</span></div></div><div className="document-actions"><button>Aprobar</button><button className="danger">Rechazar</button></div></section></div></section></main>;
+}
+
+
+function VisualMarketing(){
+  return <div className="shell marketing-home marketing-v3">
+    <Navigation/>
+    <main id="main-content">
+      <MarketingHero/>
+      <MarketingProductStory/>
+      <MarketingBento/>
+      <MarketingProcess/>
+      <section id="planes" className="marketing-v3-section marketing-plans-section">
+        <Reveal><div className="marketing-v3-section-head compact"><span className="marketing-kicker">PLANES</span><h2>Elige el tamaño de tu flota.</h2><p>Empieza con la capacidad que necesitas y conserva el mismo sistema al crecer.</p></div></Reveal>
+        <Reveal delay={70}><PlanCards/></Reveal>
+      </section>
+      <MarketingFaq/>
+      <MarketingFinalCta/>
+    </main>
+    <MarketingFooter/>
+  </div>;
 }
