@@ -948,3 +948,91 @@
   .marketing-route-path{stroke-dashoffset:0}
   .marketing-process-reveal .marketing-process-line::after{transform:scaleX(1)!important;transition:none!important}
 }
+
+
+/* Premium marketing subpages */
+.marketing-subpage{
+  width:min(calc(100% - 56px),var(--marketing-container));
+  margin:0 auto;
+  padding:92px 0 120px;
+}
+.marketing-subpage-hero{
+  max-width:850px;
+  padding:44px 0 76px;
+}
+.marketing-subpage-hero h1{
+  margin:20px 0 22px;
+  font-size:clamp(56px,6.7vw,88px);
+  line-height:.94;
+  letter-spacing:-.06em;
+  text-wrap:balance;
+}
+.marketing-subpage-hero p{
+  max-width:700px;
+  margin:0;
+  color:var(--muted);
+  font-size:18px;
+  line-height:1.65;
+}
+.marketing-subpage-body{padding:0 0 54px}
+.marketing-subpage-note{
+  margin-top:44px;
+  padding-top:28px;
+  border-top:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:30px;
+}
+.marketing-subpage-note strong{font-size:17px;letter-spacing:-.02em}
+.marketing-subpage-note p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
+
+.marketing-contact-grid{
+  display:grid;
+  grid-template-columns:minmax(0,.8fr) minmax(480px,1.2fr);
+  gap:clamp(48px,7vw,100px);
+  align-items:start;
+}
+.marketing-contact-context{display:grid;border-top:1px solid var(--border)}
+.marketing-contact-context>div{
+  display:grid;
+  grid-template-columns:44px 1fr;
+  column-gap:14px;
+  padding:22px 0;
+  border-bottom:1px solid var(--border);
+}
+.marketing-contact-context span{
+  grid-row:1/3;
+  color:#ef4444;
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:.1em;
+}
+.marketing-contact-context strong{font-size:15px;letter-spacing:-.02em}
+.marketing-contact-context p{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.55}
+.marketing-contact-form .card{
+  max-width:none!important;
+  padding:28px;
+  border-radius:22px;
+  background:linear-gradient(180deg,var(--surface),var(--background-soft));
+  box-shadow:var(--shadow-soft);
+}
+.marketing-contact-form .btn{min-height:48px;background:var(--mkt-red)}
+.marketing-contact-form .btn:hover{background:var(--mkt-red-hover)}
+
+@media(max-width:900px){
+  .marketing-contact-grid{grid-template-columns:1fr;gap:42px}
+  .marketing-contact-context{max-width:720px}
+}
+@media(max-width:760px){
+  .marketing-subpage{width:min(calc(100% - 40px),var(--marketing-container));padding:70px 0 92px}
+  .marketing-subpage-hero{padding:30px 0 54px}
+  .marketing-subpage-hero h1{font-size:clamp(48px,10vw,64px)}
+  .marketing-subpage-hero p{font-size:16px}
+  .marketing-subpage-note{align-items:flex-start;flex-direction:column}
+}
+@media(max-width:560px){
+  .marketing-subpage{width:min(calc(100% - 32px),var(--marketing-container));padding:52px 0 76px}
+  .marketing-subpage-hero h1{font-size:44px}
+  .marketing-contact-form .card{padding:20px}
+}
