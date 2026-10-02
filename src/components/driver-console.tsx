@@ -20,9 +20,39 @@ export function DriverConsole() {
     setJourneyId(activeJourney);
     trackingRef.current = { vehicleId: enrolled, journeyId: activeJourney };
     let mounted=true;
-    if(isNativeLocationAvailable())void getNativeLocationStatus().then(result=>{if(mounted){setRunning(result.running);setStatus(result.running?"GPS nativo en segundo plano":"Detenido")}}).catch(()=>mounted&&setStatus("No se pudo consultar el GPS nativo"));
+    if(isNativeLocationAvailable())void getNativeLocationStatus().then(result=>{
+      if(!mounted)return;
+      setRunning(result.running);
+      if(result.running){
+        const queued=result.pendingPackets?(" · "+result.pendingPackets+" pendientes"):"";
+        setStatus("GPS nativo en segundo plano"+queued);
+      }else if(result.state==="auth_failed"){
+        setStatus("Sesión GPS vencida · reanuda el seguimiento");
+      }else{
+        setStatus("Detenido");
+      }
+    }).catch(()=>mounted&&setStatus("No se pudo consultar el GPS nativo"));
+
+    const onJourneyState=(event:Event)=>{
+      const detail=(event as CustomEvent<{state?:string;vehicleId?:string;journeyId?:string}>).detail||{};
+      if(detail.vehicleId&&detail.journeyId){
+        trackingRef.current={vehicleId:detail.vehicleId,journeyId:detail.journeyId};
+        setVehicleId(detail.vehicleId);setJourneyId(detail.journeyId);
+      }
+      if(detail.state&&detail.state!=="RUNNING"){
+        if(watchRef.current!==null)navigator.geolocation.clearWatch(watchRef.current);
+        watchRef.current=null;
+        void wakeLockRef.current?.release?.().catch(()=>undefined);
+        wakeLockRef.current=null;
+        setRunning(false);
+        setStatus("Detenido por estado de jornada");
+      }
+    };
+    window.addEventListener("manecomb:journey-state",onJourneyState);
+
     return()=>{
       mounted=false;
+      window.removeEventListener("manecomb:journey-state",onJourneyState);
       // Browser tracking belongs to the persistent operation layout. Native service remains independent.
       if(watchRef.current!==null)navigator.geolocation.clearWatch(watchRef.current);
       void wakeLockRef.current?.release?.().catch(()=>undefined);
