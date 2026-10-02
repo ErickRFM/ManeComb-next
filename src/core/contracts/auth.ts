@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PlatformRoleSchema } from "@/src/core/platform/permissions";
 
 export const AppRoleSchema = z.enum([
   "owner", "admin", "dispatcher", "supervisor", "billing_manager", "support", "viewer", "driver"
@@ -12,6 +13,7 @@ export const SessionTokenSchema = z.object({
   sub: z.string().min(1),
   organizationId: z.string().nullable(),
   roles: z.array(AppRoleSchema),
+  platformRoles: z.array(PlatformRoleSchema).default([]),
   channel: ChannelSchema,
   jti: z.string().min(1),
   mfaVerified: z.boolean().default(false)
