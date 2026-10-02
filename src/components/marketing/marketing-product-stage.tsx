@@ -2,7 +2,7 @@ import { BrandLogo } from "@/src/components/brand-logo";
 import { Icon } from "@/src/components/ui/icon";
 
 export function MarketingProductStage(){
-  return <div className="marketing-stage" aria-label="Vista del portal operativo ManeComb">
+  return <div className="marketing-stage" role="img" aria-label="Vista del portal operativo ManeComb">
     <div className="marketing-stage-window">
       <aside className="marketing-stage-sidebar" aria-hidden="true">
         <div className="marketing-stage-brand"><BrandLogo size="sm" tone="light"/></div>
