@@ -21,7 +21,11 @@ const checks=[
   ["SQLite packet IDs are unique",files.store.includes("packet_id TEXT NOT NULL UNIQUE")],
   ["Queue has a retention bound",files.store.includes("MAX_ROWS")&&files.store.includes("MAX_AGE_MS")],
   ["JS bridge requires a running journey id",files.bridge.includes("journeyId is required for native GPS")],
-  ["Backend protects packet replay",files.telemetry.includes("PACKET_ID_CONFLICT")&&files.telemetry.includes("$setOnInsert")]
+  ["Backend protects packet replay",files.telemetry.includes("PACKET_ID_CONFLICT")&&files.telemetry.includes("$setOnInsert")],
+  ["Native plugin emits tracking state events",files.plugin.includes("notifyListeners(\\"trackingState\\"")],
+  ["Native service exposes a tracking implementation version",files.service.includes("TRACKING_VERSION")],
+  ["Manual stop disables sticky restart",files.plugin.includes("restartAllowed")&&files.plugin.includes("lastStopReason")],
+  ["Native service reports network state",files.service.includes("NetworkCapabilities")&&files.service.includes("networkState")]
 ];
 
 const failed=checks.filter(([,ok])=>!ok);
