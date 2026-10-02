@@ -7,7 +7,7 @@ const output="artifacts/visual-qa";
 mkdirSync(output,{recursive:true});
 
 const widths=[360,390,430,768,1024,1366,1920];
-const surfaces=["portal","admin","driver","forms"];
+const surfaces=["portal","admin","driver","forms","marketing"];
 const report={generatedAt:new Date().toISOString(),checks:[],violations:[]};
 const browser=await chromium.launch({headless:true});
 
