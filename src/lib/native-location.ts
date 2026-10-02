@@ -1,11 +1,13 @@
 "use client";
-import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
+import type { NativeLocationStatus } from "@/src/lib/native-tracking-contract";
 
 type NativeLocationPlugin = {
-  start(options:{serverUrl:string;vehicleId:string;journeyId:string;deviceToken:string}):Promise<{started:boolean}>;
-  stop():Promise<{stopped:boolean}>;
-  status():Promise<{running:boolean;pendingPackets:number}>;
-  appInfo():Promise<{versionName:string;versionCode:number}>;
+  start(options:{serverUrl:string;vehicleId:string;journeyId:string;deviceToken:string}):Promise<{started:boolean;contractVersion:number}>;
+  stop():Promise<{stopped:boolean;contractVersion:number}>;
+  status():Promise<NativeLocationStatus>;
+  appInfo():Promise<{versionName:string;versionCode:number;nativeTrackingContractVersion:number}>;
+  addListener(eventName:"trackingState",listener:(status:NativeLocationStatus)=>void):Promise<PluginListenerHandle>;
 };
 
 const NativeLocation = registerPlugin<NativeLocationPlugin>("ManeCombLocation");
@@ -32,3 +34,6 @@ export async function startNativeLocation(options:{serverUrl:string;vehicleId:st
 export async function stopNativeLocation(){ return NativeLocation.stop(); }
 export async function getNativeLocationStatus(){ return NativeLocation.status(); }
 export async function getNativeAppInfo(){ return NativeLocation.appInfo(); }
+export async function listenNativeLocationStatus(listener:(status:NativeLocationStatus)=>void){
+  return NativeLocation.addListener("trackingState",listener);
+}
