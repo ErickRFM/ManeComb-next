@@ -119,3 +119,6 @@ label:has(>.input),label.grid:has(.input){gap:7px}
   .nav-links{display:none}
   .nav-cta{min-width:78px}
 }
+
+:root[data-theme="light"] .operation-access label,:root[data-theme="light"] .operation-access .password-field-label>span{color:#30343d}
+:root[data-theme="light"] .operation-access .module-body>a,:root[data-theme="light"] .operation-access .module-body p>a{color:#16181d}
