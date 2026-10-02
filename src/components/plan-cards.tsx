@@ -25,7 +25,7 @@ export function PlanCards(){
           <li>GPS, rutas y jornadas</li>
           <li>Chat y Radio disponibles</li>
         </ul>
-        <Link className="btn plan-cta" href={"/checkout/"+plan.code}>Elegir {plan.label}</Link>
+        <Link className="btn plan-cta" data-critical-action href={"/checkout/"+plan.code}>Elegir {plan.label}</Link>
       </article>;
     })}
   </div>;
