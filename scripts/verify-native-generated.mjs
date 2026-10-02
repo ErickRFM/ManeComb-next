@@ -43,8 +43,10 @@ const checks=[
   ["JVM 21 target configured",gradle.includes("jvmTarget = '21'")||gradle.includes('jvmTarget = "21"')],
   ["Capacitor WebView has a bootstrap source",Boolean(capacitorServerUrl)||hasBundledIndex],
   ["Capacitor server URL is parseable",Boolean(parsedServerUrl)],
-  ["Capacitor server enters through /app",Boolean(parsedServerUrl?.pathname.startsWith("/app"))],
+  ["Capacitor appStartPath is configured",typeof capacitorConfig?.server?.appStartPath==="string"&&capacitorConfig.server.appStartPath.startsWith("/")],
+  ["Capacitor installed entry uses /app",capacitorConfig?.server?.appStartPath==="/app"||capacitorConfig?.server?.appStartPath?.startsWith("/visual-qa/")],
   ["Capacitor production server uses HTTPS",Boolean(parsedServerUrl&&(parsedServerUrl.protocol==="https:"||localHosts.has(parsedServerUrl.hostname)))],
+  ["Capacitor native error page configured",capacitorConfig?.server?.errorPath==="native-error.html"&&existsSync("android/app/src/main/assets/public/native-error.html")],
   ["Android Keystore native token protection",secure.includes("AndroidKeyStore")&&credentials.includes("deviceTokenEncrypted")],
   ["Legacy plaintext device token migration",credentials.includes("LEGACY_TOKEN")&&credentials.includes("remove(LEGACY_TOKEN)")]
 ];
