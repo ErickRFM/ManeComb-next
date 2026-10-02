@@ -7,6 +7,9 @@ const variables=read("android/variables.gradle");
 const appGradle=read("android/app/build.gradle");
 const rootGradle=read("android/build.gradle");
 const manifest=read("android/app/src/main/AndroidManifest.xml");
+const capacitorConfigText=read("android/app/src/main/assets/capacitor.config.json");
+let capacitorConfig={};
+try{capacitorConfig=capacitorConfigText?JSON.parse(capacitorConfigText):{}}catch{}
 const apk="android/app/build/outputs/apk/debug/app-debug.apk";
 
 const report={
@@ -19,6 +22,10 @@ const report={
   androidGradlePlugin:match(rootGradle,/com\.android\.tools\.build:gradle:([^'"]+)/),
   kotlinGradlePlugin:match(rootGradle,/org\.jetbrains\.kotlin:kotlin-gradle-plugin:([^'"]+)/),
   foregroundLocationService:manifest.includes('android:foregroundServiceType="location"'),
+  capacitorServerUrl:capacitorConfig?.server?.url??null,
+  capacitorAppStartPath:capacitorConfig?.server?.appStartPath??null,
+  capacitorErrorPath:capacitorConfig?.server?.errorPath??null,
+  hasBundledIndexHtml:existsSync("android/app/src/main/assets/public/index.html"),
   permissions:[...manifest.matchAll(/<uses-permission[^>]+android:name="([^"]+)"/g)].map(match=>match[1]),
   apkBytes:existsSync(apk)?statSync(apk).size:null
 };
