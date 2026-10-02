@@ -74,4 +74,7 @@
   --motion-normal:280ms;
   --motion-slow:420ms;
   --ease-premium:cubic-bezier(.22,1,.36,1);
+  --focus-ring:0 0 0 2px color-mix(in srgb,var(--brand) 52%,transparent);
+  --focus-outline:2px solid color-mix(in srgb,var(--brand) 78%,white);
+  --focus-outline-offset:2px;
 }
