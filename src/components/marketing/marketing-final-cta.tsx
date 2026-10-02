@@ -6,6 +6,6 @@ export function MarketingFinalCta(){
     <span className="marketing-kicker">MANECOMB</span>
     <h2>Tu operación<br/>empieza aquí.</h2>
     <p>Toda tu flotilla en un solo sistema, desde el primer recorrido.</p>
-    <div className="marketing-v3-actions centered"><Link className="btn marketing-primary-cta" href="/registro">Comenzar con ManeComb</Link><Link className="marketing-text-link" href="/planes">Ver planes <span aria-hidden="true">→</span></Link></div>
+    <div className="marketing-v3-actions centered"><Link className="btn marketing-primary-cta" data-critical-action href="/registro">Comenzar con ManeComb</Link><Link className="marketing-text-link" href="/planes">Ver planes <span aria-hidden="true">→</span></Link></div>
   </section></Reveal>;
 }
