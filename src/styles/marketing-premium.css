@@ -651,8 +651,8 @@
 /* Process */
 .marketing-process-section{padding-top:var(--marketing-section-md)}
 .marketing-process{display:grid;grid-template-columns:repeat(3,1fr);gap:0;list-style:none;padding:0;margin:0}
+.marketing-process>li{min-width:0;position:relative;padding-right:42px}
 .marketing-process-reveal{min-width:0}
-.marketing-process li{position:relative;padding-right:42px}
 .marketing-process-number{color:#ef4444;font-size:11px;font-weight:950;letter-spacing:.12em}
 .marketing-process-line{
   position:relative;
@@ -664,13 +664,13 @@
   position:absolute;left:0;top:50%;width:7px;height:7px;transform:translateY(-50%);
   border-radius:999px;background:var(--mkt-red);box-shadow:0 0 0 5px var(--mkt-red-soft);
 }
-.marketing-process-reveal:not(:last-child) .marketing-process-line::after{
+.marketing-process>li:not(:last-child) .marketing-process-line::after{
   content:"";
   position:absolute;left:0;top:0;width:100%;height:1px;background:var(--mkt-red);
   transform:scaleX(0);transform-origin:left;
   transition:transform 900ms var(--ease-premium) 280ms;
 }
-.marketing-process-reveal.is-visible:not(:last-child) .marketing-process-line::after{transform:scaleX(1)}
+.marketing-process>li:not(:last-child) .marketing-process-reveal.is-visible .marketing-process-line::after{transform:scaleX(1)}
 .marketing-process h3{margin:0;font-size:21px;letter-spacing:-.035em}
 .marketing-process p{max-width:320px;margin:9px 0 0;color:var(--muted);font-size:13px;line-height:1.6}
 
@@ -916,9 +916,9 @@
   .marketing-stage-route-card{left:14px;right:14px;bottom:14px}
   .marketing-product-story{padding-top:var(--marketing-section-lg)}
   .marketing-process{grid-template-columns:1fr;gap:38px}
-  .marketing-process li{padding-right:0}
+  .marketing-process>li{padding-right:0}
   .marketing-process-line{margin:18px 0 22px}
-  .marketing-process-reveal:not(:last-child) .marketing-process-line::after{width:100%}
+  .marketing-process>li:not(:last-child) .marketing-process-line::after{width:100%}
   .marketing-plans-section .plan-deck{grid-template-columns:repeat(2,1fr)}
   .marketing-v3-footer{grid-template-columns:1fr;gap:38px}
   .marketing-v3-footer-groups{gap:28px}
@@ -981,7 +981,7 @@
     transition:none!important;
   }
   .marketing-route-path{stroke-dashoffset:0}
-  .marketing-process-reveal .marketing-process-line::after{transform:scaleX(1)!important;transition:none!important}
+  .marketing-process>li .marketing-process-line::after{transform:scaleX(1)!important;transition:none!important}
 }
 
 
