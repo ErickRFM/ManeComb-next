@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import {useSocket} from "@/src/hooks/useSocket";
+import {isNativeLocationAvailable,startNativeLocation,stopNativeLocation} from "@/src/lib/native-location";
 
 type Journey={_id:string;vehicleId:string;state:"ASSIGNED"|"READY"|"RUNNING"|"PAUSED"|"FINISHED"|"CANCELLED";checklist?:any};
 
@@ -38,8 +39,24 @@ export function JourneyPanel(){
     try{const response=await fetch("/api/journeys",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({journeyId:journey._id,action,...extra})});
     const data=await response.json();
     if(!response.ok)return setError(data.error||"No se pudo actualizar");
-    setJourney(data.journey);
-    setState("Jornada "+data.journey.state);
+    const nextJourney=data.journey as Journey;
+    setJourney(nextJourney);
+    setState("Jornada "+nextJourney.state);
+    window.dispatchEvent(new CustomEvent("manecomb:journey-state",{detail:{state:nextJourney.state,vehicleId:String(nextJourney.vehicleId),journeyId:String(nextJourney._id)}}));
+    if(isNativeLocationAvailable()){
+      try{
+        if(nextJourney.state==="RUNNING"&&(action==="start"||action==="resume")){
+          await startNativeLocation({serverUrl:window.location.origin,vehicleId:String(nextJourney.vehicleId),journeyId:String(nextJourney._id)});
+          setState("Jornada "+nextJourney.state+" · GPS nativo activo");
+        }else if(nextJourney.state!=="RUNNING"){
+          await stopNativeLocation();
+        }
+      }catch{
+        setError(nextJourney.state==="RUNNING"
+          ?"La jornada inició, pero el GPS nativo no pudo activarse. Abre Seguimiento GPS y reintenta."
+          :"La jornada cambió de estado, pero no se pudo confirmar la detención local del GPS.");
+      }
+    }
     }catch{setError("No se pudo actualizar la jornada. Revisa la conexión y vuelve a intentar.")}
     finally{setBusy(false)}
   }

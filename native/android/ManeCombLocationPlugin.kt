@@ -1,6 +1,7 @@
 package com.manecomb.location
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import com.getcapacitor.JSObject
 import com.getcapacitor.PermissionState
@@ -53,6 +54,7 @@ class ManeCombLocationPlugin : Plugin() {
             return call.reject("Native telemetry requires HTTPS outside local development")
         }
 
+        ManeCombLocationService.serviceState = "starting"
         val intent = Intent(context, ManeCombLocationService::class.java).apply {
             putExtra("serverUrl", serverUrl)
             putExtra("vehicleId", vehicleId)
@@ -60,21 +62,32 @@ class ManeCombLocationPlugin : Plugin() {
             putExtra("deviceToken", deviceToken)
         }
         androidx.core.content.ContextCompat.startForegroundService(context, intent)
-        call.resolve(JSObject().put("started", true))
+        call.resolve(JSObject().put("started", true).put("contractVersion", ManeCombLocationService.CONTRACT_VERSION))
     }
 
     @com.getcapacitor.PluginMethod
     fun stop(call: PluginCall) {
+        val prefs = context.getSharedPreferences(ManeCombLocationService.PREFS_NAME, Context.MODE_PRIVATE)
+        ManeCombLocationCredentials.clearToken(prefs)
         context.stopService(Intent(context, ManeCombLocationService::class.java))
-        call.resolve(JSObject().put("stopped", true))
+        ManeCombLocationService.running = false
+        ManeCombLocationService.serviceState = "stopped"
+        call.resolve(JSObject().put("stopped", true).put("contractVersion", ManeCombLocationService.CONTRACT_VERSION))
     }
 
     @com.getcapacitor.PluginMethod
     fun status(call: PluginCall) {
         call.resolve(
             JSObject()
+                .put("contractVersion", ManeCombLocationService.CONTRACT_VERSION)
+                .put("state", ManeCombLocationService.serviceState)
                 .put("running", ManeCombLocationService.running)
                 .put("pendingPackets", ManeCombLocationService.pendingCount)
+                .put("networkAvailable", ManeCombLocationService.networkAvailable)
+                .put("lastCaptureAtMs", ManeCombLocationService.lastCaptureAtMs)
+                .put("lastUploadAtMs", ManeCombLocationService.lastUploadAtMs)
+                .put("retryDelayMs", ManeCombLocationService.currentRetryDelayMs)
+                .put("lastError", ManeCombLocationService.lastError)
         )
     }
 
@@ -93,6 +106,7 @@ class ManeCombLocationPlugin : Plugin() {
                 JSObject()
                     .put("versionName", packageInfo.versionName ?: "0.0.0")
                     .put("versionCode", versionCode)
+                    .put("nativeTrackingContractVersion", ManeCombLocationService.CONTRACT_VERSION)
             )
         } catch (error: Exception) {
             call.reject("Could not read app version", error)

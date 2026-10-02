@@ -11,6 +11,7 @@ import { Journey } from "@/src/core/models/Journey";
 import { requireIntegrationDatabase } from "../support/integration-database";
 import {createSessionForUser,requireApiSession} from "@/src/lib/auth";
 import {POST as logout} from "@/app/api/auth/logout/route";
+import {applyJourneyAction} from "@/src/core/services/journeys";
 let ownedDatabase="";let user:any;let vehicle:any;let journey:any;let token="";let stored:any;
 beforeAll(async()=>{
   const database=requireIntegrationDatabase(process.env.MONGODB_URI);await connectDb();
@@ -37,6 +38,18 @@ it.each(["disabled","assignment","closed"])("revokes telemetry credentials after
   if(reason==="closed")await Journey.updateOne({_id:journey._id},{$set:{state:"FINISHED"}});
   await expect(requireDeviceTelemetrySession(request())).rejects.toThrow("UNAUTHORIZED");
   expect((await DeviceSession.findById(stored._id))!.revokedAt).toBeInstanceOf(Date);
+});
+it("revokes native telemetry immediately when a running journey pauses",async()=>{
+  await applyJourneyAction({
+    organizationId:String(journey.organizationId),
+    journeyId:String(journey._id),
+    actorUserId:String(user._id),
+    requiredDriverId:String(user._id),
+    action:"pause"
+  });
+  const refreshed=await DeviceSession.findById(stored._id);
+  expect(refreshed?.revokedAt).toBeInstanceOf(Date);
+  await expect(requireDeviceTelemetrySession(request())).rejects.toThrow("UNAUTHORIZED");
 });
 it("rejects an expired credential",async()=>{
   await DeviceSession.updateOne({_id:stored._id},{$set:{expiresAt:new Date(Date.now()-1000)}});
