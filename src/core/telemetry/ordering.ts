@@ -7,7 +7,7 @@ export function isValidCanonicalTime(previousAt?:Date|string|null,now=new Date()
 }
 
 export function classifyOrdering(temporal:TemporalDecision,previousAt?:Date|string|null):TemporalDecision{
-  if(isValidCanonicalTime(previousAt)&&new Date(previousAt!).getTime()>temporal.canonicalRecordedAt.getTime()){
+  if(isValidCanonicalTime(previousAt)&&new Date(previousAt!).getTime()>=temporal.canonicalRecordedAt.getTime()){
     return {...temporal,classification:"out_of_order",liveEligible:false,reason:"older_than_canonical"};
   }
   return temporal;

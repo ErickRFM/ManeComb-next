@@ -45,4 +45,15 @@ describe("telemetry temporal authority",()=>{
   it("keeps an invalid date out of live decisions",()=>{
     expect(resolveTemporalAuthority({...packet(),recordedAt:new Date(NaN)},now).liveEligible).toBe(false);
   });
+  it("rejects claimed monotonic authority when boot is unknown",()=>{
+    const {capturedBootCount:_,bootCount:__,...unknown}=monotonic;
+    expect(resolveTemporalAuthority(packet(0,unknown),now,{temporalSource:"android_device_session"}).liveEligible).toBe(false);
+  });
+  it("keeps queue age without authenticated monotonic proof from extending freshness",()=>{
+    const input=packet(-1_200_000,{queueAgeMs:0,queueAgeSource:"unknown"});
+    expect(resolveTemporalAuthority(input,now,{temporalSource:"android_device_session"}).classification).toBe("historical_only");
+  });
+  it.each([-1,NaN,Infinity,5001])("rejects invalid accuracy %s at the public contract",accuracy=>{
+    expect(()=>TelemetrySchema.parse({...packet(),accuracy})).toThrow();
+  });
 });

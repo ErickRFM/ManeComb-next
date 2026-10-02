@@ -39,7 +39,11 @@ const checks=[
   ["Backend protects packet replay",files.telemetry.includes("PACKET_ID_CONFLICT")&&files.telemetry.includes("$setOnInsert")],
   ["Capture evidence persists with original packet",files.service.includes('put("temporalEvidence"')&&files.service.includes('put("capturedElapsedRealtimeMs"')&&files.store.includes("payload TEXT NOT NULL")],
   ["Monotonic queue age requires same boot",files.temporal.includes("capturedBootCount == bootCount")&&files.service.includes("ManeCombLocationTemporal.forUpload")&&files.backendTemporal.includes("android_device_session")],
-  ["Native temporal tests are copied",files.prepare.includes("ManeCombLocationTemporalTest.kt")]
+  ["Native temporal tests are copied",files.prepare.includes("ManeCombLocationTemporalTest.kt")],
+  ["Real service regression tests are copied",files.prepare.includes("ManeCombLocationServiceTest.kt")],
+  ["Capture flush respects pending retry",files.service.includes("retryScheduled.get()")],
+  ["Malformed local rows have a separate terminal decision",files.service.includes("UploadResult.CORRUPT")&&files.service.includes("corrupt_queue_row_discarded")],
+  ["Stop cancels connection and pending retry",files.service.includes("activeConnection?.disconnect()")&&files.service.includes("retryTask?.cancel(false)")]
 ];
 
 const failed=checks.filter(([,ok])=>!ok);

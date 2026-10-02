@@ -53,7 +53,7 @@ export async function recordTelemetry(
   const decision=classifyOrdering(persisted.decision,vehicle.lastLocation?.recordedAt);
   const recordedAt=decision.canonicalRecordedAt;
   const confirmAppliedDuplicate=async(current:any)=>{
-    if(!persisted.duplicate||!isValidCanonicalTime(current.lastLocation?.recordedAt,receivedAt)||new Date(current.lastLocation.recordedAt).getTime()!==recordedAt.getTime())return false;
+    if(!persisted.duplicate||current.telemetryQuality?.appliedPacketId!==persisted.packetId||!isValidCanonicalTime(current.lastLocation?.recordedAt,receivedAt)||new Date(current.lastLocation.recordedAt).getTime()!==recordedAt.getTime())return false;
     const confirmed={...canonicalizeGps({...input,recordedAt},current.lastLocation),position:current.lastLocation,
       reason:current.telemetryQuality?.reason??"canonical_confirmed",stabilized:Boolean(current.telemetryQuality?.stabilized)};
     await finalizeTelemetryPosition(organizationId,persisted.packetId,timed,"live_eligible",confirmed.reason,"APPLIED",confirmed);
@@ -74,11 +74,11 @@ export async function recordTelemetry(
 
   let current=vehicle;
   for(let attempt=0;attempt<3;attempt++){
+    if(await confirmAppliedDuplicate(current))return vehicleToSnapshot(current,canonicalJourneyId);
     if(!classifyOrdering(decision,current.lastLocation?.recordedAt).liveEligible){
       await finalizeTelemetryPosition(organizationId,persisted.packetId,timed,"out_of_order","older_than_canonical","SUPERSEDED");
       return vehicleToSnapshot(current,canonicalJourneyId);
     }
-    if(await confirmAppliedDuplicate(current))return vehicleToSnapshot(current,canonicalJourneyId);
     const anchor=isValidCanonicalTime(current.lastLocation?.recordedAt,receivedAt)?current.lastLocation:null;
     const quality=canonicalizeGps({...input,recordedAt},anchor,current.telemetryQuality?.candidate);
     const filter:Record<string,unknown>={...vehicleQuery,"lastLocation.recordedAt":current.lastLocation?.recordedAt??null};
@@ -99,7 +99,7 @@ export async function recordTelemetry(
       const routeProgress=await calculateOperationalRouteProgress({organizationId,routeId:current.routeId,...canonicalPosition,previous:anchor?current.activeRouteProgress:undefined});
       const updated=await timed("vehicle_update",()=>Vehicle.findOneAndUpdate(filter,{$set:{
         status:"running",lastFreshness:getGpsFreshness(recordedAt),activeRouteProgress:routeProgress,
-        lastLocation:canonicalPosition,telemetryQuality:{candidate:null,level:quality.quality,reason:quality.reason,stabilized:quality.stabilized}
+        lastLocation:canonicalPosition,telemetryQuality:{appliedPacketId:persisted.packetId,candidate:null,level:quality.quality,reason:quality.reason,stabilized:quality.stabilized}
       }},{new:true,lean:true}));
       if(updated){
         await finalizeTelemetryPosition(organizationId,persisted.packetId,timed,"live_eligible",quality.reason,"APPLIED",quality);

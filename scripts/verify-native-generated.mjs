@@ -11,6 +11,7 @@ const required=[
   "android/app/src/main/java/com/manecomb/location/ManeCombLocationCadence.kt",
   "android/app/src/main/java/com/manecomb/location/ManeCombLocationTemporal.kt",
   "android/app/src/test/java/com/manecomb/location/ManeCombLocationTemporalTest.kt",
+  "android/app/src/test/java/com/manecomb/location/ManeCombLocationServiceTest.kt",
   "android/app/build.gradle"
 ];
 
@@ -19,8 +20,14 @@ if(missing.length){
   for(const path of missing)console.error("FAIL missing generated file: "+path);
   process.exit(1);
 }
+
+for(const name of ["ManeCombLocationTemporalTest.kt","ManeCombLocationServiceTest.kt"]){
+  if(!readFileSync("native/android/test/"+name).equals(readFileSync("android/app/src/test/java/com/manecomb/location/"+name))){
+    console.error("FAIL generated test differs: "+name);process.exit(1);
+  }
+}
 for(const name of ["ManeCombLocationPlugin.kt","ManeCombLocationService.kt","ManeCombLocationStore.kt","ManeCombSecureStore.kt","ManeCombLocationCredentials.kt","ManeCombLocationCadence.kt","ManeCombLocationTemporal.kt"]){
-  if(readFileSync("native/android/"+name,"utf8")!==readFileSync("android/app/src/main/java/com/manecomb/location/"+name,"utf8")){
+  if(!readFileSync("native/android/"+name).equals(readFileSync("android/app/src/main/java/com/manecomb/location/"+name))){
     console.error("FAIL generated source differs: "+name);process.exit(1);
   }
 }

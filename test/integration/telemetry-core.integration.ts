@@ -89,3 +89,18 @@ it("repairs a future canonical anchor from the previous ingestion policy",async(
   await Vehicle.updateOne({_id:vehicle._id},{$set:{lastLocation:{latitude:21,longitude:-99,speedMps:0,accuracy:5,recordedAt:new Date(Date.now()+600_000)}}});
   expect((await ingest(sample())).latitude).toBe(20);
 });
+it("same payload replay persists exactly once and equal-time packets do not move the winning pin",async()=>{
+  const first=sample(1000,{accuracy:5});
+  await Promise.all([ingest(first),ingest(first)]);
+  expect(await RouteSessionPosition.countDocuments({organizationId:org._id,packetId:first.packetId})).toBe(1);
+  const collision=sample(1000,{recordedAt:first.recordedAt,latitude:20.0002,accuracy:5});
+  expect((await ingest(collision)).latitude).toBe(20);
+  expect((await RouteSessionPosition.findOne({packetId:collision.packetId}))?.applicationStatus).toBe("SUPERSEDED");
+});
+it("a journey closed between packets rejects the next packet without creating history",async()=>{
+  await ingest(sample(1000));
+  await Journey.updateOne({_id:journey._id},{$set:{state:"FINISHED"}});
+  const next=sample();
+  await expect(ingest(next)).rejects.toThrow("RUNNING journey");
+  expect(await RouteSessionPosition.countDocuments({packetId:next.packetId})).toBe(0);
+});

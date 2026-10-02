@@ -96,3 +96,15 @@ it("delayed retry confirms an applied partial write without rejuvenation or dele
   expect(state.positions.get(ids[0]).applicationStatus).toBe("APPLIED");
   expect(state.vehicle.telemetryQuality.candidate?.latitude).toBe(20.01);
 });
+it("a different packet with equal capture time cannot replace a partially committed canonical fix",async()=>{
+  const first=sample(0,20,3,4);
+  state.beforeFinalize=()=>{throw new Error("metadata_write_failure")};
+  await expect(ingest(first)).rejects.toThrow("metadata_write_failure");
+  state.beforeFinalize=null;
+  const collision=sample(1,20.0002,3,4);
+  expect((await ingest(collision)).latitude).toBe(20);
+  expect(state.positions.get(ids[1]).applicationStatus).toBe("SUPERSEDED");
+  expect((await ingest(first)).latitude).toBe(20);
+  expect(state.positions.get(ids[0]).quality.canonicalLatitude).toBe(20);
+  expect(state.positions.get(ids[0]).applicationStatus).toBe("APPLIED");
+});

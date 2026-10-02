@@ -75,6 +75,7 @@ for(const name of ["ManeCombLocationPlugin.kt","ManeCombLocationService.kt","Man
 const temporalTestDir=join(androidDir,"app","src","test","java","com","manecomb","location");
 mkdirSync(temporalTestDir,{recursive:true});
 copyFileSync(join(sourceDir,"test","ManeCombLocationTemporalTest.kt"),join(temporalTestDir,"ManeCombLocationTemporalTest.kt"));
+copyFileSync(join(sourceDir,"test","ManeCombLocationServiceTest.kt"),join(temporalTestDir,"ManeCombLocationServiceTest.kt"));
 
 const manifestPath=join(androidDir,"app","src","main","AndroidManifest.xml");
 let manifest=readFileSync(manifestPath,"utf8");
@@ -130,6 +131,7 @@ if(existsSync(gradlePath)){
   const versionCode=Number(process.env.MANECOMB_ANDROID_VERSION_CODE||0);
   if(versionName)gradle=gradle.replace(/versionName\s+["'][^"']+["']/,`versionName "${versionName}"`);
   if(Number.isInteger(versionCode)&&versionCode>0)gradle=gradle.replace(/versionCode\s+\d+/, `versionCode ${versionCode}`);
+  if(!gradle.includes('org.mockito:mockito-core:5.15.2'))gradle+='\ndependencies {\n    testImplementation "org.mockito:mockito-core:5.15.2"\n    testImplementation "org.json:json:20240303"\n}\nandroid { testOptions { unitTests.returnDefaultValues = true } }\n';
   writeFileSync(gradlePath,gradle);
 }
 

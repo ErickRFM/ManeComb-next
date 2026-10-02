@@ -17,12 +17,14 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
 import org.json.JSONObject
+import org.json.JSONException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -70,6 +72,10 @@ class ManeCombLocationService : Service(), LocationListener {
     private val network: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     private val flushing = AtomicBoolean(false)
     private val retryScheduled = AtomicBoolean(false)
+    private val lifecycleLock = Any()
+    @Volatile private var stopping = false
+    @Volatile private var activeConnection: HttpURLConnection? = null
+    private var retryTask: ScheduledFuture<*>? = null
 
     private var serverUrl = ""
     private var vehicleId = ""
@@ -83,6 +89,7 @@ class ManeCombLocationService : Service(), LocationListener {
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            if (stopping || !running) return
             networkAvailable = true
             if (serviceState == "offline" || serviceState == "retry_wait") serviceState = "running"
             emitState(this@ManeCombLocationService)
@@ -90,6 +97,7 @@ class ManeCombLocationService : Service(), LocationListener {
         }
 
         override fun onLost(network: Network) {
+            if (stopping || !running) return
             networkAvailable = connectivityManager.activeNetwork != null
             if (!networkAvailable) {
                 serviceState = "offline"
@@ -204,6 +212,7 @@ class ManeCombLocationService : Service(), LocationListener {
     }
 
     override fun onLocationChanged(location: Location) {
+        if (stopping || !running) return
         val accuracy = if (location.hasAccuracy()) location.accuracy else null
         val elapsed = if (location.elapsedRealtimeNanos > 0L) {
             location.elapsedRealtimeNanos / 1_000_000L
@@ -242,36 +251,50 @@ class ManeCombLocationService : Service(), LocationListener {
     }
 
     private fun flushQueue() {
-        if (!flushing.compareAndSet(false, true)) return
-        network.execute {
-            try {
-                while (true) {
-                    val item = store.peek() ?: break
-                    when (postTelemetry(item.payload)) {
-                        UploadResult.SUCCESS -> {
-                            store.remove(item.id)
-                            pendingCount = store.countQueued()
-                            retryDelayMs = RETRY_BASE_MS
-                            currentRetryDelayMs = 0
-                            retryScheduled.set(false)
-                            lastUploadAtMs = System.currentTimeMillis()
-                            lastError = ""
-                            serviceState = "running"
-                            refreshNotification()
-                            emitState(this@ManeCombLocationService)
-                        }
-                        UploadResult.AUTH_FAILURE -> {
-                            stopForAuthFailure()
-                            break
-                        }
-                        UploadResult.RETRY -> {
-                            scheduleRetry()
-                            break
+        synchronized(lifecycleLock) {
+            if (stopping || !running || retryScheduled.get() || !flushing.compareAndSet(false, true)) return
+            network.execute {
+                try {
+                    while (!stopping) {
+                        val item = store.peek() ?: break
+                        val result = postTelemetry(item.payload)
+                        synchronized(lifecycleLock) {
+                            if (stopping) return@execute
+                            when (result) {
+                                UploadResult.SUCCESS -> {
+                                    store.remove(item.id)
+                                    pendingCount = store.countQueued()
+                                    retryDelayMs = RETRY_BASE_MS
+                                    currentRetryDelayMs = 0
+                                    retryScheduled.set(false)
+                                    lastUploadAtMs = System.currentTimeMillis()
+                                    lastError = ""
+                                    serviceState = "running"
+                                    refreshNotification()
+                                    emitState(this@ManeCombLocationService)
+                                }
+                                UploadResult.CORRUPT -> {
+                                    // A malformed local row is not a transient HTTP error.
+                                    Log.w(TAG, "Discarding malformed local GPS row; continuing FIFO.")
+                                    store.remove(item.id)
+                                    pendingCount = store.countQueued()
+                                    lastError = "corrupt_queue_row_discarded"
+                                    emitState(this@ManeCombLocationService)
+                                }
+                                UploadResult.AUTH_FAILURE -> {
+                                    stopForAuthFailure()
+                                    return@execute
+                                }
+                                UploadResult.RETRY -> {
+                                    scheduleRetry()
+                                    return@execute
+                                }
+                            }
                         }
                     }
+                } finally {
+                    flushing.set(false)
                 }
-            } finally {
-                flushing.set(false)
             }
         }
     }
@@ -280,6 +303,10 @@ class ManeCombLocationService : Service(), LocationListener {
         var connection: HttpURLConnection? = null
         return try {
             connection = URL(serverUrl.trimEnd('/') + "/api/locations/telemetry").openConnection() as HttpURLConnection
+            synchronized(lifecycleLock) {
+                if (stopping) return UploadResult.RETRY
+                activeConnection = connection
+            }
             connection.requestMethod = "POST"
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
@@ -316,28 +343,37 @@ class ManeCombLocationService : Service(), LocationListener {
                 code == 401 || code == 403 -> UploadResult.AUTH_FAILURE
                 else -> UploadResult.RETRY
             }
+        } catch (_: JSONException) {
+            UploadResult.CORRUPT
         } catch (error: Exception) {
+            if (stopping) return UploadResult.RETRY
             Log.w(TAG, "GPS upload failed; packet retained.", error)
             lastError = "telemetry_unreachable"
             networkAvailable = connectivityManager.activeNetwork != null
             UploadResult.RETRY
         } finally {
             connection?.disconnect()
+            activeConnection = null
         }
     }
 
     private fun scheduleRetry() {
-        if (!retryScheduled.compareAndSet(false, true)) return
-        val delay = retryDelayMs
-        currentRetryDelayMs = delay
-        serviceState = if (networkAvailable) "retry_wait" else "offline"
-        emitState(this)
-        retryDelayMs = (retryDelayMs * 2).coerceAtMost(RETRY_MAX_MS)
-        network.schedule({
-            retryScheduled.set(false)
-            currentRetryDelayMs = 0
-            flushQueue()
-        }, delay, TimeUnit.MILLISECONDS)
+        synchronized(lifecycleLock) {
+            if (stopping || !retryScheduled.compareAndSet(false, true)) return
+            val delay = retryDelayMs
+            currentRetryDelayMs = delay
+            serviceState = if (networkAvailable) "retry_wait" else "offline"
+            emitState(this)
+            retryDelayMs = (retryDelayMs * 2).coerceAtMost(RETRY_MAX_MS)
+            retryTask = network.schedule(retry@{
+                synchronized(lifecycleLock) {
+                    if (stopping) return@retry
+                    retryScheduled.set(false)
+                    currentRetryDelayMs = 0
+                }
+                flushQueue()
+            }, delay, TimeUnit.MILLISECONDS)
+        }
     }
 
     private fun stopForAuthFailure() {
@@ -373,20 +409,28 @@ class ManeCombLocationService : Service(), LocationListener {
             .build()
 
     override fun onDestroy() {
-        running = false
-        pendingCount = try { store.countQueued() } catch (_: Exception) { pendingCount }
-        if (serviceState != "auth_failed" && serviceState != "secure_store_error" && serviceState != "permission_error") {
-            serviceState = "stopped"
+        synchronized(lifecycleLock) {
+            stopping = true
+            running = false
+            deviceToken = ""
+            retryTask?.cancel(false)
+            retryScheduled.set(false)
+            pendingCount = try { store.countQueued() } catch (_: Exception) { pendingCount }
+            if (serviceState != "auth_failed" && serviceState != "secure_store_error" && serviceState != "permission_error") {
+                serviceState = "stopped"
+            }
+            currentRetryDelayMs = 0
         }
-        currentRetryDelayMs = 0
+        activeConnection?.disconnect()
         try { locationManager.removeUpdates(this) } catch (_: Exception) {}
         if (callbackRegistered) {
             try { connectivityManager.unregisterNetworkCallback(callback) } catch (_: Exception) {}
             callbackRegistered = false
         }
         emitState(this)
+        // Close SQLite on its worker after an in-flight upload has observed cancellation.
+        network.execute { store.close() }
         network.shutdown()
-        store.close()
         super.onDestroy()
     }
 
@@ -412,5 +456,5 @@ class ManeCombLocationService : Service(), LocationListener {
     @Deprecated("Deprecated in Android")
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
 
-    private enum class UploadResult { SUCCESS, RETRY, AUTH_FAILURE }
+    private enum class UploadResult { SUCCESS, RETRY, AUTH_FAILURE, CORRUPT }
 }
