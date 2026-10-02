@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApiSession } from "@/src/lib/auth";
@@ -20,7 +21,8 @@ const Input=z.object({
   bytes:z.number().int().min(1).max(10*1024*1024),
   mimeType:z.enum(["image/jpeg","image/png","image/webp","application/pdf"]).optional(),
   fileName:z.string().min(1).max(255).optional(),
-  expiresAt:z.coerce.date().optional()
+  expiresAt:z.coerce.date().optional(),
+  replacesDocumentId:z.string().regex(/^[a-f\d]{24}$/i).optional()
 });
 export const runtime="nodejs";
 
@@ -29,7 +31,10 @@ export async function GET(request:Request){
     const session=assertPermission(await requireApiSession(request,["company_portal"]),"manage_documents");
     if(!session.organizationId)throw new Error("FORBIDDEN");
     await connectDb();
-    const documents=await Document.find({organizationId:session.organizationId}).select("-url").sort({createdAt:-1}).lean();
+    const includeHistory=new URL(request.url).searchParams.get("history")==="1";
+    const query:any={organizationId:session.organizationId,deletedAt:null};
+    if(!includeHistory)query.supersededByDocumentId=null;
+    const documents=await Document.find(query).select("-url").sort({createdAt:-1}).lean();
     return NextResponse.json({documents});
   }catch(error){return apiError(error)}
 }
@@ -71,21 +76,64 @@ export async function POST(request:Request){
       if(!exists)throw new Error("DOCUMENT_OWNER_NOT_FOUND");
     }
 
-    const document=await Document.create({
-      organizationId:session.organizationId,
-      ...input,
-      mimeType:verified.mimeType,
-      ownerType,
-      ownerId
-    });
+    let document:any;
+    if(input.replacesDocumentId){
+      const mongoSession=await mongoose.startSession();
+      try{
+        await mongoSession.withTransaction(async()=>{
+          const previous=await Document.findOne({
+            _id:input.replacesDocumentId,
+            organizationId:session.organizationId,
+            ownerType,
+            ownerId,
+            kind:input.kind,
+            deletedAt:null,
+            supersededByDocumentId:null
+          }).session(mongoSession);
+          if(!previous)throw new Error("DOCUMENT_REPLACEMENT_NOT_FOUND");
+
+          const created=await Document.create([{
+            organizationId:session.organizationId,
+            ...input,
+            mimeType:verified.mimeType,
+            ownerType,
+            ownerId,
+            version:Number(previous.version||1)+1,
+            status:"pending",
+            reviewVersion:0,
+            replacesDocumentId:previous._id
+          }],{session:mongoSession});
+          document=created[0];
+
+          const result=await Document.updateOne(
+            {_id:previous._id,organizationId:session.organizationId,supersededByDocumentId:null,deletedAt:null},
+            {$set:{supersededByDocumentId:document._id}},
+            {session:mongoSession}
+          );
+          if(result.modifiedCount!==1)throw new Error("DOCUMENT_REPLACEMENT_CONFLICT");
+        });
+      }finally{
+        await mongoSession.endSession();
+      }
+    }else{
+      document=await Document.create({
+        organizationId:session.organizationId,
+        ...input,
+        mimeType:verified.mimeType,
+        ownerType,
+        ownerId,
+        version:1,
+        reviewVersion:0
+      });
+    }
 
     await writeAudit({
       organizationId:session.organizationId,
       actorUserId:session.sub,
-      action:"document.create",
+      action:input.replacesDocumentId?"document.replace":"document.create",
       entityType:"Document",
       entityId:String(document._id),
-      metadata:{kind:document.kind,ownerType:document.ownerType,ownerId:String(document.ownerId),bytes:document.bytes}
+      metadata:{kind:document.kind,ownerType:document.ownerType,ownerId:String(document.ownerId),bytes:document.bytes,version:document.version,replacesDocumentId:input.replacesDocumentId||null}
     });
     const result=document.toObject();
     delete result.url;
