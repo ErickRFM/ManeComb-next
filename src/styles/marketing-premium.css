@@ -132,6 +132,40 @@
   background:var(--mkt-red);
 }
 .marketing-nav-primary:hover{background:var(--mkt-red-hover)}
+.marketing-nav-menu-button{
+  display:none;
+  width:44px;height:44px;
+  place-items:center;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface-2);
+  color:var(--text);
+  cursor:pointer;
+}
+.marketing-mobile-nav{
+  position:absolute;
+  top:calc(100% + 8px);
+  left:16px;
+  right:16px;
+  padding:10px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:color-mix(in srgb,var(--surface) 94%,transparent);
+  backdrop-filter:blur(22px) saturate(135%);
+  box-shadow:0 24px 60px rgba(0,0,0,.28);
+}
+.marketing-mobile-nav[hidden]{display:none}
+.marketing-mobile-nav a{
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  padding:0 12px;
+  border-radius:11px;
+  color:var(--text-soft);
+  font-size:13px;
+  font-weight:780;
+}
+.marketing-mobile-nav a:hover,.marketing-mobile-nav a:focus-visible{background:var(--surface-2);color:var(--text)}
 
 /* Hero */
 .marketing-v3-hero{
@@ -863,6 +897,7 @@
   .marketing-nav-actions{gap:8px}
   .marketing-nav-login{display:none}
   .marketing-nav-primary{min-height:42px;padding:0 14px;font-size:12px}
+  .marketing-nav-menu-button{display:grid}
   .marketing-v3-section{padding:var(--marketing-section-md) 0}
   .marketing-v3-section-head{margin-bottom:34px}
   .marketing-v3-section-head h2,.marketing-product-story h2,.marketing-v3-faq h2{font-size:clamp(36px,8vw,46px)}
