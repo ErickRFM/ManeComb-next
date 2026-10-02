@@ -13,7 +13,7 @@ const checks=[
   ["Capacitor copies the Kotlin plugin",files.prepare.includes("ManeCombLocationPlugin.kt")],
   ["Capacitor copies the foreground service",files.prepare.includes("ManeCombLocationService.kt")],
   ["Capacitor registers the plugin",files.prepare.includes("registerPlugin(ManeCombLocationPlugin.class)")],
-  ["Foreground location service is declared",files.prepare.includes("foregroundServiceType=\\\"location\\\"")],
+  ["Foreground location service is declared",files.prepare.includes('foregroundServiceType="location"')],
   ["Plugin enforces HTTPS outside local development",files.plugin.includes("Native telemetry requires HTTPS outside local development")],
   ["Service is sticky across process recreation",files.service.includes("START_STICKY")],
   ["Service uses a connectivity callback",files.service.includes("registerDefaultNetworkCallback")],
