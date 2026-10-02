@@ -1,11 +1,23 @@
 "use client";
 import { Capacitor, registerPlugin } from "@capacitor/core";
 
+export type NativeLocationStatus = {
+  contractVersion:number;
+  state:string;
+  running:boolean;
+  pendingPackets:number;
+  networkAvailable:boolean;
+  lastCaptureAtMs:number;
+  lastUploadAtMs:number;
+  retryDelayMs:number;
+  lastError:string;
+};
+
 type NativeLocationPlugin = {
-  start(options:{serverUrl:string;vehicleId:string;journeyId:string;deviceToken:string}):Promise<{started:boolean}>;
-  stop():Promise<{stopped:boolean}>;
-  status():Promise<{running:boolean;pendingPackets:number}>;
-  appInfo():Promise<{versionName:string;versionCode:number}>;
+  start(options:{serverUrl:string;vehicleId:string;journeyId:string;deviceToken:string}):Promise<{started:boolean;contractVersion:number}>;
+  stop():Promise<{stopped:boolean;contractVersion:number}>;
+  status():Promise<NativeLocationStatus>;
+  appInfo():Promise<{versionName:string;versionCode:number;nativeTrackingContractVersion:number}>;
 };
 
 const NativeLocation = registerPlugin<NativeLocationPlugin>("ManeCombLocation");
