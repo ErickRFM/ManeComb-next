@@ -29,7 +29,7 @@ export async function POST(request:Request){
         to:user.email,
         subject:"Restablece tu contraseña de ManeComb",
         html:"<h1>Restablecer contraseña</h1><p>Este enlace vence en 30 minutos.</p><p><a href=\""+resetUrl+"\">Crear nueva contraseña</a></p><p>Si no solicitaste el cambio, ignora este correo.</p>"
-      },user.organizationId?String(user.organizationId):null);
+      },user.organizationId?String(user.organizationId):null,"password-reset:"+tokenHash);
     }
     return NextResponse.json({ok:true});
   }catch(error){return apiError(error)}

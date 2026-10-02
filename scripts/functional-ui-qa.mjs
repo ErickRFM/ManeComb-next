@@ -386,7 +386,9 @@ try{
     {path:"/activar",api:"activate",field:"Llave de activación",value:"QA-KEY",button:"Activar dispositivo"}
   ])await run(item.api+" network failure preserves retry and input",async()=>{
     const page=await pageFor("mobile_operations");await page.route("**/api/auth/"+item.api,route=>route.abort());
-    await page.goto(base+item.path);await page.getByLabel(item.field).fill(item.value);await page.getByRole("button",{name:item.button,exact:true}).click();
+    await page.goto(base+item.path);await page.getByLabel(item.field).fill(item.value);
+    if(item.api==="reset-password")await page.getByLabel("Confirmar contraseña").fill(item.value);
+    await page.getByRole("button",{name:item.button,exact:true}).click();
     await page.locator('p[role="alert"]').waitFor();assert.equal(await page.getByRole("button",{name:item.button,exact:true}).isEnabled(),true);
     assert.equal(await page.getByLabel(item.field).inputValue(),item.value);await page.context().close();
   });

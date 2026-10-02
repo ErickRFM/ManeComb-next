@@ -6,6 +6,7 @@ const UserSchema = new Schema({
   organizationId: { type: Schema.Types.ObjectId, ref: "Organization", index: true, default: null },
   email: { type: String, required: true, lowercase: true, trim: true, unique: true, index: true },
   passwordHash: { type: String, required: true },
+  credentialVersion: { type: Number, default: 0 },
   name: { type: String, required: true, trim: true },
   roles: [{ type: String, required: true }],
   channel: { type: String, enum: ["company_portal", "mobile_operations", "platform_admin"], required: true },
