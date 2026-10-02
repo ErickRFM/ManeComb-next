@@ -280,7 +280,18 @@ class ManeCombLocationService : Service(), LocationListener {
             connection.doOutput = true
             connection.setRequestProperty("Content-Type", "application/json")
             connection.setRequestProperty("Authorization", "Bearer " + deviceToken)
-            connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            val enriched = JSONObject(body).apply {
+                put("client", JSONObject().apply {
+                    put("platform", "android")
+                    put("contractVersion", CONTRACT_VERSION)
+                    put("appVersionName", appVersionName)
+                    put("appVersionCode", appVersionCode)
+                    put("queueDepth", store.countQueued())
+                    put("networkAvailable", networkAvailable)
+                    put("state", serviceState)
+                })
+            }
+            connection.outputStream.use { it.write(enriched.toString().toByteArray(Charsets.UTF_8)) }
             val code = connection.responseCode
             try { (if (code in 200..299) connection.inputStream else connection.errorStream)?.close() } catch (_: Exception) {}
             when {
