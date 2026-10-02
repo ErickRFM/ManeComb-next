@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     }
 
     const session = await createSessionForUser(user, { mfaVerified: true });
-    const response = NextResponse.json({ok:true,user:{id:String(user._id),name:user.name,channel:user.channel,roles:user.roles}});
+    const response = NextResponse.json({ok:true,user:{id:String(user._id),name:user.name,channel:user.channel,roles:user.roles,platformRoles:user.platformRoles||[]}});
     response.cookies.set(SESSION_COOKIE, session.token, {
       httpOnly:true,secure:process.env.NODE_ENV==="production",sameSite:"strict",path:"/",expires:session.expiresAt
     });
