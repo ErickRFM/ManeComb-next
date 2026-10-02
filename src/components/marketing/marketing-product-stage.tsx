@@ -5,7 +5,7 @@ export function MarketingProductStage(){
   return <div className="marketing-stage" aria-label="Vista del portal operativo ManeComb">
     <div className="marketing-stage-window">
       <aside className="marketing-stage-sidebar" aria-hidden="true">
-        <div className="marketing-stage-brand"><BrandLogo size="sm"/></div>
+        <div className="marketing-stage-brand"><BrandLogo size="sm" tone="light"/></div>
         <nav className="marketing-stage-nav">
           <span className="active"><Icon name="map" size={15}/>Mapa</span>
           <span><Icon name="vehicle" size={15}/>Unidades</span>
