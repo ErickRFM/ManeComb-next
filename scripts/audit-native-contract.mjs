@@ -13,7 +13,7 @@ const checks=[
   ["Capacitor copies the Kotlin plugin",files.prepare.includes("ManeCombLocationPlugin.kt")],
   ["Capacitor copies the foreground service",files.prepare.includes("ManeCombLocationService.kt")],
   ["Capacitor registers the plugin",files.prepare.includes("registerPlugin(ManeCombLocationPlugin.class)")],
-  ["Foreground location service is declared",files.prepare.includes("foregroundServiceType=\\\"location\\\"")],
+  ["Foreground location service is declared",files.prepare.includes('foregroundServiceType="location"')],
   ["Plugin enforces HTTPS outside local development",files.plugin.includes("Native telemetry requires HTTPS outside local development")],
   ["Service is sticky across process recreation",files.service.includes("START_STICKY")],
   ["Service uses a connectivity callback",files.service.includes("registerDefaultNetworkCallback")],
@@ -22,7 +22,7 @@ const checks=[
   ["Queue has a retention bound",files.store.includes("MAX_ROWS")&&files.store.includes("MAX_AGE_MS")],
   ["JS bridge requires a running journey id",files.bridge.includes("journeyId is required for native GPS")],
   ["Backend protects packet replay",files.telemetry.includes("PACKET_ID_CONFLICT")&&files.telemetry.includes("$setOnInsert")],
-  ["Native plugin emits tracking state events",files.plugin.includes("notifyListeners(\\"trackingState\\"")],
+  ["Native plugin emits tracking state events",files.plugin.includes('notifyListeners("trackingState"')],
   ["Native service exposes a tracking implementation version",files.service.includes("TRACKING_VERSION")],
   ["Manual stop disables sticky restart",files.plugin.includes("restartAllowed")&&files.plugin.includes("lastStopReason")],
   ["Native service reports network state",files.service.includes("NetworkCapabilities")&&files.service.includes("networkState")]
