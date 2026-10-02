@@ -9,6 +9,10 @@ const UserSchema = new Schema({
   credentialVersion: { type: Number, default: 0 },
   name: { type: String, required: true, trim: true },
   roles: [{ type: String, required: true }],
+  platformRoles: [{
+    type: String,
+    enum: ["platform_owner","platform_admin","platform_support","platform_finance","platform_viewer"]
+  }],
   channel: { type: String, enum: ["company_portal", "mobile_operations", "platform_admin"], required: true },
   active: { type: Boolean, default: true },
   mfaEnabled: { type: Boolean, default: false },
