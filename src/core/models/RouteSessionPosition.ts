@@ -17,6 +17,7 @@ const PositionSchema = new Schema({
   temporalEvidence: {type:Schema.Types.Mixed,default:null},
   classification: String,
   decisionReason: String,
+  applicationStatus: {type:String,enum:["PENDING","APPLIED","HISTORICAL_ONLY","SUPERSEDED"]},
   quality: {type:Schema.Types.Mixed,default:null}
 }, { timestamps: true });
 PositionSchema.index({ organizationId: 1, vehicleId: 1, recordedAt: -1 });

@@ -74,3 +74,18 @@ it("quarantines a jump and recovers only on another consistent fix",async()=>{
   const recovered=await ingest(sample(0,{latitude:20.01003,accuracy:5}));
   expect(recovered.latitude).toBe(20.01003);
 });
+it("applied replay preserves durable jump-recovery state and finalized history",async()=>{
+  const original=sample(6000,{accuracy:5});await ingest(original);
+  const jump=sample(3000,{latitude:20.01,accuracy:5});await ingest(jump);
+  await ingest(original);
+  expect((await Vehicle.findById(vehicle._id))?.telemetryQuality.candidate.latitude).toBe(20.01);
+  const recovery=sample(0,{latitude:20.01003,accuracy:5});
+  expect((await ingest(recovery)).latitude).toBe(20.01003);
+  const history=await RouteSessionPosition.findOne({packetId:recovery.packetId});
+  expect(history?.applicationStatus).toBe("APPLIED");expect(history?.quality.canonicalLatitude).toBe(20.01003);
+  expect((await RouteSessionPosition.findOne({packetId:jump.packetId}))?.quality.canonicalLatitude).toBeNull();
+});
+it("repairs a future canonical anchor from the previous ingestion policy",async()=>{
+  await Vehicle.updateOne({_id:vehicle._id},{$set:{lastLocation:{latitude:21,longitude:-99,speedMps:0,accuracy:5,recordedAt:new Date(Date.now()+600_000)}}});
+  expect((await ingest(sample())).latitude).toBe(20);
+});
