@@ -25,7 +25,10 @@
     "native:prepare": "node scripts/prepare-native-android.mjs",
     "deploy:check": "node scripts/predeploy-check.mjs --role=web",
     "deploy:check:worker": "node scripts/predeploy-check.mjs --role=worker",
-    "verify:email-provider": "node scripts/verify-email-provider.mjs"
+    "verify:email-provider": "node scripts/verify-email-provider.mjs",
+    "audit:native": "node scripts/audit-native-contract.mjs",
+    "verify:native-generated": "node scripts/verify-native-generated.mjs",
+    "report:native-build": "node scripts/report-native-build.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
