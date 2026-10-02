@@ -37,10 +37,11 @@ export function Navigation(){
       </div>
       <div className="marketing-nav-actions">
         {!onLogin?<Link className="marketing-nav-login" href="/login">Entrar</Link>:null}
-        <Link className="btn marketing-nav-primary" href="/registro">{onLogin?"Crear cuenta":"Comenzar"}</Link>
+        <Link className="btn marketing-nav-primary" data-critical-action href="/registro">{onLogin?"Crear cuenta":"Comenzar"}</Link>
         <button
           type="button"
           className="marketing-nav-menu-button"
+          data-critical-action
           aria-label={mobileOpen?"Cerrar menú":"Abrir menú"}
           aria-expanded={mobileOpen}
           aria-controls="marketing-mobile-menu"
