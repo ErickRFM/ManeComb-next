@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import { requireApiSession } from "@/src/lib/auth";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
+import { assertPlatformPermission } from "@/src/core/platform/permissions";
 import { AuditLog } from "@/src/core/models/AuditLog";
 
 export const runtime="nodejs";
 
 export async function GET(request:Request){
   try{
-    await requireApiSession(request,["platform_admin"]);
+    const session=await requireApiSession(request,["platform_admin"]);
+    assertPlatformPermission(session,"platform.audit.read");
     await connectDb();
     const url=new URL(request.url);
     const limit=Math.min(500,Math.max(1,Number(url.searchParams.get("limit")||100)));
