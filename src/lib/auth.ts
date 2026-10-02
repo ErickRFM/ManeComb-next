@@ -4,6 +4,7 @@ import { parse } from "cookie";
 import { connectDb } from "@/src/lib/db";
 import { getEnv } from "@/src/lib/env";
 import { SessionTokenSchema, type Channel, type SessionToken } from "@/src/core/contracts/auth";
+import { effectivePlatformRoles } from "@/src/core/platform/permissions";
 import { Session } from "@/src/core/models/Session";
 import { User } from "@/src/core/models/User";
 
@@ -20,6 +21,7 @@ export async function signSessionToken(payload: SessionToken) {
   return new SignJWT({
     organizationId: payload.organizationId,
     roles: payload.roles,
+    platformRoles: payload.platformRoles,
     channel: payload.channel,
     jti: payload.jti,
     mfaVerified: payload.mfaVerified
@@ -32,6 +34,7 @@ export async function verifySessionToken(token: string) {
     sub: payload.sub,
     organizationId: payload.organizationId ?? null,
     roles: payload.roles,
+    platformRoles: payload.platformRoles ?? [],
     channel: payload.channel,
     jti: payload.jti,
     mfaVerified: payload.mfaVerified ?? false
@@ -46,7 +49,7 @@ export function extractRequestToken(request: Request) {
 }
 
 export async function createSessionForUser(
-  user: { _id: unknown; organizationId?: unknown; roles: string[]; channel: string },
+  user: { _id: unknown; organizationId?: unknown; roles: string[]; platformRoles?: string[]; channel: string },
   options?: { mfaVerified?: boolean }
 ) {
   await connectDb();
@@ -56,10 +59,16 @@ export async function createSessionForUser(
   const channel = user.channel as Channel;
   const mfaVerified = channel !== "platform_admin" || options?.mfaVerified === true;
   const roles = Array.from(user.roles || [], (role) => String(role)) as SessionToken["roles"];
+  const platformRoles = effectivePlatformRoles({
+    channel,
+    roles,
+    platformRoles: user.platformRoles || []
+  });
   const token = await signSessionToken({
     sub: String(user._id),
     organizationId: user.organizationId ? String(user.organizationId) : null,
     roles,
+    platformRoles,
     channel,
     jti,
     mfaVerified
@@ -76,16 +85,23 @@ export async function assertStoredSessionActive(session: SessionToken) {
     expiresAt: { $gt: new Date() }
   });
   const user = await User.findOne({ _id: session.sub, active: true })
-    .select("_id organizationId roles channel active");
+    .select("_id organizationId roles platformRoles channel active");
   if (!stored || !user) throw new Error("UNAUTHORIZED");
 
   const organizationId = user.organizationId ? String(user.organizationId) : null;
   const currentRoles = [...(user.roles || [])].map(String).sort();
   const tokenRoles = [...session.roles].map(String).sort();
+  const currentPlatformRoles = effectivePlatformRoles({
+    channel: user.channel,
+    roles: currentRoles,
+    platformRoles: [...(user.platformRoles || [])].map(String)
+  }).sort();
+  const tokenPlatformRoles = effectivePlatformRoles(session).sort();
   if (
     organizationId !== session.organizationId ||
     user.channel !== session.channel ||
-    JSON.stringify(currentRoles) !== JSON.stringify(tokenRoles)
+    JSON.stringify(currentRoles) !== JSON.stringify(tokenRoles) ||
+    JSON.stringify(currentPlatformRoles) !== JSON.stringify(tokenPlatformRoles)
   ) {
     throw new Error("UNAUTHORIZED");
   }
