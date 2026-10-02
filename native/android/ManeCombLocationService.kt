@@ -11,6 +11,7 @@ import android.location.LocationListener
 import android.location.LocationManager
 import android.net.ConnectivityManager
 import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -27,7 +28,17 @@ import java.util.concurrent.atomic.AtomicBoolean
 class ManeCombLocationService : Service(), LocationListener {
     companion object {
         @Volatile var running: Boolean = false
+        @Volatile var serviceState: String = "STOPPED"
         @Volatile var pendingCount: Int = 0
+        @Volatile var networkState: String = "UNKNOWN"
+        @Volatile var lastCaptureAt: Long = 0L
+        @Volatile var lastUploadAt: Long = 0L
+        @Volatile var currentRetryDelayMs: Long = 0L
+
+        const val TRACKING_VERSION = "1.1"
+        const val PREFS_NAME = "manecomb-native-location"
+        const val ACTION_STATE = "com.manecomb.location.STATE"
+
         private const val TAG = "ManeCombLocation"
         private const val CHANNEL_ID = "manecomb_location"
         private const val NOTIFICATION_ID = 4101
@@ -41,6 +52,7 @@ class ManeCombLocationService : Service(), LocationListener {
     private val network: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
     private val flushing = AtomicBoolean(false)
     private val retryScheduled = AtomicBoolean(false)
+    private var networkCallbackRegistered = false
 
     private var serverUrl = ""
     private var vehicleId = ""
@@ -50,7 +62,19 @@ class ManeCombLocationService : Service(), LocationListener {
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
+            updateNetworkState()
+            emitState()
             flushQueue()
+        }
+
+        override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            updateNetworkState()
+            emitState()
+        }
+
+        override fun onLost(network: Network) {
+            updateNetworkState()
+            emitState()
         }
     }
 
@@ -60,16 +84,34 @@ class ManeCombLocationService : Service(), LocationListener {
         connectivityManager = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
         store = ManeCombLocationStore(this)
         createChannel()
+        pendingCount = store.countQueued()
+        updateNetworkState()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val prefs = getSharedPreferences("manecomb-native-location", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val explicitStart = intent?.hasExtra("serverUrl") == true
+        if (!explicitStart && !prefs.getBoolean("restartAllowed", false)) {
+            serviceState = "STOPPED"
+            running = false
+            emitState()
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        serviceState = "STARTING"
+        emitState()
+
         serverUrl = intent?.getStringExtra("serverUrl") ?: prefs.getString("serverUrl", "").orEmpty()
         vehicleId = intent?.getStringExtra("vehicleId") ?: prefs.getString("vehicleId", "").orEmpty()
         journeyId = intent?.getStringExtra("journeyId") ?: prefs.getString("journeyId", "").orEmpty()
         deviceToken = intent?.getStringExtra("deviceToken") ?: prefs.getString("deviceToken", "").orEmpty()
 
         if (serverUrl.isBlank() || vehicleId.isBlank() || journeyId.isBlank() || deviceToken.isBlank()) {
+            prefs.edit().putBoolean("restartAllowed", false).putString("lastStopReason", "MISSING_STATE").apply()
+            serviceState = "ERROR"
+            running = false
+            emitState()
             stopSelf()
             return START_NOT_STICKY
         }
@@ -87,15 +129,22 @@ class ManeCombLocationService : Service(), LocationListener {
             .putString("journeyId", journeyId)
             .putString("deviceToken", deviceToken)
             .putString("owner", currentOwner)
+            .putBoolean("restartAllowed", true)
+            .putString("lastStopReason", "")
             .apply()
 
-        startForeground(NOTIFICATION_ID, notification("GPS activo · " + store.countQueued() + " pendientes"))
-        running = true
         pendingCount = store.countQueued()
+        startForeground(NOTIFICATION_ID, notification("GPS activo · " + pendingCount + " pendientes"))
+        running = true
 
-        try {
-            connectivityManager.registerDefaultNetworkCallback(callback)
-        } catch (_: Exception) {}
+        if (!networkCallbackRegistered) {
+            try {
+                connectivityManager.registerDefaultNetworkCallback(callback)
+                networkCallbackRegistered = true
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not register network callback", error)
+            }
+        }
 
         try {
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 3000L, 3f, this)
@@ -104,10 +153,17 @@ class ManeCombLocationService : Service(), LocationListener {
             }
         } catch (error: SecurityException) {
             Log.w(TAG, "Location permission missing", error)
+            prefs.edit().putBoolean("restartAllowed", false).putString("lastStopReason", "PERMISSION").apply()
+            serviceState = "ERROR"
+            running = false
+            emitState()
             stopSelf()
             return START_NOT_STICKY
         }
 
+        serviceState = "TRACKING"
+        currentRetryDelayMs = 0L
+        emitState()
         flushQueue()
         return START_STICKY
     }
@@ -115,6 +171,7 @@ class ManeCombLocationService : Service(), LocationListener {
     override fun onLocationChanged(location: Location) {
         val packetId = UUID.randomUUID().toString()
         val capturedAt = if (location.time > 0) location.time else System.currentTimeMillis()
+        lastCaptureAt = capturedAt
         val payload = JSONObject().apply {
             put("packetId", packetId)
             put("vehicleId", vehicleId)
@@ -129,6 +186,7 @@ class ManeCombLocationService : Service(), LocationListener {
         store.enqueue(packetId, payload.toString(), capturedAt)
         pendingCount = store.countQueued()
         refreshNotification()
+        emitState()
         flushQueue()
     }
 
@@ -143,8 +201,12 @@ class ManeCombLocationService : Service(), LocationListener {
                             store.remove(item.id)
                             pendingCount = store.countQueued()
                             retryDelayMs = RETRY_BASE_MS
+                            currentRetryDelayMs = 0L
                             retryScheduled.set(false)
+                            lastUploadAt = System.currentTimeMillis()
+                            if (serviceState != "AUTH_REQUIRED") serviceState = "TRACKING"
                             refreshNotification()
+                            emitState()
                         }
                         UploadResult.AUTH_FAILURE -> {
                             stopForAuthFailure()
@@ -191,7 +253,10 @@ class ManeCombLocationService : Service(), LocationListener {
     private fun scheduleRetry() {
         if (!retryScheduled.compareAndSet(false, true)) return
         val delay = retryDelayMs
+        currentRetryDelayMs = delay
+        serviceState = "RETRYING"
         retryDelayMs = (retryDelayMs * 2).coerceAtMost(RETRY_MAX_MS)
+        emitState()
         network.schedule({
             retryScheduled.set(false)
             flushQueue()
@@ -200,9 +265,42 @@ class ManeCombLocationService : Service(), LocationListener {
 
     private fun stopForAuthFailure() {
         Log.w(TAG, "Native GPS device session is no longer authorized; queue retained.")
+        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("restartAllowed", false)
+            .putString("lastStopReason", "AUTH_FAILURE")
+            .apply()
         running = false
+        serviceState = "AUTH_REQUIRED"
+        currentRetryDelayMs = 0L
         refreshNotification("Sesión GPS vencida · abre ManeComb")
         try { locationManager.removeUpdates(this) } catch (_: Exception) {}
+        emitState()
+    }
+
+    private fun updateNetworkState() {
+        val active = connectivityManager.activeNetwork
+        val capabilities = active?.let { connectivityManager.getNetworkCapabilities(it) }
+        networkState = when {
+            active == null || capabilities == null -> "DISCONNECTED"
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) -> "CONNECTED"
+            else -> "LIMITED"
+        }
+    }
+
+    private fun emitState() {
+        val intent = Intent(ACTION_STATE).apply {
+            setPackage(packageName)
+            putExtra("running", running)
+            putExtra("serviceState", serviceState)
+            putExtra("pendingPackets", pendingCount)
+            putExtra("networkState", networkState)
+            putExtra("lastCaptureAt", lastCaptureAt)
+            putExtra("lastUploadAt", lastUploadAt)
+            putExtra("retryDelayMs", currentRetryDelayMs)
+            putExtra("trackingVersion", TRACKING_VERSION)
+        }
+        sendBroadcast(intent)
     }
 
     private fun refreshNotification(text: String = "GPS activo · " + store.countQueued() + " pendientes") {
@@ -227,9 +325,15 @@ class ManeCombLocationService : Service(), LocationListener {
 
     override fun onDestroy() {
         running = false
-        pendingCount = store.countQueued()
+        serviceState = "STOPPED"
+        currentRetryDelayMs = 0L
+        pendingCount = try { store.countQueued() } catch (_: Exception) { pendingCount }
         try { locationManager.removeUpdates(this) } catch (_: Exception) {}
-        try { connectivityManager.unregisterNetworkCallback(callback) } catch (_: Exception) {}
+        if (networkCallbackRegistered) {
+            try { connectivityManager.unregisterNetworkCallback(callback) } catch (_: Exception) {}
+            networkCallbackRegistered = false
+        }
+        emitState()
         network.shutdown()
         store.close()
         super.onDestroy()
