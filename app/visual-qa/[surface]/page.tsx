@@ -13,8 +13,10 @@ import { MarketingFinalCta } from "@/src/components/marketing/marketing-final-ct
 import { MarketingFooter } from "@/src/components/marketing/marketing-footer";
 import { PlanCards } from "@/src/components/plan-cards";
 import { Reveal } from "@/src/components/ui/reveal";
+import { OperationAuthLayout } from "@/src/components/operation-auth-layout";
+import { AuthForm } from "@/src/components/auth-form";
 
-const allowed=new Set(["portal","admin","driver","forms","marketing"]);
+const allowed=new Set(["portal","admin","driver","forms","marketing","operation-auth"]);
 
 export default async function VisualQaPage({params}:{params:Promise<{surface:string}>}){
   if(process.env.VISUAL_QA!=="1")notFound();
@@ -25,6 +27,7 @@ export default async function VisualQaPage({params}:{params:Promise<{surface:str
   if(surface==="admin")return <AdminShell><VisualAdmin/></AdminShell>;
   if(surface==="driver")return <DriverShell><VisualDriver/></DriverShell>;
   if(surface==="marketing")return <VisualMarketing/>;
+  if(surface==="operation-auth")return <VisualOperationAuth/>;
   return <><VisualForms/><VisualQaModal/></>;
 }
 
@@ -84,4 +87,11 @@ function VisualMarketing(){
     </main>
     <MarketingFooter/>
   </div>;
+}
+
+
+function VisualOperationAuth(){
+  return <OperationAuthLayout active="login" showRecovery>
+    <AuthForm mode="login" operation/>
+  </OperationAuthLayout>;
 }
