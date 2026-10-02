@@ -41,7 +41,9 @@
 .message-image{display:block;max-width:min(320px,60vw);max-height:300px;object-fit:cover;border-radius:10px}
 .chat-composer{min-height:66px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:9px 11px;border-top:1px solid var(--border);background:var(--surface)}
 .composer-action{width:40px;height:40px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--muted);cursor:pointer;font-size:18px}
-.chat-composer>input{height:42px;border:1px solid var(--border);border-radius:13px;background:var(--background-soft);color:var(--text);padding:0 13px;outline:none}
+.chat-composer>input{height:42px;border:1px solid var(--border);border-radius:13px;background:var(--background-soft);color:var(--text);padding:0 13px;outline:none;transition:border-color var(--motion-fast) ease,box-shadow var(--motion-fast) ease,background var(--motion-fast) ease}
+.chat-composer>input:hover{border-color:var(--border-strong)}
+.chat-composer>input:focus,.chat-composer>input:focus-visible{border-color:var(--brand);box-shadow:var(--focus-ring);background:var(--surface)}
 .chat-composer>input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
 .composer-send{height:40px;border:0;border-radius:12px;background:var(--brand);color:white;padding:0 14px;font-size:11px;font-weight:900;cursor:pointer}
 .composer-send:disabled{opacity:.45;cursor:not-allowed}
