@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { requireApiSession } from "@/src/lib/auth";
 import { connectDb } from "@/src/lib/db";
 import { apiError } from "@/src/lib/http";
+import { assertPlatformPermission } from "@/src/core/platform/permissions";
 import { Organization } from "@/src/core/models/Organization";
 import { Subscription } from "@/src/core/models/Subscription";
 import { User } from "@/src/core/models/User";
@@ -19,31 +21,52 @@ export const runtime="nodejs";
 export async function PATCH(request:Request,{params}:{params:Promise<{organizationId:string}>}){
   try{
     const session=await requireApiSession(request,["platform_admin"]);
+    assertPlatformPermission(session,"platform.organizations.write");
     const {organizationId}=await params;
     const patch=Patch.parse(await request.json());
     const plan=patch.planCode?getCommercialPlan(patch.planCode):null;
     if(patch.planCode&&!plan)return NextResponse.json({error:"Unknown plan"},{status:422});
 
     await connectDb();
-    const before=await Organization.findById(organizationId).select("status");
-    if(!before)return NextResponse.json({error:"Organization not found"},{status:404});
-    const organization=await Organization.findByIdAndUpdate(organizationId,{$set:patch},{new:true,runValidators:true});
-    if(plan){
-      await Subscription.findOneAndUpdate(
-        {organizationId},
-        {$set:{planCode:plan.code,vehicleLimit:plan.units}},
-        {upsert:false}
-      );
-    }
-    await writeAudit({actorUserId:session.sub,organizationId,action:"organization.update",entityType:"Organization",entityId:organizationId,metadata:patch});
+    const result=await mongoose.connection.transaction(async transaction=>{
+      const before=await Organization.findById(organizationId).select("status planCode").session(transaction);
+      if(!before)throw new Error("ORGANIZATION_NOT_FOUND");
 
-    if(patch.status&&patch.status!==before.status&&(patch.status==="suspended"||patch.status==="active")){
+      const organization=await Organization.findByIdAndUpdate(
+        organizationId,
+        {$set:patch},
+        {new:true,runValidators:true,session:transaction}
+      );
+      if(!organization)throw new Error("ORGANIZATION_NOT_FOUND");
+
+      if(plan){
+        const subscription=await Subscription.findOneAndUpdate(
+          {organizationId},
+          {$set:{planCode:plan.code,vehicleLimit:plan.units}},
+          {new:true,runValidators:true,session:transaction}
+        );
+        if(!subscription)throw new Error("SUBSCRIPTION_NOT_FOUND");
+      }
+
+      await writeAudit({
+        actorUserId:session.sub,
+        organizationId,
+        action:"organization.update",
+        entityType:"Organization",
+        entityId:organizationId,
+        metadata:patch
+      },transaction);
+
+      return {organization,beforeStatus:String(before.status)};
+    });
+
+    if(patch.status&&patch.status!==result.beforeStatus&&(patch.status==="suspended"||patch.status==="active")){
       const owners=await User.find({organizationId,channel:"company_portal",roles:"owner"}).select("_id email").lean();
       const suspended=patch.status==="suspended";
       await Promise.all(owners.map(owner=>enqueueAccountNotice({
         to:owner.email,
         organizationId,
-        idempotencyKey:`organization-${suspended?"suspended":"reactivated"}:${organizationId}:${organization.updatedAt.toISOString()}:${String(owner._id)}`,
+        idempotencyKey:`organization-${suspended?"suspended":"reactivated"}:${organizationId}:${result.organization.updatedAt.toISOString()}:${String(owner._id)}`,
         subject:suspended?"Tu empresa ManeComb fue suspendida":"Tu empresa ManeComb fue reactivada",
         heading:suspended?"Cuenta suspendida":"Cuenta reactivada",
         body:suspended
@@ -52,6 +75,14 @@ export async function PATCH(request:Request,{params}:{params:Promise<{organizati
       }).catch(error=>console.error("[email:organization-status]",error))));
     }
 
-    return NextResponse.json({organization});
-  }catch(error){return apiError(error)}
+    return NextResponse.json({organization:result.organization});
+  }catch(error){
+    if(error instanceof Error&&error.message==="ORGANIZATION_NOT_FOUND"){
+      return NextResponse.json({error:"Organization not found"},{status:404});
+    }
+    if(error instanceof Error&&error.message==="SUBSCRIPTION_NOT_FOUND"){
+      return NextResponse.json({error:"Subscription not found; plan change was rolled back"},{status:409});
+    }
+    return apiError(error);
+  }
 }
