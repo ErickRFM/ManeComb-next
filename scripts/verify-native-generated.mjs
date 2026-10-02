@@ -6,6 +6,9 @@ const required=[
   "android/app/src/main/java/com/manecomb/location/ManeCombLocationPlugin.kt",
   "android/app/src/main/java/com/manecomb/location/ManeCombLocationService.kt",
   "android/app/src/main/java/com/manecomb/location/ManeCombLocationStore.kt",
+  "android/app/src/main/java/com/manecomb/location/ManeCombSecureStore.kt",
+  "android/app/src/main/java/com/manecomb/location/ManeCombLocationCredentials.kt",
+  "android/app/src/main/java/com/manecomb/location/ManeCombLocationCadence.kt",
   "android/app/build.gradle"
 ];
 
@@ -18,6 +21,8 @@ if(missing.length){
 const manifest=readFileSync("android/app/src/main/AndroidManifest.xml","utf8");
 const activity=readFileSync("android/app/src/main/java/com/manecomb/app/MainActivity.java","utf8");
 const gradle=readFileSync("android/app/build.gradle","utf8");
+const secure=readFileSync("android/app/src/main/java/com/manecomb/location/ManeCombSecureStore.kt","utf8");
+const credentials=readFileSync("android/app/src/main/java/com/manecomb/location/ManeCombLocationCredentials.kt","utf8");
 
 const checks=[
   ["fine location permission",manifest.includes("android.permission.ACCESS_FINE_LOCATION")],
@@ -28,7 +33,9 @@ const checks=[
   ["location foregroundServiceType",manifest.includes('android:foregroundServiceType="location"')],
   ["plugin registered in MainActivity",activity.includes("registerPlugin(ManeCombLocationPlugin.class)")],
   ["Kotlin Android plugin enabled",gradle.includes("org.jetbrains.kotlin.android")||gradle.includes("kotlin-android")],
-  ["JVM 21 target configured",gradle.includes("jvmTarget = '21'")||gradle.includes('jvmTarget = "21"')]
+  ["JVM 21 target configured",gradle.includes("jvmTarget = '21'")||gradle.includes('jvmTarget = "21"')],
+  ["Android Keystore native token protection",secure.includes("AndroidKeyStore")&&credentials.includes("deviceTokenEncrypted")],
+  ["Legacy plaintext device token migration",credentials.includes("LEGACY_TOKEN")&&credentials.includes("remove(LEGACY_TOKEN)")]
 ];
 
 let failures=0;
