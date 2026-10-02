@@ -78,3 +78,23 @@
   --focus-outline:2px solid color-mix(in srgb,var(--brand) 78%,white);
   --focus-outline-offset:2px;
 }
+
+:root{
+  --marketing-container:1360px;
+  --marketing-brand:#d80000;
+  --marketing-brand-hover:#b90000;
+  --marketing-brand-soft:rgba(216,0,0,.12);
+  --marketing-display-max:92px;
+  --marketing-h2-max:58px;
+  --marketing-section-xl:140px;
+  --marketing-section-lg:120px;
+  --marketing-section-md:96px;
+  --marketing-section-sm:72px;
+  --marketing-radius-stage:30px;
+  --marketing-radius-card:20px;
+  --motion-micro:160ms;
+  --motion-ui:240ms;
+  --motion-enter:520ms;
+  --motion-hero:720ms;
+  --ease-spring:cubic-bezier(.16,1,.3,1);
+}
