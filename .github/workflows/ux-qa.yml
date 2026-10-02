@@ -100,7 +100,12 @@ jobs:
           exit 1
       - name: Prepare native Android wrapper
         run: npm run native:prepare
-      - name: Verify generated native wrapper\n        run: npm run verify:native-generated\n      - name: Build real debug APK\n        run: cd android && ./gradlew assembleDebug --no-daemon\n      - name: Record native build metadata\n        run: npm run report:native-build
+      - name: Verify generated native wrapper
+        run: npm run verify:native-generated
+      - name: Build real debug APK
+        run: cd android && ./gradlew assembleDebug --no-daemon
+      - name: Record native build metadata
+        run: npm run report:native-build
       - name: Enable KVM for Linux emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
