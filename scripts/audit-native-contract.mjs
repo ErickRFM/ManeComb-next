@@ -5,6 +5,9 @@ const files={
   plugin:readFileSync("native/android/ManeCombLocationPlugin.kt","utf8"),
   service:readFileSync("native/android/ManeCombLocationService.kt","utf8"),
   store:readFileSync("native/android/ManeCombLocationStore.kt","utf8"),
+  credentials:readFileSync("native/android/ManeCombLocationCredentials.kt","utf8"),
+  secureStore:readFileSync("native/android/ManeCombSecureStore.kt","utf8"),
+  cadence:readFileSync("native/android/ManeCombLocationCadence.kt","utf8"),
   bridge:readFileSync("src/lib/native-location.ts","utf8"),
   telemetry:readFileSync("src/core/services/telemetry.ts","utf8")
 };
@@ -20,6 +23,10 @@ const checks=[
   ["Service retains packets on retry",files.service.includes("UploadResult.RETRY")],
   ["SQLite packet IDs are unique",files.store.includes("packet_id TEXT NOT NULL UNIQUE")],
   ["Queue has a retention bound",files.store.includes("MAX_ROWS")&&files.store.includes("MAX_AGE_MS")],
+  ["Device token is encrypted with Android Keystore",files.credentials.includes("ManeCombSecureStore.encrypt")&&files.secureStore.includes("AndroidKeyStore")],
+  ["Legacy plaintext device token is migrated",files.credentials.includes("LEGACY_TOKEN")&&files.credentials.includes("writeToken(prefs, legacy)")],
+  ["Native cadence rejects duplicate/poor fixes",files.cadence.includes("MIN_PACKET_INTERVAL_MS")&&files.cadence.includes("MAX_ACCEPTED_ACCURACY_METERS")],
+  ["Native status contract is versioned",files.plugin.includes("CONTRACT_VERSION")&&files.service.includes("CONTRACT_VERSION = 2")],
   ["JS bridge requires a running journey id",files.bridge.includes("journeyId is required for native GPS")],
   ["Backend protects packet replay",files.telemetry.includes("PACKET_ID_CONFLICT")&&files.telemetry.includes("$setOnInsert")]
 ];
