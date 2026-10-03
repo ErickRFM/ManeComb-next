@@ -58,7 +58,7 @@ export function MfaForm() {
         <code style={{ overflowWrap: "anywhere" }}>{setup.uri}</code>
       </details>
     </div> : null}
-    <form className="card grid" onSubmit={submit}>
+    <form className="card grid" aria-busy={busy} onSubmit={submit}>
       <label className="grid">Código de verificación<input className="input" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} placeholder="000000" required /></label>
       <button className="btn" disabled={busy}>{busy ? "Verificando..." : "Verificar"}</button>
       <p className={error?"danger-text":"muted"} role={error?"alert":"status"} style={{ margin: 0 }}>{state}</p>

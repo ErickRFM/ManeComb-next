@@ -22,7 +22,7 @@ export function PasswordRecovery(){
     }
   }
 
-  return <form className="card grid" style={{maxWidth:520}} onSubmit={submit}>
+  return <form className="card grid" aria-busy={busy} style={{maxWidth:520}} onSubmit={submit}>
     <label className="grid">Correo electrónico<input className="input" name="email" type="email" autoComplete="email" placeholder="Correo" required/></label>
     <button className="btn" disabled={busy}>{busy?"Procesando...":"Enviar enlace"}</button>
     {state?<p className={error?"danger-text":"muted"} role={error?"alert":"status"} style={{margin:0}}>{state}</p>:null}

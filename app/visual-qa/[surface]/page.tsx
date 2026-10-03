@@ -16,14 +16,24 @@ import { Reveal } from "@/src/components/ui/reveal";
 import { OperationAuthLayout } from "@/src/components/operation-auth-layout";
 import { AuthForm } from "@/src/components/auth-form";
 import { MobileFoundationPreview } from "../mobile-foundation-preview";
+import { ActivationForm } from "@/src/components/activation-form";
+import { PasswordRecovery } from "@/src/components/password-recovery";
+import { PasswordReset } from "@/src/components/password-reset";
+import { MfaForm } from "@/src/components/mfa-form";
+import { OperationSessionLoading } from "@/src/components/operation-session-loading";
 
-const allowed=new Set(["portal","admin","driver","forms","marketing","operation-auth","mobile-foundation"]);
+const allowed=new Set(["portal","admin","driver","forms","marketing","operation-auth","mobile-foundation","operation-activation","operation-recovery","operation-reset","operation-mfa","operation-bootstrap"]);
 
 export default async function VisualQaPage({params}:{params:Promise<{surface:string}>}){
   if(process.env.VISUAL_QA!=="1")notFound();
   const {surface}=await params;
   if(!allowed.has(surface))notFound();
   if(surface==="mobile-foundation")return <MobileFoundationPreview/>;
+  if(surface==="operation-bootstrap")return <OperationSessionLoading/>;
+  if(surface==="operation-activation")return <OperationAuthLayout active="activate"><div className="operation-activation-copy"><h1>Activa tu cuenta</h1><p>Usa la llave que te compartió el responsable de tu línea.</p></div><ActivationForm/></OperationAuthLayout>;
+  if(surface==="operation-recovery")return <OperationAuthLayout active="recovery"><div className="operation-activation-copy"><h1>Recuperar acceso</h1><p>Solicita un enlace para restablecer tu contraseña.</p></div><PasswordRecovery/></OperationAuthLayout>;
+  if(surface==="operation-reset")return <OperationAuthLayout active="recovery"><div className="operation-activation-copy"><h1>Nueva contraseña</h1><p>Al cambiar la contraseña se revocan todas las sesiones activas.</p></div><PasswordReset token="visual-qa-only"/></OperationAuthLayout>;
+  if(surface==="operation-mfa")return <OperationAuthLayout active="recovery"><div className="operation-activation-copy"><h1>Verificación de administrador</h1><p>Confirma el código de tu aplicación de autenticación.</p></div><MfaForm/></OperationAuthLayout>;
 
   if(surface==="portal")return <PortalShell initialProfile={{name:"QA Portal",roles:["owner"]}}><VisualPortal/></PortalShell>;
   if(surface==="admin")return <AdminShell><VisualAdmin/></AdminShell>;

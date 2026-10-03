@@ -16,7 +16,7 @@ describe("operation mobile auth parity",()=>{
     expect(layout).toContain("manecomb-mobile-faster.png");
     expect(layout).toContain("Siguiendo lo importante.");
     expect(layout).toContain("Iniciar sesión");
-    expect(layout).toContain("Registrarse");
+    expect(layout).toContain("Activar cuenta");
     expect(layout).toContain("/activar?surface=operation");
   });
 
