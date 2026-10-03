@@ -45,14 +45,18 @@ export function ContextSheet({id,title,level,summary,children,onLevelChange,rese
     const fixed=Array.from(node.children).filter(child=>!child.classList.contains("mobile-v3-sheet-body")&&!child.classList.contains("mobile-v3-sheet-measures"));
     const measure=()=>{
       const style=getComputedStyle(node);
+      const flow=fixed.filter(child=>{const childStyle=getComputedStyle(child);return childStyle.display!=="none"&&childStyle.position!=="absolute"&&childStyle.position!=="fixed"});
       const padding=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom)+parseFloat(style.borderTopWidth)+parseFloat(style.borderBottomWidth);
-      const compact=fixed.reduce((height,child)=>height+child.getBoundingClientRect().height,0)+padding+parseFloat(style.rowGap)*(fixed.length-1);
-      node.style.setProperty("--mobile-v3-sheet-compact",`${Math.ceil(Math.max(128,compact))}px`);
+      const compact=Math.ceil(Math.max(128,flow.reduce((height,child)=>height+child.getBoundingClientRect().height,0)+padding+parseFloat(style.rowGap)*Math.max(0,flow.length-1)));
+      if(parseFloat(node.style.getPropertyValue("--mobile-v3-sheet-compact"))!==compact){
+        node.style.setProperty("--mobile-v3-sheet-compact",`${compact}px`);
+        if(drag.current)cancel();
+      }
     };
     // Observe only presentation geometry. Level and operational state remain owned by the consumer.
     const observer=new ResizeObserver(measure);fixed.forEach(child=>observer.observe(child));measure();
     return ()=>observer.disconnect();
-  },[]);
+  },[cancel]);
   return <section ref={sheet} id={id} className="mobile-v3-context-sheet" data-level={level} data-dragging={dragHeight===null?undefined:true} style={dragHeight===null?undefined:{height:dragHeight,transitionProperty:"none"}} role="region" aria-label={title} onKeyDown={event=>{if(event.key!=="Escape"||event.defaultPrevented)return;const target=event.target;if(!(target instanceof HTMLElement)||target.closest('input,textarea,select,[contenteditable="true"],[role="dialog"],dialog'))return;if(target.closest('.mobile-v3-sheet-handle')||target===body.current){event.preventDefault();cancel();if(level!=="compact")onLevelChange("compact")}}}>
     <h2 className="mobile-v3-section-title">{title}</h2>
     <SheetHandle level={level} controlsId={id} onLevelChange={onLevelChange} gripRef={grip} gripProps={{onPointerDown:down,onPointerMove:move,onPointerUp:up,onPointerCancel:cancel,onLostPointerCapture:cancel,onKeyDown:key}}/>

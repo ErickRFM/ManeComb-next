@@ -65,6 +65,39 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  await run("Mobile V3 context sheet current geometry and levels",async()=>{
+    const observations=[],issues=[];
+    for(const theme of ['dark','light'])for(const motion of ['no-preference','reduce']){
+      const page=await pageFor('mobile_operations',{reducedMotion:motion});await page.addInitScript(theme=>localStorage.setItem('manecomb.theme',theme),theme);
+      await page.route('**/api/operation/navigation',r=>r.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:null},route:{id:unit.routeId,name:unit.routeName,revision:1,geometry:[],stops:[]},snapshot:unit}}));
+      await page.goto(base+'/operacion');const sheet=page.locator('#operation-context'),grip=sheet.getByRole('slider',{name:'Ajustar nivel del contexto'});await sheet.locator('.mobile-v3-next-stop strong').getByText(unit.nextStop.name,{exact:true}).waitFor();
+      for(const [width,height] of [[360,800],[390,844],[412,915],[430,932],[768,900],[1024,960],[1366,960],[1440,960],[1920,960],[844,390],[915,412]]){
+        await page.setViewportSize({width,height});const actual=[];
+        for(const [key,level] of [['Home','compact'],['ArrowUp','medium'],['ArrowUp','expanded']]){
+          await grip.press(key);await sheet.evaluate(async n=>{n.getBoundingClientRect();await Promise.all(n.getAnimations().map(animation=>animation.finished.catch(()=>{})));await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))});
+          const geometry=await sheet.evaluate((n,level)=>({actual:n.getBoundingClientRect().height,target:n.querySelector(`[data-sheet-measure="${level}"]`).getBoundingClientRect().height}),level);
+          observations.push({theme,motion,width,height,level,...geometry});actual.push(geometry.actual);if(Math.abs(geometry.actual-geometry.target)>1)issues.push({theme,motion,width,height,level,...geometry});
+          if(width===390||width===844){await mkdir('artifacts/functional-ui-qa/sheet-screens',{recursive:true});await page.screenshot({path:`artifacts/functional-ui-qa/sheet-screens/${theme}-${motion}-${width}x${height}-${level}.png`})}
+        }
+        if(!(actual[0]<actual[1]&&actual[1]<actual[2]))issues.push({theme,motion,width,height,levels:actual,problem:'Three settled levels must be distinct'});
+      }
+      await page.context().close();
+    }
+    await mkdir('artifacts/functional-ui-qa',{recursive:true});await writeFile('artifacts/functional-ui-qa/sheet-geometry.json',JSON.stringify({observations,issues},null,2));assert.deepEqual(issues,[],'Actual operational stages must match current CSS targets');
+  });
+  await run("Mobile V3 context sheet cancels changed copy during capture",async()=>{
+    const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});await page.goto(base+'/visual-qa/mobile-foundation');const sheet=page.locator('#qa-context'),grip=sheet.getByRole('slider',{name:'Ajustar nivel del contexto'});
+    await grip.evaluate(n=>n.scrollIntoView({block:'center'}));const point=await grip.boundingBox(),initial=await sheet.locator('[data-sheet-measure="compact"]').evaluate(n=>n.getBoundingClientRect().height),callbacks=await page.getByLabel('Callbacks de hoja QA').textContent();
+    await page.mouse.move(point.x+point.width/2,point.y+point.height/2);await page.mouse.down();await page.mouse.move(point.x+point.width/2,point.y+point.height/2-50);assert.equal(await sheet.getAttribute('data-dragging'),'true');
+    await page.getByRole('button',{name:'Probar resumen largo QA'}).evaluate(n=>n.click());await page.waitForFunction(initial=>document.querySelector('#qa-context [data-sheet-measure="compact"]').getBoundingClientRect().height>initial,initial);
+    await sheet.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));assert.equal(await sheet.getAttribute('data-dragging'),null,'Updated summary geometry cancels obsolete snap targets');
+    await page.mouse.up();assert.equal(await sheet.getAttribute('data-level'),'compact');assert.equal(await page.getByLabel('Callbacks de hoja QA').textContent(),callbacks);await page.context().close();
+  });
+  await run("Mobile V3 context sheet snaps using rendered compact boundary",async()=>{
+    const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});await page.route('**/api/operation/navigation',r=>r.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:null},route:{id:unit.routeId,name:unit.routeName,revision:1,geometry:[],stops:[]},snapshot:unit}}));await page.goto(base+'/operacion');
+    const sheet=page.locator('#operation-context'),grip=sheet.getByRole('slider',{name:'Ajustar nivel del contexto'});await sheet.locator('.mobile-v3-next-stop strong').getByText(unit.nextStop.name,{exact:true}).waitFor();await grip.press('ArrowUp');const medium=await sheet.evaluate(n=>n.getBoundingClientRect().height);await grip.press('Home');const compact=await sheet.evaluate(n=>n.getBoundingClientRect().height),point=await grip.boundingBox(),height=(compact+medium)/2+2;
+    await page.mouse.move(point.x+point.width/2,point.y+point.height/2);await page.mouse.down();await page.mouse.move(point.x+point.width/2,point.y+point.height/2-(height-compact));await page.mouse.up();assert.equal(await sheet.getAttribute('data-level'),'medium',JSON.stringify({compact,medium,height,problem:'Just above actual midpoint is nearer to rendered medium'}));await page.context().close();
+  });
   await run("Mobile V3 context sheet handle gesture and keyboard",async()=>{
     const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});await page.goto(base+'/visual-qa/mobile-foundation');
     const sheet=page.getByRole('region',{name:'Contexto de prueba QA',exact:true});await sheet.scrollIntoViewIfNeeded();
@@ -107,6 +140,7 @@ try{
   });
   await run("Mobile V3 context sheet preserves owners drafts and tracking",async()=>{
     const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});let journeyReads=0,actions=0,connections=0;
+    await page.addInitScript(()=>{window.__sheetActiveSockets=new Set();const BrowserSocket=window.WebSocket;window.WebSocket=class extends BrowserSocket{constructor(...args){super(...args);if(String(args[0]).includes('/socket.io/')){window.__sheetActiveSockets.add(this);this.addEventListener('close',()=>window.__sheetActiveSockets.delete(this))}}}});
     await page.addInitScript(()=>{window.__gpsStarts=0;window.__gpsStops=0;window.__journeyListeners=new Set();const add=window.addEventListener,remove=window.removeEventListener;window.addEventListener=function(type,listener,options){if(type==='manecomb:journey-state')window.__journeyListeners.add(listener);return add.call(this,type,listener,options)};window.removeEventListener=function(type,listener,options){if(type==='manecomb:journey-state')window.__journeyListeners.delete(listener);return remove.call(this,type,listener,options)};Object.defineProperty(navigator,'geolocation',{configurable:true,value:{watchPosition:()=>{window.__gpsStarts++;return 77},clearWatch:()=>{window.__gpsStops++}}})});
     await page.routeWebSocket('**/socket.io/**',ws=>{connections++;ws.send('0'+JSON.stringify({sid:'sheet-qa-'+connections,upgrades:[],pingInterval:25000,pingTimeout:20000,maxPayload:1000000}));ws.onMessage(raw=>{if(String(raw)==='40')ws.send('40'+JSON.stringify({sid:'sheet-client-'+connections}))})});
     await page.route('**/api/operation/navigation',r=>r.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:null,startedAt:null},route:null,snapshot:unit}}));
@@ -114,14 +148,17 @@ try{
     await page.goto(base+'/operacion#controles-jornada');await page.getByLabel('Odómetro inicial (km)').fill('123.4');await page.getByRole('checkbox',{name:'Frenos',exact:true}).check();
     await page.waitForFunction(()=>document.querySelector('.mobile-v3-map-feedback')?.textContent.includes('En línea'));
     await page.getByRole('button',{name:'Iniciar GPS',exact:true}).click();await page.getByText('GPS web activo · mantén la pantalla encendida',{exact:true}).waitFor();
-    const baseline={reads:journeyReads,connections,listeners:await page.evaluate(()=>window.__journeyListeners.size)};assert.equal(baseline.listeners,1);const sheet=page.locator('#operation-context'),grip=sheet.getByRole('slider',{name:'Ajustar nivel del contexto'});await grip.waitFor();
+    const baseline={reads:journeyReads,connections,listeners:await page.evaluate(()=>window.__journeyListeners.size),active:await page.evaluate(()=>window.__sheetActiveSockets.size)};assert.equal(baseline.listeners,1);const sheet=page.locator('#operation-context'),grip=sheet.getByRole('slider',{name:'Ajustar nivel del contexto'});await grip.waitFor();
     await page.getByLabel('Odómetro inicial (km)').evaluate(n=>{window.__sheetDraftOwner=n});
     for(const key of ['Home','End','ArrowDown','Home','End'])await grip.press(key);
     assert.equal(await page.getByLabel('Odómetro inicial (km)').inputValue(),'123.4');assert.ok(await page.getByRole('checkbox',{name:'Frenos',exact:true}).isChecked());
-    assert.ok(await page.getByLabel('Odómetro inicial (km)').evaluate(n=>n===window.__sheetDraftOwner));assert.deepEqual({reads:journeyReads,connections,listeners:await page.evaluate(()=>window.__journeyListeners.size)},baseline);
+    assert.ok(await page.getByLabel('Odómetro inicial (km)').evaluate(n=>n===window.__sheetDraftOwner));assert.deepEqual({reads:journeyReads,connections,listeners:await page.evaluate(()=>window.__journeyListeners.size),active:await page.evaluate(()=>window.__sheetActiveSockets.size)},baseline);
     assert.equal(await page.getByRole('button',{name:'Iniciar GPS',includeHidden:true}).count(),1);assert.equal(actions,0);assert.equal(await page.evaluate(()=>window.__gpsStarts),1);assert.equal(await page.evaluate(()=>window.__gpsStops),0);
     await page.getByRole('navigation').getByRole('link',{name:'Más',exact:true}).click();await page.getByRole('heading',{name:'Más',exact:true}).waitFor();
     await page.getByRole('link',{name:'Controles de jornada y GPS',exact:true}).click();await page.getByLabel('Odómetro inicial (km)').waitFor();
+    await page.waitForFunction(()=>document.querySelector('.mobile-v3-map-feedback')?.textContent.includes('En línea'));
+    await page.waitForFunction(active=>window.__sheetActiveSockets.size===active,baseline.active);
+    assert.equal(journeyReads,baseline.reads,'Tab navigation retains the existing JourneyPanel owner');assert.equal(await page.evaluate(()=>window.__sheetActiveSockets.size),baseline.active,'Existing active socket baseline is preserved after map remount');assert.equal(await page.evaluate(()=>window.__journeyListeners.size),baseline.listeners);assert.equal(actions,0);assert.equal(await page.evaluate(()=>window.__gpsStops),0);
     assert.ok(await page.getByLabel('Odómetro inicial (km)').evaluate(n=>n===window.__sheetDraftOwner));assert.equal(await page.getByLabel('Odómetro inicial (km)').inputValue(),'123.4');assert.equal(await page.evaluate(()=>window.__gpsStarts),1);
     await page.getByRole('button',{name:'Detener',exact:true}).click();assert.equal(await page.evaluate(()=>window.__gpsStops),1);
     for(const name of ['Llantas','Luces','Combustible','Limpieza'])await page.getByRole('checkbox',{name,exact:true}).check();

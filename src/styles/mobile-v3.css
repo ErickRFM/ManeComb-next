@@ -125,6 +125,7 @@
 /* Short landscape reserves a real 48px map-control row. Long summaries scroll,
    preserving three distinct levels and the chrome instead of covering controls. */
 @media(max-height:480px){
-  .mobile-v3-operation-context .mobile-v3-context-sheet{--mobile-v3-sheet-available:calc(100dvh - 56px - 68px - 48px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));--mobile-v3-sheet-collapsed:min(var(--mobile-v3-sheet-compact),calc(var(--mobile-v3-sheet-available) * .60));--mobile-v3-sheet-medium:calc(var(--mobile-v3-sheet-available) * .78);--mobile-v3-sheet-expanded:var(--mobile-v3-sheet-available);min-height:0;height:var(--mobile-v3-sheet-collapsed);padding:8px;gap:4px}
+  .mobile-v3-operation-context .mobile-v3-context-sheet{--mobile-v3-sheet-available:calc(100dvh - 56px - 68px - 48px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));--mobile-v3-sheet-collapsed:min(var(--mobile-v3-sheet-compact),calc(var(--mobile-v3-sheet-available) * .60));--mobile-v3-sheet-medium:calc(var(--mobile-v3-sheet-available) * .78);--mobile-v3-sheet-expanded:var(--mobile-v3-sheet-available);min-height:0;padding:8px;gap:4px}
+  .mobile-v3-operation-context .mobile-v3-context-sheet[data-level="compact"]{height:var(--mobile-v3-sheet-collapsed)}
   .mobile-v3-operation-context .mobile-v3-map-summary{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:8px}
 }
