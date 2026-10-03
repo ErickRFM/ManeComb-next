@@ -22,8 +22,8 @@ export function OperationAuthLayout({
       </div>
 
       {active!=="recovery"?<nav className="operation-auth-segment" aria-label="Acceso de conductor">
-        <Link className={active==="login"?"active":""} href="/login?surface=operation">Iniciar sesión</Link>
-        <Link className={active==="activate"?"active":""} href="/activar?surface=operation">Activar cuenta</Link>
+        <Link className={active==="login"?"active":""} aria-current={active==="login"?"page":undefined} href="/login?surface=operation">Iniciar sesión</Link>
+        <Link className={active==="activate"?"active":""} aria-current={active==="activate"?"page":undefined} href="/activar?surface=operation">Activar cuenta</Link>
       </nav>:null}
 
       <div className="operation-auth-content">

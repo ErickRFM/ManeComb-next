@@ -65,8 +65,19 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  await run("Mobile V3 auth announces the active access destination",async()=>{
+    const page=await pageFor('mobile_operations');
+    for(const path of ['/login?surface=operation','/activar?surface=operation']){
+      await page.goto(base+path);const nav=page.getByRole('navigation',{name:'Acceso de conductor',exact:true});await nav.waitFor();
+      assert.equal(await nav.locator('[aria-current="page"]').count(),1,'Screen readers must identify exactly one active access destination');
+      assert.equal(await nav.locator('[aria-current="page"]').getAttribute('href'),path);
+    }
+    await page.context().close();
+  });
   await run("Mobile V3 auth setup and bootstrap preserve existing destinations",async()=>{
     const page=await pageFor('platform_admin');const setup={secret:'QA-ONLY-'+('A'.repeat(120)),uri:'otpauth://totp/QA-only?secret='+('A'.repeat(180))};
+    await page.route('**/api/admin/metrics',route=>route.fulfill({json:{metrics:{timers:[]},summary:{socketsConnected:0,apiErrorRatePercent:0,apiErrors:0,apiRequests:0,queue:{waiting:0,delayed:0,active:0,failed:0,completed:0}}}}));
+    await page.route('**/api/health/ready',route=>route.fulfill({json:{status:'degraded',timestamp:'2026-10-02T12:00:00.000Z',database:{ok:true},redis:{ok:false},rtc:{ready:false},integrations:{mapbox:false},missing:['MAPBOX_TOKEN']}}));
     await page.route('**/api/auth/mfa/setup',route=>route.fulfill({json:setup}));
     await page.route('**/api/auth/mfa/verify',route=>{assert.deepEqual(route.request().postDataJSON(),{code:'123456'});return route.fulfill({json:{ok:true}})});
     await page.goto(base+'/mfa?surface=operation');await page.getByText(setup.secret,{exact:true}).waitFor();
