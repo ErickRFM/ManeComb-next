@@ -141,6 +141,27 @@ try{
     assert.equal(await sheet.evaluate(n=>getComputedStyle(n).transitionDuration),"0s");
     assert.deepEqual(requests,[]);await page.context().close();
   });
+  // Catches retry without a callback, duplicate/rejected action invocation and fabricated GPS/time information.
+  await run("mobile foundation keeps missing data and callbacks honest",async()=>{
+    const page=await pageFor("mobile_operations");const requests=[];
+    page.on("request",r=>{if(/\/api\/|\/socket\.io\//.test(r.url()))requests.push(r.url())});
+    await page.goto(base+"/visual-qa/mobile-foundation");
+    await page.getByRole("heading",{name:"Datos ausentes QA",exact:true}).waitFor({timeout:5000});
+    const empty=page.locator('[data-qa-state="empty"]'),noRetry=page.locator('[data-qa-state="error-no-retry"]'),error=page.locator('[data-qa-state="error-retry"]');
+    assert.equal(await empty.getByRole("button").count(),0);assert.equal(await noRetry.getByRole("button").count(),0);
+    assert.equal(await page.locator('[data-qa-state="loading"] [aria-busy="true"]').count(),1);
+    const retry=error.getByRole("button",{name:"Reintentar",exact:true});await retry.click();
+    assert.equal(await page.getByLabel("Reintentos de prueba QA").textContent(),"1");
+    await page.getByRole("button",{name:"Bloquear reintento QA",exact:true}).click();assert.equal(await retry.isDisabled(),true);
+    await retry.dispatchEvent("click");assert.equal(await page.getByLabel("Reintentos de prueba QA").textContent(),"1");
+    for(const [state,label] of [["live","En vivo"],["delayed","Reporte demorado"],["stale","Dato antiguo"],["lost","Sin señal reciente"],["never_reported","Sin reportes"],["unknown","Estado GPS no disponible"]]){
+      const row=page.locator(`[data-qa-freshness="${state}"]`);assert.equal(await row.getByText(label,{exact:true}).count(),1);
+      if(state==="live")assert.equal(await row.locator("time").getAttribute("datetime"),"2026-10-02T12:00:00.000Z");
+      else {assert.equal(await row.locator("time").count(),0);assert.equal(await row.getByText("Hora no disponible",{exact:true}).count(),1);}
+    }
+    assert.equal(await page.getByText(/Excelente|accuracy|precisión GPS/i).count(),0);
+    assert.deepEqual(requests,[]);await page.context().close();
+  });
   if(process.env.QA_MAPBOX==="1")await run("Mapbox provider renders 0/1/20/100/500 units with bounded DOM markers",async()=>{
     for(const theme of ["dark","light"])for(const count of [1,0,20,100,500]){
       const page=await pageFor("company_portal");await page.setViewportSize({width:1366,height:900});
