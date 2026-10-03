@@ -78,7 +78,7 @@ try{
       const ordinary=page.getByText("Estado de prueba QA",{exact:true});
       assert.equal(await ordinary.locator("..").getAttribute("role"),null);
       assert.equal(await ordinary.locator("..").getAttribute("aria-live"),null);
-      assert.equal(await page.getByRole("status").getAttribute("aria-live"),"polite");
+      assert.equal(await page.getByRole("status").filter({hasText:"Anuncio de prueba QA"}).getAttribute("aria-live"),"polite");
       const legacy=await page.evaluate(()=>{const s=getComputedStyle(document.documentElement);return {brand:s.getPropertyValue("--brand").trim(),background:s.getPropertyValue("--background").trim()}});
       assert.deepEqual(legacy,theme==="dark"?{brand:"#e11d48",background:"#08090b"}:{brand:"#d81945",background:"#f4f6f8"});
       for(const tone of ["success","warning","danger","neutral"]){
@@ -113,6 +113,33 @@ try{
       }
       await page.context().close();
     }
+  });
+  // Catches remounted context, duplicate callbacks, invented modality and unreachable sheet controls.
+  await run("mobile foundation sheet is controlled and non-modal",async()=>{
+    const page=await pageFor("mobile_operations");await page.emulateMedia({reducedMotion:"reduce"});
+    const requests=[];page.on("request",r=>{if(/\/api\/|\/socket\.io\//.test(r.url()))requests.push(r.url())});
+    await page.goto(base+"/visual-qa/mobile-foundation");
+    const sheet=page.getByRole("region",{name:"Contexto de prueba QA",exact:true});await sheet.waitFor({timeout:5000});
+    assert.equal(await sheet.getAttribute("aria-modal"),null);assert.equal(await sheet.getAttribute("role"),"region");
+    assert.equal(await page.getByRole("dialog").count(),0);
+    await sheet.locator('[data-qa-summary]').evaluate(n=>{window.__qaSummary=n});
+    const expand=sheet.getByRole("button",{name:"Ampliar contexto",exact:true}),collapse=sheet.getByRole("button",{name:"Reducir contexto",exact:true});
+    assert.equal(await collapse.isDisabled(),true);assert.equal(await expand.getAttribute("aria-controls"),"qa-context");
+    for(const [button,level] of [[expand,"medium"],[expand,"expanded"],[collapse,"medium"],[collapse,"compact"]]){
+      await button.focus();await page.keyboard.press("Enter");
+      await page.waitForFunction(level=>document.getElementById("qa-context")?.dataset.level===level,level);
+      assert.equal(await sheet.locator('[data-qa-summary]').evaluate(n=>n===window.__qaSummary),true,"Summary must remain mounted");
+      assert.equal(await button.evaluate(n=>n===document.activeElement),true,"Level change must preserve focus at "+level);
+    }
+    assert.equal(await page.getByLabel("Callbacks de hoja QA").textContent(),"medium,expanded,medium,compact");
+    await page.keyboard.press("Enter");
+    assert.equal(await page.getByLabel("Callbacks de hoja QA").textContent(),"medium,expanded,medium,compact","Disabled endpoint must not invoke callback");
+    await expand.click();await expand.click();assert.equal(await expand.isDisabled(),true);
+    const body=sheet.locator('.mobile-v3-sheet-body');
+    assert.equal(await body.evaluate(n=>{n.scrollTop=100;return n.scrollTop>0}),true,"Expanded body scrolls independently");
+    await body.focus();await page.keyboard.press("Tab");assert.equal(await sheet.locator(':focus').count(),0,"Sheet must not trap Tab");
+    assert.equal(await sheet.evaluate(n=>getComputedStyle(n).transitionDuration),"0s");
+    assert.deepEqual(requests,[]);await page.context().close();
   });
   if(process.env.QA_MAPBOX==="1")await run("Mapbox provider renders 0/1/20/100/500 units with bounded DOM markers",async()=>{
     for(const theme of ["dark","light"])for(const count of [1,0,20,100,500]){
