@@ -162,6 +162,42 @@ try{
     assert.equal(await page.getByText(/Excelente|accuracy|precisión GPS/i).count(),0);
     assert.deepEqual(requests,[]);await page.context().close();
   });
+  // Catches long-summary geometry regressions and contrast/target failures for every new control, not only marked CTAs.
+  await run("mobile foundation matrix keeps every control accessible across sheet levels",async()=>{
+    await mkdir("artifacts/functional-ui-qa/foundation-screens",{recursive:true});
+    for(const theme of ["dark","light"])for(const motion of ["no-preference","reduce"]){
+      const page=await pageFor("mobile_operations");await page.addInitScript(theme=>localStorage.setItem("manecomb.theme",theme),theme);await page.emulateMedia({reducedMotion:motion});
+      const requests=[];page.on("request",r=>{if(/\/api\/|\/socket\.io\//.test(r.url()))requests.push(r.url())});
+      await page.goto(base+"/visual-qa/mobile-foundation");
+      await page.getByRole("button",{name:"Probar resumen largo QA",exact:true}).click({timeout:5000});
+      for(const [width,height] of [[360,800],[390,844],[412,915],[430,932],[768,900],[1024,960],[1366,960],[1440,960],[1920,960],[844,390],[915,412]]){
+        await page.setViewportSize({width,height});
+        const sheet=page.getByRole("region",{name:"Contexto de prueba QA",exact:true});
+        while(await sheet.getAttribute("data-level")!=="compact")await sheet.getByRole("button",{name:"Reducir contexto",exact:true}).click();
+        let previous=0;
+        for(const level of ["compact","medium","expanded"]){
+          if(level!=="compact")await sheet.getByRole("button",{name:"Ampliar contexto",exact:true}).click();
+          await page.waitForTimeout(motion==="reduce"?40:360);
+          const geometry=await sheet.evaluate(n=>({height:n.getBoundingClientRect().height,available:innerHeight-124,body:n.querySelector('.mobile-v3-sheet-body').getBoundingClientRect().height}));
+          assert.ok(geometry.height<=geometry.available+1,"Sheet exceeds available space "+JSON.stringify({width,height,level,geometry}));
+          if(previous)assert.ok(geometry.height>=Math.min(previous+44,geometry.available)-1,"Long summary must preserve level order "+JSON.stringify({width,height,level,previous,geometry}));
+          previous=geometry.height;
+          const targets=await page.locator('.mobile-v3-fixture button,.mobile-v3-fixture a').evaluateAll(nodes=>nodes.filter(n=>n.checkVisibility()).map(n=>{const r=n.getBoundingClientRect();return {label:n.textContent||n.getAttribute("aria-label"),width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom}}));
+          assert.ok(targets.every(t=>t.width>=44&&t.height>=44&&t.left>=0&&t.right<=width+1),"All targets must fit: "+JSON.stringify({width,height,targets}));
+          // Flow targets are allowed to scroll; reserved bars must not overlap each other.
+          const bars=await page.locator('.mobile-v3-top-bar,.mobile-v3-bottom-nav').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {top:r.top,bottom:r.bottom}}));
+          assert.ok(bars[0].bottom<=bars[1].top,"Reserved bars overlap");
+          assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+          const result=await new AxeBuilder({page}).analyze();const violations=result.violations.filter(v=>["serious","critical"].includes(v.impact));
+          assert.deepEqual(violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,reason:n.failureSummary}))})),[],JSON.stringify({theme,motion,width,height,level}));
+          await page.evaluate(()=>scrollTo(0,0));
+          await page.screenshot({path:`artifacts/functional-ui-qa/foundation-screens/${theme}-${motion}-${width}x${height}-${level}.png`,fullPage:true});
+          checks.push({name:"mobile foundation matrix",theme,motion,width,height,level,geometry,status:"PASS"});
+        }
+      }
+      assert.deepEqual(requests,[]);await page.context().close();
+    }
+  });
   if(process.env.QA_MAPBOX==="1")await run("Mapbox provider renders 0/1/20/100/500 units with bounded DOM markers",async()=>{
     for(const theme of ["dark","light"])for(const count of [1,0,20,100,500]){
       const page=await pageFor("company_portal");await page.setViewportSize({width:1366,height:900});

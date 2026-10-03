@@ -21,6 +21,7 @@ export function MobileFoundationPreview(){
   const [levels,setLevels]=useState<SheetLevel[]>([]);
   const [retries,setRetries]=useState(0);
   const [retryDisabled,setRetryDisabled]=useState(false);
+  const [longSummary,setLongSummary]=useState(false);
   const items:MobileNavItem[]=[
     {href:"/operacion",label:"Mapa",icon:"map",active:active==="/operacion"},
     {href:"/operacion/chat",label:"Chat",icon:"chat",active:active==="/operacion/chat"},
@@ -40,11 +41,11 @@ export function MobileFoundationPreview(){
         <div className="mobile-v3-fixture-stack">{(["neutral","success","warning","danger"] as const).map(value=><button type="button" key={value} className="mobile-v3-button" onClick={()=>setTone(value)}>Probar tono {value}</button>)}</div>
       </MobileSection>
       <MobileSection title="Controles exclusivos de fixture">
-        <div className="mobile-v3-fixture-stack"><button className="mobile-v3-button" type="button" onClick={()=>setActive("/operacion/radio")}>Probar activo Radio</button><button className="mobile-v3-button" type="button" onClick={()=>setLongTitle(value=>!value)}>Probar título largo QA</button></div>
+        <div className="mobile-v3-fixture-stack"><button className="mobile-v3-button" type="button" onClick={()=>setActive("/operacion/radio")}>Probar activo Radio</button><button className="mobile-v3-button" type="button" onClick={()=>setLongTitle(value=>!value)}>Probar título largo QA</button><button className="mobile-v3-button" type="button" onClick={()=>setLongSummary(value=>!value)}>Probar resumen largo QA</button></div>
       </MobileSection>
       <ContextSheet id="qa-context" title="Contexto de prueba QA" level={level}
         onLevelChange={value=>{setLevel(value);setLevels(previous=>[...previous,value])}}
-        summary={<p className="mobile-v3-fixture-copy" data-qa-summary>Resumen persistente de QA; sin datos de unidad, ruta o jornada.</p>}>
+        summary={<p className="mobile-v3-fixture-copy" data-qa-summary>{longSummary?"Resumen de prueba QA deliberadamente extenso para comprobar que la hoja conserva toda la información y mantiene sus controles alcanzables. No describe una unidad real ni una jornada existente. Este contenido sintético exige varias líneas en una pantalla pequeña y debe crecer con el tamaño del texto, sin recortar el feedback ni superponer los botones. La expansión de contexto mantiene el mismo nodo de resumen y aumenta el área disponible para contenido adicional, incluso al rotar la pantalla.":"Resumen persistente de QA; sin datos de unidad, ruta o jornada."}</p>}>
         {Array.from({length:16},(_,index)=><p key={index} className="mobile-v3-fixture-copy">Contenido de prueba {index+1}. Comprueba el scroll del contexto sin ejecutar acciones de operación.</p>)}
       </ContextSheet>
       <output aria-label="Callbacks de hoja QA" className="mobile-v3-fixture-copy">{levels.join(",")}</output>
