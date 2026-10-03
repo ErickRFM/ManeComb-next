@@ -11,6 +11,15 @@ const browser=await chromium.launch({headless:true,args:["--use-fake-ui-for-medi
 const checks=[];
 const failures=[];
 async function run(name,fn){if(process.env.QA_FILTER&&!name.includes(process.env.QA_FILTER))return;await fn();checks.push({name,status:"PASS"});console.log("PASS "+name)}
+async function settleVisualState(page){
+  await page.evaluate(async()=>{
+    await document.fonts.ready;
+    document.documentElement.getBoundingClientRect();
+    const finite=document.getAnimations().filter(animation=>Number.isFinite(animation.effect?.getComputedTiming().endTime)&&animation.playState!=='finished');
+    await Promise.all(finite.map(animation=>animation.finished.catch(()=>{})));
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+  });
+}
 async function pageFor(channel,contextOptions={}){
   const context=await browser.newContext({viewport:{width:390,height:844},...contextOptions});
   const token=await new SignJWT({channel,roles:[channel==="company_portal"?"owner":"driver"],mfaVerified:true})
@@ -65,6 +74,21 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  await run("Mobile V3 QA settles palette before accessibility",async()=>{
+    const page=await pageFor('platform_admin');await page.addInitScript(()=>localStorage.setItem('manecomb.theme','dark'));
+    await page.goto(base+'/admin/pagos-manuales');const head=page.locator('.admin-payment-head');await head.waitFor();
+    // QA-only duration stress exposes the same old-text/new-background race
+    // recorded by remote Axe, without altering any product CSS or thresholds.
+    await page.addStyleTag({content:'.admin-payment-head{transition:color 180ms linear!important}'});
+    for(const theme of ['light','dark']){
+      await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.querySelector('.admin-payment-head').getBoundingClientRect()},theme);
+      await settleVisualState(page);
+      const colors=await head.evaluate(node=>{const expected=document.createElement('span');expected.style.color=getComputedStyle(document.documentElement).getPropertyValue('--muted');expected.style.display='none';document.body.append(expected);const result={actual:getComputedStyle(node).color,expected:getComputedStyle(expected).color};expected.remove();return result});
+      assert.equal(colors.actual,colors.expected,'Accessibility must sample the confirmed theme palette, not an active transition');
+      const axe=await new AxeBuilder({page}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)),[]);
+    }
+    await page.context().close();
+  });
   await run("Mobile V3 context sheet current geometry and levels",async()=>{
     const observations=[],issues=[];
     for(const theme of ['dark','light'])for(const motion of ['no-preference','reduce']){
@@ -1023,6 +1047,7 @@ try{
       if(process.env.QA_METRIC_TEXT_STRESS==="1")await page.addStyleTag({content:".entity-metrics small{font-size:12px}"});
       for(const theme of ["dark","light"]){for(const width of [360,390,430,768,1024,1366,1920]){
         await page.setViewportSize({width,height:900});await page.emulateMedia({reducedMotion:"reduce"});await page.evaluate(theme=>{document.documentElement.dataset.theme=theme},theme);
+        await settleVisualState(page);
         if(name==="map"&&await page.getByRole("complementary",{name:"Detalle de QA-01"}).count()===0){const unitButton=page.getByRole("button",{name:/QA-01/});if(await unitButton.count())await unitButton.click()}
         const overflow=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,offscreen:Array.from(document.querySelectorAll("main *")).filter(node=>{const r=node.getBoundingClientRect(),s=getComputedStyle(node);return r.width>0&&r.right>innerWidth+1&&s.position!=="fixed"&&s.position!=="absolute"}).slice(0,5).map(node=>({tag:node.tagName,class:node.className}))}));
         const result=await new AxeBuilder({page}).analyze();const violations=result.violations.filter(item=>["serious","critical"].includes(item.impact)).map(item=>({id:item.id,nodes:item.nodes.map(node=>({target:node.target,reason:node.failureSummary}))}));
