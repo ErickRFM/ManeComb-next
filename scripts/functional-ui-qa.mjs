@@ -65,6 +65,33 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  await run("Mobile V3 map shell is map-first with one owner",async()=>{
+    const page=await pageFor('mobile_operations');let forbidden=0;
+    await page.route('**/api/locations/live',route=>{forbidden++;return route.fulfill({json:{units:[]}})});
+    await page.route('**/api/operation/navigation',route=>route.fulfill({json:{journey:{id:'ui-journey',vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:unit.recordedAt},route:{id:unit.routeId,name:unit.routeName,revision:1,geometry:[],stops:[]},snapshot:unit}}));
+    await page.route('**/api/journeys',route=>route.fulfill({json:{journeys:[{_id:'ui-journey',vehicleId:unit.vehicleId,state:'RUNNING'}]}}));
+    await page.goto(base+'/operacion');await page.getByText('Parada QA',{exact:true}).waitFor();
+    assert.equal(await page.locator('.driver-shell > .mobile-v3-top-bar').count(),1,'Foundation floating top bar');
+    assert.equal(await page.locator('.driver-shell > .mobile-v3-bottom-nav').count(),1,'Foundation stable bottom navigation');
+    const sheet=page.getByRole('region',{name:'Contexto de operación',exact:true});await sheet.waitFor();
+    assert.equal(await sheet.getAttribute('data-level'),'compact');
+    assert.equal(await page.locator('.driver-map-canvas').count(),1);
+    assert.equal(await page.locator('.driver-bottom-card').count(),0,'No duplicate map summary');
+    for(const name of ['Mapa','Chat','Radio','Alertas','Más'])assert.equal(await page.getByRole('navigation').getByRole('link',{name,exact:true}).count(),1);
+    for(const level of ['medium','expanded']){await sheet.getByRole('button',{name:'Ampliar contexto',exact:true}).click();assert.equal(await sheet.getAttribute('data-level'),level)}
+    await sheet.locator('summary').click();
+    assert.equal(await sheet.getByRole('button',{name:'Pausar',exact:true}).count(),1);
+    assert.equal(await page.getByRole('button',{name:'Finalizar',exact:true,includeHidden:true}).count(),1);
+    await sheet.getByRole('button',{name:'Reducir contexto',exact:true}).click();await sheet.getByRole('button',{name:'Reducir contexto',exact:true}).click();
+    await page.evaluate(()=>{window.location.hash='controles-jornada'});
+    await page.waitForFunction(()=>document.querySelector('#operation-context')?.dataset.level==='expanded',{},{timeout:2000});
+    assert.equal(await page.locator('.unit-detail-panel').count(),0);assert.equal(forbidden,0);
+    const geometry=await page.locator('.driver-map-shell').evaluate(node=>{const r=node.getBoundingClientRect();return{top:r.top,height:r.height,bottom:r.bottom,viewport:innerHeight}});
+    assert.ok(geometry.height>=geometry.viewport*.75,'Portrait map canvas dominates viewport');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),'Map shell must not add page scroll behind its independent sheet');
+    await page.screenshot({path:'artifacts/functional-ui-qa/mobile-v3-map-shell-expanded.png',fullPage:true});
+    await page.context().close();
+  });
   await run("Mobile V3 auth announces the active access destination",async()=>{
     const page=await pageFor('mobile_operations');
     for(const path of ['/login?surface=operation','/activar?surface=operation']){

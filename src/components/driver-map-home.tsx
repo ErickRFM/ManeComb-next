@@ -1,19 +1,18 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {createPortal} from "react-dom";
 import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
 import { useSocket, useSocketStatus } from "@/src/hooks/useSocket";
 import { mergeSnapshots } from "@/src/lib/fleet-snapshots";
 import {Icon} from "@/src/components/ui/icon";
+import {usePublishOperationMap,useMapFeedbackHost,type OperationMapData} from "@/src/components/mobile-ui/operation-map-context";
 
-type NavigationData={
-  journey:null|{id:string;state:string;vehicleId:string;routeId:string|null;startedAt:string|null};
-  route:null|{id:string;name:string;origin?:string|null;destination?:string|null;revision:number;geometry:Array<{latitude:number;longitude:number}>;stops:any[]};
-  snapshot:OperationalUnitSnapshot|null;
-};
+type NavigationData=OperationMapData;
 
 export function DriverMapHome(){
+  const publish=usePublishOperationMap();
+  const feedbackHost=useMapFeedbackHost();
   const socket=useSocket();
   const connection=useSocketStatus(socket);
   const recent=useRef<OperationalUnitSnapshot[]>([]);
@@ -105,59 +104,32 @@ export function DriverMapHome(){
         el.innerHTML="<span>MC</span>";
         markerRef.current=new mapboxgl.Marker({element:el}).setLngLat([snapshot.longitude as number,snapshot.latitude as number]).addTo(map);
       }else markerRef.current.setLngLat([snapshot.longitude,snapshot.latitude]);
-      if(follow)map.easeTo({center:[snapshot.longitude,snapshot.latitude],zoom:15.5,bearing:snapshot.heading||0,duration:420});
+      if(follow)map.easeTo({center:[snapshot.longitude,snapshot.latitude],zoom:15.5,bearing:snapshot.heading||0,duration:window.matchMedia("(prefers-reduced-motion: reduce)").matches?0:420});
     });
   },[data?.snapshot,mapReady,follow]);
 
-  const routeProgress=useMemo(()=>{
-    const value=data?.snapshot?.progressPercent;
-    return value==null?0:Math.max(0,Math.min(100,value));
-  },[data?.snapshot?.progressPercent]);
+  useEffect(()=>{publish(data)},[data,publish]);
+  useEffect(()=>()=>publish(null),[publish]);
 
   if(error&&!data)return <div className="driver-empty-state" role="alert"><strong>No se pudo cargar la operación</strong><span>{error}</span><button className="btn" onClick={()=>setRetry(value=>value+1)}>Reintentar</button></div>;
   if(!data)return <div className="driver-map-skeleton" role="status" aria-label="Cargando operación"/>;
   if(!data.journey)return <div className="driver-empty-state"><span className="brand-mark">MC</span><strong>Esperando jornada</strong><span>La central debe asignarte una unidad y ruta antes de comenzar.</span></div>;
 
   const snapshot=data.snapshot;
-  const risk=snapshot?.isOffRoute||snapshot?.freshness==="lost"||snapshot?.freshness==="stale";
 
   return <section className="driver-command-center">
+    {feedbackHost?createPortal(<div className="mobile-v3-map-feedback">
     {error?<p role="alert">{error} <button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar</button></p>:null}
     {mapError?<p role="status">{mapError}</p>:null}
     <p role="status">{connection==="connected"?"En línea":connection==="connecting"?"Conectando…":"Reconectando. Se muestran los últimos datos recibidos."}</p>
-    <div className="driver-map-shell">
+    </div>,feedbackHost):null}<div className="driver-map-shell">
       <div ref={mapContainer} className="driver-map-canvas"/>
       <div className="driver-map-top">
-        <div className="driver-route-chip">
-          <span className={"unit-status-dot "+(risk?"danger":"good")}/>
-          <div><strong>{data.route?.name||"Jornada activa"}</strong><small>{data.route?.origin||"Origen"} → {data.route?.destination||"Destino"}</small></div>
-        </div>
         <button className={"driver-follow "+(follow?"active":"")} onClick={()=>setFollow(value=>!value)}><Icon name="location"/> {follow?"Siguiendo":"Seguir"}</button>
-      </div>
-
-      <div className="driver-progress-track"><span style={{width:routeProgress+"%"}}/></div>
-
-      <div className="driver-bottom-card">
-        <div className="driver-next-stop">
-          <span className="driver-card-label">PRÓXIMA PARADA</span>
-          <strong>{snapshot?.nextStop?.name||"Ruta en curso"}</strong>
-          <small>{snapshot?.nextStop?snapshot.nextStop.distanceRemainingM+" m restantes":snapshot?.routeState||"Sin proyección"}</small>
-        </div>
-        <div className="driver-live-kpis">
-          <div><small>ETA</small><strong>{snapshot?.etaMinutes==null?"—":snapshot.etaMinutes+" min"}</strong></div>
-          <div><small>Velocidad</small><strong>{snapshot?.speedKmH==null?"—":snapshot.speedKmH.toFixed(0)+" km/h"}</strong></div>
-          <div><small>GPS</small><strong className={risk?"danger-text":""}>{snapshot?.freshness||"—"}</strong></div>
-        </div>
       </div>
 
       {snapshot?.isOffRoute?<div className="driver-route-alert"><strong>Fuera de ruta</strong><span>{snapshot.distanceFromRouteM??0} m fuera del corredor autorizado.</span></div>:null}
     </div>
 
-    <div className="driver-action-row">
-      <Link href="/operacion/navegacion" className="driver-action-card"><Icon name="route"/><strong>Ruta</strong><small>Paradas y avance</small></Link>
-      <Link href="/operacion/chat" className="driver-action-card"><Icon name="chat"/><strong>Chat</strong><small>Central de despacho</small></Link>
-      <Link href="/operacion/radio" className="driver-action-card"><Icon name="radio"/><strong>Radio</strong><small>PTT y llamadas</small></Link>
-      <Link href="/operacion/sos" className="driver-action-card danger"><Icon name="alert"/><strong>SOS</strong><small>Emergencia</small></Link>
-    </div>
   </section>;
 }

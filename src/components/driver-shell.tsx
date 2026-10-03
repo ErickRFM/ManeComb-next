@@ -4,12 +4,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/src/components/theme-toggle";
 import { useNetworkStatus } from "@/src/hooks/useNetworkStatus";
-import {Icon,type IconName} from "@/src/components/ui/icon";
+import {useCallback,useEffect,useRef,useState} from "react";
+import type {IconName} from "@/src/components/ui/icon";
 import {DriverTools} from "@/src/components/driver-tools";
 import {JourneyPanel} from "@/src/components/journey-panel";
 import {DriverConsole} from "@/src/components/driver-console";
 import {PushOptIn} from "@/src/components/push-opt-in";
 import {BrandLogo} from "@/src/components/brand-logo";
+import {MobileTopBar} from "@/src/components/mobile-ui/mobile-top-bar";
+import {MobileBottomNav} from "@/src/components/mobile-ui/mobile-bottom-nav";
+import {ContextSheet} from "@/src/components/mobile-ui/context-sheet";
+import type {SheetLevel} from "@/src/components/mobile-ui/sheet-handle";
+import {OperationMapProvider,useOperationMapData,useSetMapFeedbackHost} from "@/src/components/mobile-ui/operation-map-context";
+import {OperationMapSummary} from "@/src/components/mobile-ui/operation-map-summary";
 
 const tabs=[
   {label:"Mapa",href:"/operacion",key:"map",exact:true},
@@ -20,21 +27,33 @@ const tabs=[
 ];
 
 export function DriverShell({children}:{children:React.ReactNode}){
+  return <OperationMapProvider><DriverShellContent>{children}</DriverShellContent></OperationMapProvider>;
+}
+
+function DriverShellContent({children}:{children:React.ReactNode}){
   const pathname=usePathname();
   const online=useNetworkStatus();
-  return <div className="driver-shell">
-    <header className="driver-topbar">
-      <Link href="/operacion" className="driver-brand" aria-label="ManeComb Operación"><BrandLogo size="sm"/><span><small>Operación</small></span></Link>
-      <div className="driver-top-actions"><Link href="/operacion/sos" className="btn secondary" aria-label="Reportar emergencia SOS">SOS</Link><span className="driver-connection" aria-live="polite"><span className="live-dot" style={online===false?{background:"var(--danger)"}:undefined}/>{online===null?"Consultando red":online?"Red disponible":"Sin red"}</span><ThemeToggle/></div>
-    </header>
-    <main id="main-content" className="driver-workspace" tabIndex={-1}>{children}<section hidden={pathname!=="/operacion"} aria-label="Controles de jornada y GPS"><DriverTools><JourneyPanel/><DriverConsole/><PushOptIn/></DriverTools></section></main>
-    <nav className="driver-tabbar" aria-label="Navegación de operación">
-      {tabs.map(tab=>{
-        const active=tab.exact?pathname===tab.href:pathname.startsWith(tab.href);
-        return <Link key={tab.href} href={tab.href} className={"driver-tab "+(active?"active":"")+" "+(tab.label==="SOS"?"sos":"")} aria-current={active?"page":undefined}>
-          <span className="driver-tab-icon"><Icon name={tab.key as IconName}/></span><span>{tab.label}</span>
-        </Link>;
-      })}
-    </nav>
+  const data=useOperationMapData();
+  const setFeedbackHost=useSetMapFeedbackHost();
+  const [level,setLevel]=useState<SheetLevel>("compact");
+  const openContext=useCallback(()=>setLevel("expanded"),[]);
+  const previousJourney=useRef<string|null>(null);
+  const isMap=pathname==="/operacion";
+  useEffect(()=>{
+    const identity=data?.journey?.id||null;
+    if(previousJourney.current&&identity&&previousJourney.current!==identity)setLevel("compact");
+    if(identity)previousJourney.current=identity;
+  },[data?.journey?.id]);
+  return <div className="driver-shell mobile-v3-operation" data-map-home={isMap}>
+    <MobileTopBar leading={<Link href="/operacion" className="driver-brand" aria-label="ManeComb Operación"><BrandLogo size="sm"/></Link>} title={<><span>Operación</span><span className="mobile-v3-browser-network" aria-live="polite">{online===null?"Consultando red":online?"Red disponible":"Sin red"}</span></>} actions={<><Link href="/operacion/sos" className="mobile-v3-button" aria-label="Reportar emergencia SOS">SOS</Link><ThemeToggle/></>}/>
+    <main id="main-content" className="driver-workspace" tabIndex={-1}>{children}
+      <aside className="mobile-v3-operation-context" hidden={!isMap}>
+        <ContextSheet id="operation-context" title="Contexto de operación" level={level} onLevelChange={setLevel} summary={<><OperationMapSummary data={data}/><div ref={setFeedbackHost}/></>}>
+          <OperationMapSummary data={data} detail/>
+          <section hidden={!isMap} aria-label="Controles de jornada y GPS"><DriverTools onOpen={openContext}><JourneyPanel/><DriverConsole/><PushOptIn/></DriverTools></section>
+        </ContextSheet>
+      </aside>
+    </main>
+    <MobileBottomNav items={tabs.map(tab=>({label:tab.label,href:tab.href,icon:tab.key as IconName,active:tab.exact?pathname===tab.href:pathname.startsWith(tab.href)}))}/>
   </div>;
 }
