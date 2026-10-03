@@ -48,6 +48,3 @@
 - [ ] Fresh whole-branch review once; regrade actual effects, Important/Critical single RED→GREEN fix pass and full gates. Minors documented. Then exact-head PR CI/UX/API33–36, clean/mergeable gated merge, exact main CI/UX green and35-field phase report. Immediate Phase5.
 
 Pre-flight: Task1 defines exact CSS target heights and stable slider/DOM; Task2 consumes them and checks resource identity; no operational interface changes. Review precedes remote closure, completion ledger only after fresh main green.
-
-
-
