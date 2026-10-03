@@ -89,6 +89,31 @@ try{
       await page.context().close();
     }
   });
+  // Catches destination/active identity drift, clipped copy, undersized controls and invisible keyboard focus.
+  await run("mobile foundation preserves navigation identity and long labels",async()=>{
+    for(const theme of ["dark","light"]){
+      const page=await pageFor("mobile_operations");await page.addInitScript(theme=>localStorage.setItem("manecomb.theme",theme),theme);
+      await page.goto(base+"/visual-qa/mobile-foundation");
+      const nav=page.getByRole("navigation",{name:"Navegación QA de operación",exact:true});
+      await nav.waitFor({timeout:5000});
+      assert.deepEqual(await nav.getByRole("link").evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href"))),["/operacion","/operacion/chat","/operacion/radio","/operacion/alertas","/operacion/mas"]);
+      assert.equal(await nav.locator('[aria-current="page"]').count(),1);
+      await page.getByRole("button",{name:"Probar activo Radio",exact:true}).click();
+      assert.equal(await nav.locator('[aria-current="page"]').getAttribute("href"),"/operacion/radio");
+      await page.getByRole("button",{name:"Probar título largo QA",exact:true}).click();
+      for(const [width,height] of [[360,800],[390,844],[412,915],[430,932],[768,900],[1024,960],[844,390],[915,412]])for(const motion of ["no-preference","reduce"]){
+        await page.setViewportSize({width,height});await page.emulateMedia({reducedMotion:motion});
+        const geometry=await page.locator('.mobile-v3-top-bar button,.mobile-v3-bottom-nav a').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n);return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,duration:s.transitionDuration}}));
+        assert.ok(geometry.every(r=>r.width>=44&&r.height>=44&&r.x>=0&&r.right<=width+1&&r.y>=0&&r.bottom<=height+1),JSON.stringify({theme,width,height,geometry}));
+        for(let i=0;i<geometry.length;i++)for(let j=i+1;j<geometry.length;j++){const a=geometry[i],b=geometry[j];assert.ok(!(a.x<b.right&&a.right>b.x&&a.y<b.bottom&&a.bottom>b.y),"Controls overlap");}
+        if(motion==="reduce")assert.ok(geometry.every(r=>r.duration.split(",").every(v=>parseFloat(v)===0)),"Reduced motion must be zero duration");
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,"Long copy must wrap within viewport");
+        const menu=page.getByRole("button",{name:"Menú de prueba QA",exact:true});await menu.focus();await page.keyboard.press("Tab");
+        assert.equal(await page.getByRole("button",{name:"Alertas de prueba QA",exact:true}).evaluate(n=>n===document.activeElement&&getComputedStyle(n).outlineStyle!=="none"),true,"Keyboard focus must be visible");
+      }
+      await page.context().close();
+    }
+  });
   if(process.env.QA_MAPBOX==="1")await run("Mapbox provider renders 0/1/20/100/500 units with bounded DOM markers",async()=>{
     for(const theme of ["dark","light"])for(const count of [1,0,20,100,500]){
       const page=await pageFor("company_portal");await page.setViewportSize({width:1366,height:900});

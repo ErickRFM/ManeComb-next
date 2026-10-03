@@ -44,4 +44,15 @@
 .mobile-v3-fixture-title{font-size:var(--mobile-v3-heading);line-height:1.2;margin:0;overflow-wrap:anywhere}
 .mobile-v3-fixture-copy{font-size:var(--mobile-v3-secondary);color:var(--mobile-v3-muted);line-height:1.6;margin:0}
 .mobile-v3-fixture-stack{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-@media(prefers-reduced-motion:reduce){.mobile-v3-button{transition-duration:0s;animation-duration:0s}}
+.mobile-v3-top-bar{min-height:calc(56px + env(safe-area-inset-top,0px));padding:calc(6px + env(safe-area-inset-top,0px)) 12px 6px;display:flex;align-items:center;gap:12px;background:var(--mobile-v3-surface);color:var(--mobile-v3-text);border-bottom:1px solid var(--mobile-v3-border)}
+.mobile-v3-top-leading,.mobile-v3-top-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.mobile-v3-top-bar :where(button,a){min-width:44px;min-height:44px}
+.mobile-v3-top-title{display:grid;gap:4px;flex:1;min-width:0;overflow-wrap:anywhere;font-size:var(--mobile-v3-secondary);line-height:1.4}
+.mobile-v3-bottom-nav{min-height:calc(68px + env(safe-area-inset-bottom,0px));padding:4px 8px calc(4px + env(safe-area-inset-bottom,0px));display:flex;align-items:stretch;gap:4px;background:var(--mobile-v3-surface);color:var(--mobile-v3-text);border-top:1px solid var(--mobile-v3-border)}
+.mobile-v3-nav-item{display:flex;flex:1;min-width:44px;min-height:44px;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:4px;border-radius:12px;color:var(--mobile-v3-muted);font-size:var(--mobile-v3-caption);line-height:1.4;text-align:center;overflow-wrap:anywhere;transition:background-color 160ms ease}
+.mobile-v3-nav-item[aria-current="page"]{background:var(--mobile-v3-surface-2);color:var(--mobile-v3-text);box-shadow:inset 0 -3px var(--mobile-v3-brand);font-weight:800}
+.mobile-v3-nav-item:focus-visible{outline:3px solid var(--mobile-v3-text);outline-offset:-3px}
+.mobile-v3-fixture > .mobile-v3-top-bar{position:sticky;top:0;z-index:3}
+.mobile-v3-fixture > .mobile-v3-bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:3}
+.mobile-v3-fixture-main{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+@media(prefers-reduced-motion:reduce){.mobile-v3-button,.mobile-v3-nav-item{transition-duration:0s!important;animation-duration:0s!important}}
