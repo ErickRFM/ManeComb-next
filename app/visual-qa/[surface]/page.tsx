@@ -15,13 +15,15 @@ import { PlanCards } from "@/src/components/plan-cards";
 import { Reveal } from "@/src/components/ui/reveal";
 import { OperationAuthLayout } from "@/src/components/operation-auth-layout";
 import { AuthForm } from "@/src/components/auth-form";
+import { MobileFoundationPreview } from "../mobile-foundation-preview";
 
-const allowed=new Set(["portal","admin","driver","forms","marketing","operation-auth"]);
+const allowed=new Set(["portal","admin","driver","forms","marketing","operation-auth","mobile-foundation"]);
 
 export default async function VisualQaPage({params}:{params:Promise<{surface:string}>}){
   if(process.env.VISUAL_QA!=="1")notFound();
   const {surface}=await params;
   if(!allowed.has(surface))notFound();
+  if(surface==="mobile-foundation")return <MobileFoundationPreview/>;
 
   if(surface==="portal")return <PortalShell initialProfile={{name:"QA Portal",roles:["owner"]}}><VisualPortal/></PortalShell>;
   if(surface==="admin")return <AdminShell><VisualAdmin/></AdminShell>;

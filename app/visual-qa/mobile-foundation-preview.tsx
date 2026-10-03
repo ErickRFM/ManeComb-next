@@ -1,0 +1,71 @@
+"use client";
+
+import { useState } from "react";
+import { MobileSection } from "@/src/components/mobile-ui/mobile-section";
+import { MobileStatus, type MobileTone } from "@/src/components/mobile-ui/mobile-status";
+import { MobileTopBar } from "@/src/components/mobile-ui/mobile-top-bar";
+import { MobileBottomNav, type MobileNavItem } from "@/src/components/mobile-ui/mobile-bottom-nav";
+import { BrandLogo } from "@/src/components/brand-logo";
+import { Icon } from "@/src/components/ui/icon";
+import { ContextSheet } from "@/src/components/mobile-ui/context-sheet";
+import type { SheetLevel } from "@/src/components/mobile-ui/sheet-handle";
+import { MobileEmptyState, MobileErrorState, MobileLoadingState } from "@/src/components/mobile-ui/mobile-state";
+import { MobileFreshness } from "@/src/components/mobile-ui/mobile-freshness";
+import type { GpsFreshness } from "@/src/core/contracts/telemetry";
+
+export function MobileFoundationPreview(){
+  const [tone,setTone]=useState<MobileTone>("neutral");
+  const [active,setActive]=useState("/operacion");
+  const [longTitle,setLongTitle]=useState(false);
+  const [level,setLevel]=useState<SheetLevel>("compact");
+  const [levels,setLevels]=useState<SheetLevel[]>([]);
+  const [retries,setRetries]=useState(0);
+  const [retryDisabled,setRetryDisabled]=useState(false);
+  const [longSummary,setLongSummary]=useState(false);
+  const [sheetActions,setSheetActions]=useState(0);
+  const items:MobileNavItem[]=[
+    {href:"/operacion",label:"Mapa",icon:"map",active:active==="/operacion"},
+    {href:"/operacion/chat",label:"Chat",icon:"chat",active:active==="/operacion/chat"},
+    {href:"/operacion/radio",label:"Radio",icon:"radio",active:active==="/operacion/radio"},
+    {href:"/operacion/alertas",label:"Alertas",icon:"alert",active:active==="/operacion/alertas"},
+    {href:"/operacion/mas",label:"Más",icon:"more",active:active==="/operacion/mas"}
+  ];
+  return <div className="driver-shell mobile-v3-fixture">
+    <MobileTopBar leading={<button className="mobile-v3-button" type="button" aria-label="Menú de prueba QA"><Icon name="menu"/></button>}
+      title={<><BrandLogo size="sm"/><span>{longTitle?"Contexto de presentación de prueba con un título muy largo para comprobar lectura y ajuste sin recortar información":"Foundation QA"}</span></>}
+      actions={<button className="mobile-v3-button" type="button" aria-label="Alertas de prueba QA"><Icon name="alert"/></button>}/>
+    <main id="main-content" className="mobile-v3-fixture-main" tabIndex={-1}>
+      <h1 className="mobile-v3-fixture-title">Mobile V3 Foundation — fixture QA</h1>
+      <p className="mobile-v3-fixture-copy">Componentes reales con entradas sintéticas de QA. Esta superficie no representa datos, permisos o acciones de operación.</p>
+      <MobileSection title="Estados de presentación">
+        <div className="mobile-v3-fixture-stack"><MobileStatus label="Estado de prueba QA" tone={tone}/><MobileStatus label="Anuncio de prueba QA" icon="alert" announce/></div>
+        <div className="mobile-v3-fixture-stack">{(["neutral","success","warning","danger"] as const).map(value=><button type="button" key={value} className="mobile-v3-button" onClick={()=>setTone(value)}>Probar tono {value}</button>)}</div>
+      </MobileSection>
+      <MobileSection title="Controles exclusivos de fixture">
+        <div className="mobile-v3-fixture-stack"><button className="mobile-v3-button" type="button" onClick={()=>setActive("/operacion/radio")}>Probar activo Radio</button><button className="mobile-v3-button" type="button" onClick={()=>setLongTitle(value=>!value)}>Probar título largo QA</button><button className="mobile-v3-button" type="button" onClick={()=>setLongSummary(value=>!value)}>Probar resumen largo QA</button></div>
+      </MobileSection>
+      <ContextSheet id="qa-context" title="Contexto de prueba QA" level={level}
+        onLevelChange={value=>{setLevel(value);setLevels(previous=>[...previous,value])}}
+        summary={<p className="mobile-v3-fixture-copy" data-qa-summary>{longSummary?"Resumen de prueba QA deliberadamente extenso para comprobar que la hoja conserva toda la información y mantiene sus controles alcanzables. No describe una unidad real ni una jornada existente. Este contenido sintético exige varias líneas en una pantalla pequeña y debe crecer con el tamaño del texto, sin recortar el feedback ni superponer los botones. La expansión de contexto mantiene el mismo nodo de resumen y aumenta el área disponible para contenido adicional, incluso al rotar la pantalla.":"Resumen persistente de QA; sin datos de unidad, ruta o jornada."}</p>}>
+        {Array.from({length:16},(_,index)=><p key={index} className="mobile-v3-fixture-copy">Contenido de prueba {index+1}. Comprueba el scroll del contexto sin ejecutar acciones de operación.</p>)}
+        <button className="mobile-v3-button" type="button" onClick={()=>setSheetActions(value=>value+1)}>Acción local de contenido QA</button>
+      </ContextSheet>
+      <output aria-label="Callbacks de hoja QA" className="mobile-v3-fixture-copy">{levels.join(",")}</output>
+      <output aria-label="Acciones locales de hoja QA" className="mobile-v3-fixture-copy">{sheetActions}</output>
+      <MobileSection title="Datos ausentes QA">
+        <div className="mobile-v3-fixture-states">
+          <div data-qa-state="empty"><MobileEmptyState title="Sin información de prueba" message="No existe un dato de QA para mostrar. La presentación conserva este mensaje completo incluso en pantallas pequeñas y no ofrece una acción inexistente."/></div>
+          <div data-qa-state="error-no-retry"><MobileErrorState title="Error de prueba sin callback" message="La fixture no ofrece un reintento cuando no recibe una acción."/></div>
+          <div data-qa-state="error-retry"><MobileErrorState title="Error de prueba con callback QA" message="El botón sólo incrementa el contador local de esta fixture." onRetry={()=>setRetries(value=>value+1)} retryDisabled={retryDisabled}/></div>
+          <div data-qa-state="loading"><MobileLoadingState label="Cargando presentación de prueba QA…"/></div>
+          <button className="mobile-v3-button" type="button" onClick={()=>setRetryDisabled(value=>!value)}>Bloquear reintento QA</button>
+          <output aria-label="Reintentos de prueba QA">{retries}</output>
+        </div>
+      </MobileSection>
+      <MobileSection title="Frescura de lectura QA">
+        <div className="mobile-v3-fixture-states">{(["live","delayed","stale","lost","never_reported","unknown"] as const).map(value=><div key={value} data-qa-freshness={value}><MobileFreshness freshness={value as GpsFreshness} recordedAt={value==="live"?"2026-10-02T12:00:00.000Z":value==="lost"?"not-a-date":null}/></div>)}</div>
+      </MobileSection>
+    </main>
+    <MobileBottomNav items={items} label="Navegación QA de operación"/>
+  </div>;
+}

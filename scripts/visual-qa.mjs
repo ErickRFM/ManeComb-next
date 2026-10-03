@@ -6,16 +6,15 @@ const baseUrl=process.env.VISUAL_QA_BASE_URL||"http://127.0.0.1:3000";
 const output="artifacts/visual-qa";
 mkdirSync(output,{recursive:true});
 
-const widths=[360,390,430,768,1024,1366,1440,1920];
-const surfaces=["portal","admin","driver","forms","marketing","operation-auth"];
+const viewports=[[360,800],[390,844],[412,915],[430,932],[768,900],[1024,960],[1366,960],[1440,960],[1920,960],[844,390],[915,412]];
+const surfaces=["portal","admin","driver","forms","marketing","operation-auth","mobile-foundation"];
 const report={generatedAt:new Date().toISOString(),checks:[],violations:[]};
 const browser=await chromium.launch({headless:true});
 
 try{
   for(const theme of ["dark","light"]){
-  for(const width of widths){
+  for(const [width,height] of viewports){
     for(const surface of surfaces){
-      const height=width<=430?820:width<=768?900:960;
       const context=await browser.newContext({viewport:{width,height},colorScheme:theme,reducedMotion:"reduce"});
       const page=await context.newPage();
       await page.goto(baseUrl+"/visual-qa/"+surface,{waitUntil:"networkidle"});
@@ -66,9 +65,9 @@ try{
         throw new Error("Accessibility violations at "+surface+" "+width+"px: "+severe.map(item=>item.id).join(", "));
       }
 
-      const path=output+"/"+surface+"-"+theme+"-"+width+".png";
+      const path=output+"/"+surface+"-"+theme+"-"+width+"x"+height+".png";
       await page.screenshot({path,fullPage:true});
-      report.checks.push({surface,theme,width,overflow,criticalTargets:"ok",accessibility:"ok",screenshot:path});
+      report.checks.push({surface,theme,width,height,motion:"reduce",overflow,criticalTargets:"ok",accessibility:"ok",screenshot:path});
       await context.close();
     }
   }

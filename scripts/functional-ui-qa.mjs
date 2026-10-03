@@ -11,8 +11,8 @@ const browser=await chromium.launch({headless:true,args:["--use-fake-ui-for-medi
 const checks=[];
 const failures=[];
 async function run(name,fn){if(process.env.QA_FILTER&&!name.includes(process.env.QA_FILTER))return;await fn();checks.push({name,status:"PASS"});console.log("PASS "+name)}
-async function pageFor(channel){
-  const context=await browser.newContext({viewport:{width:390,height:844}});
+async function pageFor(channel,contextOptions={}){
+  const context=await browser.newContext({viewport:{width:390,height:844},...contextOptions});
   const token=await new SignJWT({channel,roles:[channel==="company_portal"?"owner":"driver"],mfaVerified:true})
     .setProtectedHeader({alg:"HS256"}).setSubject("ui-qa-user").setIssuedAt().setExpirationTime("5m")
     .sign(new TextEncoder().encode(process.env.AUTH_SECRET));
@@ -65,6 +65,167 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  // Catches token leakage into existing surfaces and unintended live announcements/network owners.
+  await run("mobile foundation isolates tokens and status semantics",async()=>{
+    for(const theme of ["dark","light"]){
+      const page=await pageFor("mobile_operations");
+      await page.addInitScript(theme=>localStorage.setItem("manecomb.theme",theme),theme);
+      const requests=[];page.on("request",r=>{if(/\/api\/|\/socket\.io\//.test(r.url()))requests.push(r.url())});
+      const response=await page.goto(base+"/visual-qa/mobile-foundation");
+      assert.equal(response.status(),200,"Foundation QA surface must exist");
+      await page.getByRole("heading",{name:"Mobile V3 Foundation — fixture QA",exact:true}).waitFor();
+      await page.getByRole("heading",{name:"Estados de presentación",exact:true}).waitFor();
+      const ordinary=page.getByText("Estado de prueba QA",{exact:true});
+      assert.equal(await ordinary.locator("..").getAttribute("role"),null);
+      assert.equal(await ordinary.locator("..").getAttribute("aria-live"),null);
+      assert.equal(await page.getByRole("status").filter({hasText:"Anuncio de prueba QA"}).getAttribute("aria-live"),"polite");
+      const legacy=await page.evaluate(()=>{const s=getComputedStyle(document.documentElement);return {brand:s.getPropertyValue("--brand").trim(),background:s.getPropertyValue("--background").trim()}});
+      assert.deepEqual(legacy,theme==="dark"?{brand:"#e11d48",background:"#08090b"}:{brand:"#d81945",background:"#f4f6f8"});
+      for(const tone of ["success","warning","danger","neutral"]){
+        await page.getByRole("button",{name:"Probar tono "+tone,exact:true}).click();
+        assert.equal(await ordinary.locator("..").getAttribute("data-tone"),tone);
+      }
+      assert.deepEqual(requests,[],"Pure presentation must not request API or Socket.IO");
+      await page.context().close();
+    }
+  });
+  // Catches destination/active identity drift, clipped copy, undersized controls and invisible keyboard focus.
+  await run("mobile foundation preserves navigation identity and long labels",async()=>{
+    for(const theme of ["dark","light"]){
+      const page=await pageFor("mobile_operations");await page.addInitScript(theme=>localStorage.setItem("manecomb.theme",theme),theme);
+      await page.goto(base+"/visual-qa/mobile-foundation");
+      const nav=page.getByRole("navigation",{name:"Navegación QA de operación",exact:true});
+      await nav.waitFor({timeout:5000});
+      assert.deepEqual(await nav.getByRole("link").evaluateAll(nodes=>nodes.map(n=>n.getAttribute("href"))),["/operacion","/operacion/chat","/operacion/radio","/operacion/alertas","/operacion/mas"]);
+      assert.equal(await nav.locator('[aria-current="page"]').count(),1);
+      await page.getByRole("button",{name:"Probar activo Radio",exact:true}).click();
+      assert.equal(await nav.locator('[aria-current="page"]').getAttribute("href"),"/operacion/radio");
+      await page.getByRole("button",{name:"Probar título largo QA",exact:true}).click();
+      for(const [width,height] of [[360,800],[390,844],[412,915],[430,932],[768,900],[1024,960],[844,390],[915,412]])for(const motion of ["no-preference","reduce"]){
+        await page.setViewportSize({width,height});await page.emulateMedia({reducedMotion:motion});
+        const geometry=await page.locator('.mobile-v3-top-bar button,.mobile-v3-bottom-nav a').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect(),s=getComputedStyle(n);return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,duration:s.transitionDuration}}));
+        assert.ok(geometry.every(r=>r.width>=44&&r.height>=44&&r.x>=0&&r.right<=width+1&&r.y>=0&&r.bottom<=height+1),JSON.stringify({theme,width,height,geometry}));
+        for(let i=0;i<geometry.length;i++)for(let j=i+1;j<geometry.length;j++){const a=geometry[i],b=geometry[j];assert.ok(!(a.x<b.right&&a.right>b.x&&a.y<b.bottom&&a.bottom>b.y),"Controls overlap");}
+        if(motion==="reduce")assert.ok(geometry.every(r=>r.duration.split(",").every(v=>parseFloat(v)===0)),"Reduced motion must be zero duration");
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false,"Long copy must wrap within viewport");
+        const menu=page.getByRole("button",{name:"Menú de prueba QA",exact:true});await menu.focus();await page.keyboard.press("Tab");
+        assert.equal(await page.getByRole("button",{name:"Alertas de prueba QA",exact:true}).evaluate(n=>n===document.activeElement&&getComputedStyle(n).outlineStyle!=="none"),true,"Keyboard focus must be visible");
+      }
+      await page.context().close();
+    }
+  });
+  // Catches remounted context, duplicate callbacks, invented modality and unreachable sheet controls.
+  await run("mobile foundation sheet is controlled and non-modal",async()=>{
+    const page=await pageFor("mobile_operations");await page.emulateMedia({reducedMotion:"reduce"});
+    const requests=[];page.on("request",r=>{if(/\/api\/|\/socket\.io\//.test(r.url()))requests.push(r.url())});
+    await page.goto(base+"/visual-qa/mobile-foundation");
+    const sheet=page.getByRole("region",{name:"Contexto de prueba QA",exact:true});await sheet.waitFor({timeout:5000});
+    assert.equal(await sheet.getAttribute("aria-modal"),null);assert.equal(await sheet.getAttribute("role"),"region");
+    assert.equal(await page.getByRole("dialog").count(),0);
+    await sheet.locator('[data-qa-summary]').evaluate(n=>{window.__qaSummary=n});
+    const expand=sheet.getByRole("button",{name:"Ampliar contexto",exact:true}),collapse=sheet.getByRole("button",{name:"Reducir contexto",exact:true});
+    assert.equal(await collapse.isDisabled(),true);assert.equal(await expand.getAttribute("aria-controls"),"qa-context");
+    for(const [button,level] of [[expand,"medium"],[expand,"expanded"],[collapse,"medium"],[collapse,"compact"]]){
+      await button.focus();await page.keyboard.press("Enter");
+      await page.waitForFunction(level=>document.getElementById("qa-context")?.dataset.level===level,level);
+      assert.equal(await sheet.locator('[data-qa-summary]').evaluate(n=>n===window.__qaSummary),true,"Summary must remain mounted");
+      assert.equal(await button.evaluate(n=>n===document.activeElement),true,"Level change must preserve focus at "+level);
+    }
+    assert.equal(await page.getByLabel("Callbacks de hoja QA").textContent(),"medium,expanded,medium,compact");
+    await page.keyboard.press("Enter");
+    assert.equal(await page.getByLabel("Callbacks de hoja QA").textContent(),"medium,expanded,medium,compact","Disabled endpoint must not invoke callback");
+    await expand.click();await expand.click();assert.equal(await expand.isDisabled(),true);
+    const body=sheet.locator('.mobile-v3-sheet-body');
+    assert.equal(await body.evaluate(n=>{n.scrollTop=100;return n.scrollTop>0}),true,"Expanded body scrolls independently");
+    await sheet.getByRole("button",{name:"Acción local de contenido QA",exact:true}).focus();await page.keyboard.press("Tab");assert.equal(await sheet.locator(':focus').count(),0,"Sheet must not trap Tab after its last focusable child");
+    assert.equal(await sheet.evaluate(n=>getComputedStyle(n).transitionDuration),"0s");
+    assert.deepEqual(requests,[]);await page.context().close();
+  });
+  // Catches retry without a callback, duplicate/rejected action invocation and fabricated GPS/time information.
+  await run("mobile foundation keeps missing data and callbacks honest",async()=>{
+    const page=await pageFor("mobile_operations");const requests=[];
+    page.on("request",r=>{if(/\/api\/|\/socket\.io\//.test(r.url()))requests.push(r.url())});
+    await page.goto(base+"/visual-qa/mobile-foundation");
+    await page.getByRole("heading",{name:"Datos ausentes QA",exact:true}).waitFor({timeout:5000});
+    const empty=page.locator('[data-qa-state="empty"]'),noRetry=page.locator('[data-qa-state="error-no-retry"]'),error=page.locator('[data-qa-state="error-retry"]');
+    assert.equal(await empty.getByRole("button").count(),0);assert.equal(await noRetry.getByRole("button").count(),0);
+    assert.equal(await page.locator('[data-qa-state="loading"] [aria-busy="true"]').count(),1);
+    const retry=error.getByRole("button",{name:"Reintentar",exact:true});await retry.click();
+    assert.equal(await page.getByLabel("Reintentos de prueba QA").textContent(),"1");
+    await page.getByRole("button",{name:"Bloquear reintento QA",exact:true}).click();assert.equal(await retry.isDisabled(),true);
+    await retry.dispatchEvent("click");assert.equal(await page.getByLabel("Reintentos de prueba QA").textContent(),"1");
+    for(const [state,label] of [["live","En vivo"],["delayed","Reporte demorado"],["stale","Dato antiguo"],["lost","Sin señal reciente"],["never_reported","Sin reportes"],["unknown","Estado GPS no disponible"]]){
+      const row=page.locator(`[data-qa-freshness="${state}"]`);assert.equal(await row.getByText(label,{exact:true}).count(),1);
+      if(state==="live")assert.equal(await row.locator("time").getAttribute("datetime"),"2026-10-02T12:00:00.000Z");
+      else {assert.equal(await row.locator("time").count(),0);assert.equal(await row.getByText("Hora no disponible",{exact:true}).count(),1);}
+    }
+    assert.equal(await page.getByText(/Excelente|accuracy|precisión GPS/i).count(),0);
+    assert.deepEqual(requests,[]);await page.context().close();
+  });
+  // Catches long-summary geometry regressions and contrast/target failures for every new control, not only marked CTAs.
+  await run("mobile foundation matrix keeps every control accessible across sheet levels",async()=>{
+    await mkdir("artifacts/functional-ui-qa/foundation-screens",{recursive:true});
+    for(const theme of ["dark","light"])for(const motion of ["no-preference","reduce"]){
+      const page=await pageFor("mobile_operations");await page.addInitScript(theme=>localStorage.setItem("manecomb.theme",theme),theme);await page.emulateMedia({reducedMotion:motion});
+      const requests=[];page.on("request",r=>{if(/\/api\/|\/socket\.io\//.test(r.url()))requests.push(r.url())});
+      await page.goto(base+"/visual-qa/mobile-foundation");
+      await page.getByRole("button",{name:"Probar resumen largo QA",exact:true}).click({timeout:5000});
+      for(const [width,height] of [[360,800],[390,844],[412,915],[430,932],[768,900],[1024,960],[1366,960],[1440,960],[1920,960],[844,390],[915,412]]){
+        await page.setViewportSize({width,height});
+        const sheet=page.getByRole("region",{name:"Contexto de prueba QA",exact:true});
+        while(await sheet.getAttribute("data-level")!=="compact")await sheet.getByRole("button",{name:"Reducir contexto",exact:true}).click();
+        let previous=0;
+        for(const level of ["compact","medium","expanded"]){
+          if(level!=="compact")await sheet.getByRole("button",{name:"Ampliar contexto",exact:true}).click();
+          await page.waitForTimeout(motion==="reduce"?40:360);
+          const geometry=await sheet.evaluate(n=>({height:n.getBoundingClientRect().height,available:innerHeight-124,body:n.querySelector('.mobile-v3-sheet-body').getBoundingClientRect().height}));
+          assert.ok(geometry.height<=geometry.available+1,"Sheet exceeds available space "+JSON.stringify({width,height,level,geometry}));
+          if(previous)assert.ok(geometry.height>=Math.min(previous+44,geometry.available)-1,"Long summary must preserve level order "+JSON.stringify({width,height,level,previous,geometry}));
+          previous=geometry.height;
+          const targets=await page.locator('.mobile-v3-fixture button,.mobile-v3-fixture a').evaluateAll(nodes=>nodes.filter(n=>n.checkVisibility()).map(n=>{const r=n.getBoundingClientRect();return {label:n.textContent||n.getAttribute("aria-label"),width:r.width,height:r.height,left:r.left,right:r.right,top:r.top,bottom:r.bottom}}));
+          assert.ok(targets.every(t=>t.width>=44&&t.height>=44&&t.left>=0&&t.right<=width+1),"All targets must fit: "+JSON.stringify({width,height,targets}));
+          // Flow targets are allowed to scroll; reserved bars must not overlap each other.
+          const bars=await page.locator('.mobile-v3-top-bar,.mobile-v3-bottom-nav').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {top:r.top,bottom:r.bottom}}));
+          assert.ok(bars[0].bottom<=bars[1].top,"Reserved bars overlap");
+          assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+          const result=await new AxeBuilder({page}).analyze();const violations=result.violations.filter(v=>["serious","critical"].includes(v.impact));
+          assert.deepEqual(violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>({target:n.target,reason:n.failureSummary}))})),[],JSON.stringify({theme,motion,width,height,level}));
+          await page.evaluate(()=>scrollTo(0,0));
+          await page.screenshot({path:`artifacts/functional-ui-qa/foundation-screens/${theme}-${motion}-${width}x${height}-${level}.png`,fullPage:true});
+          checks.push({name:"mobile foundation matrix",theme,motion,width,height,level,geometry,status:"PASS"});
+        }
+      }
+      assert.deepEqual(requests,[]);await page.context().close();
+    }
+  });
+  // Catches SSR timezone text retained after hydration even though the supplied timestamp is unchanged.
+  await run("mobile foundation renders stable timestamps in the browser timezone",async()=>{
+    const page=await pageFor("mobile_operations",{timezoneId:"Asia/Tokyo"});const hydration=[];
+    page.on("console",message=>{if(message.type()==="error"&&/hydrat/i.test(message.text()))hydration.push(message.text())});
+    await page.goto(base+"/visual-qa/mobile-foundation",{waitUntil:"networkidle"});
+    const time=page.locator('[data-qa-freshness="live"] time');
+    assert.equal(await time.getAttribute("datetime"),"2026-10-02T12:00:00.000Z");
+    const text=await time.textContent();
+    assert.match(text,/(9:00:00\s*p\.\s*m\.|21:00:00)/u,"12:00Z must initially display 21:00 in Tokyo without a prop change");
+    assert.deepEqual(hydration,[]);await page.context().close();
+  });
+  // Catches expanded content being permanently clipped inside a zero-height scroll body.
+  await run("mobile foundation keeps oversized summaries and body actions reachable",async()=>{
+    const page=await pageFor("mobile_operations",{viewport:{width:360,height:450}});await page.emulateMedia({reducedMotion:"reduce"});
+    const requests=[];page.on("request",r=>{if(/\/api\/|\/socket\.io\//.test(r.url()))requests.push(r.url())});
+    await page.goto(base+"/visual-qa/mobile-foundation");
+    await page.getByRole("button",{name:"Probar resumen largo QA",exact:true}).click();
+    const sheet=page.getByRole("region",{name:"Contexto de prueba QA",exact:true});
+    await sheet.getByRole("button",{name:"Ampliar contexto",exact:true}).click();
+    await sheet.getByRole("button",{name:"Ampliar contexto",exact:true}).click();
+    const body=sheet.locator('.mobile-v3-sheet-body');
+    assert.ok(await body.evaluate(n=>n.clientHeight>=44),"Expanded body needs a usable scroll window when summary exceeds available height");
+    await sheet.evaluate(n=>scrollTo(0,n.getBoundingClientRect().top+scrollY-56));
+    await sheet.getByRole("button",{name:"Acción local de contenido QA",exact:true}).click();
+    assert.equal(await page.getByLabel("Acciones locales de hoja QA").textContent(),"1");
+    assert.equal(await body.evaluate(n=>n.scrollTop>0),true,"Body action must be reached by its independent scroll");
+    assert.deepEqual(requests,[]);await page.context().close();
+  });
   if(process.env.QA_MAPBOX==="1")await run("Mapbox provider renders 0/1/20/100/500 units with bounded DOM markers",async()=>{
     for(const theme of ["dark","light"])for(const count of [1,0,20,100,500]){
       const page=await pageFor("company_portal");await page.setViewportSize({width:1366,height:900});
