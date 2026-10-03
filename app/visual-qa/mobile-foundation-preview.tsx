@@ -22,6 +22,7 @@ export function MobileFoundationPreview(){
   const [retries,setRetries]=useState(0);
   const [retryDisabled,setRetryDisabled]=useState(false);
   const [longSummary,setLongSummary]=useState(false);
+  const [sheetActions,setSheetActions]=useState(0);
   const items:MobileNavItem[]=[
     {href:"/operacion",label:"Mapa",icon:"map",active:active==="/operacion"},
     {href:"/operacion/chat",label:"Chat",icon:"chat",active:active==="/operacion/chat"},
@@ -47,8 +48,10 @@ export function MobileFoundationPreview(){
         onLevelChange={value=>{setLevel(value);setLevels(previous=>[...previous,value])}}
         summary={<p className="mobile-v3-fixture-copy" data-qa-summary>{longSummary?"Resumen de prueba QA deliberadamente extenso para comprobar que la hoja conserva toda la información y mantiene sus controles alcanzables. No describe una unidad real ni una jornada existente. Este contenido sintético exige varias líneas en una pantalla pequeña y debe crecer con el tamaño del texto, sin recortar el feedback ni superponer los botones. La expansión de contexto mantiene el mismo nodo de resumen y aumenta el área disponible para contenido adicional, incluso al rotar la pantalla.":"Resumen persistente de QA; sin datos de unidad, ruta o jornada."}</p>}>
         {Array.from({length:16},(_,index)=><p key={index} className="mobile-v3-fixture-copy">Contenido de prueba {index+1}. Comprueba el scroll del contexto sin ejecutar acciones de operación.</p>)}
+        <button className="mobile-v3-button" type="button" onClick={()=>setSheetActions(value=>value+1)}>Acción local de contenido QA</button>
       </ContextSheet>
       <output aria-label="Callbacks de hoja QA" className="mobile-v3-fixture-copy">{levels.join(",")}</output>
+      <output aria-label="Acciones locales de hoja QA" className="mobile-v3-fixture-copy">{sheetActions}</output>
       <MobileSection title="Datos ausentes QA">
         <div className="mobile-v3-fixture-states">
           <div data-qa-state="empty"><MobileEmptyState title="Sin información de prueba" message="No existe un dato de QA para mostrar. La presentación conserva este mensaje completo incluso en pantallas pequeñas y no ofrece una acción inexistente."/></div>

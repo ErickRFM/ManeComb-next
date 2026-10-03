@@ -11,8 +11,8 @@ const browser=await chromium.launch({headless:true,args:["--use-fake-ui-for-medi
 const checks=[];
 const failures=[];
 async function run(name,fn){if(process.env.QA_FILTER&&!name.includes(process.env.QA_FILTER))return;await fn();checks.push({name,status:"PASS"});console.log("PASS "+name)}
-async function pageFor(channel){
-  const context=await browser.newContext({viewport:{width:390,height:844}});
+async function pageFor(channel,contextOptions={}){
+  const context=await browser.newContext({viewport:{width:390,height:844},...contextOptions});
   const token=await new SignJWT({channel,roles:[channel==="company_portal"?"owner":"driver"],mfaVerified:true})
     .setProtectedHeader({alg:"HS256"}).setSubject("ui-qa-user").setIssuedAt().setExpirationTime("5m")
     .sign(new TextEncoder().encode(process.env.AUTH_SECRET));
@@ -137,7 +137,7 @@ try{
     await expand.click();await expand.click();assert.equal(await expand.isDisabled(),true);
     const body=sheet.locator('.mobile-v3-sheet-body');
     assert.equal(await body.evaluate(n=>{n.scrollTop=100;return n.scrollTop>0}),true,"Expanded body scrolls independently");
-    await body.focus();await page.keyboard.press("Tab");assert.equal(await sheet.locator(':focus').count(),0,"Sheet must not trap Tab");
+    await sheet.getByRole("button",{name:"Acción local de contenido QA",exact:true}).focus();await page.keyboard.press("Tab");assert.equal(await sheet.locator(':focus').count(),0,"Sheet must not trap Tab after its last focusable child");
     assert.equal(await sheet.evaluate(n=>getComputedStyle(n).transitionDuration),"0s");
     assert.deepEqual(requests,[]);await page.context().close();
   });
@@ -197,6 +197,34 @@ try{
       }
       assert.deepEqual(requests,[]);await page.context().close();
     }
+  });
+  // Catches SSR timezone text retained after hydration even though the supplied timestamp is unchanged.
+  await run("mobile foundation renders stable timestamps in the browser timezone",async()=>{
+    const page=await pageFor("mobile_operations",{timezoneId:"Asia/Tokyo"});const hydration=[];
+    page.on("console",message=>{if(message.type()==="error"&&/hydrat/i.test(message.text()))hydration.push(message.text())});
+    await page.goto(base+"/visual-qa/mobile-foundation",{waitUntil:"networkidle"});
+    const time=page.locator('[data-qa-freshness="live"] time');
+    assert.equal(await time.getAttribute("datetime"),"2026-10-02T12:00:00.000Z");
+    const text=await time.textContent();
+    assert.match(text,/(9:00:00\s*p\.\s*m\.|21:00:00)/u,"12:00Z must initially display 21:00 in Tokyo without a prop change");
+    assert.deepEqual(hydration,[]);await page.context().close();
+  });
+  // Catches expanded content being permanently clipped inside a zero-height scroll body.
+  await run("mobile foundation keeps oversized summaries and body actions reachable",async()=>{
+    const page=await pageFor("mobile_operations",{viewport:{width:360,height:450}});await page.emulateMedia({reducedMotion:"reduce"});
+    const requests=[];page.on("request",r=>{if(/\/api\/|\/socket\.io\//.test(r.url()))requests.push(r.url())});
+    await page.goto(base+"/visual-qa/mobile-foundation");
+    await page.getByRole("button",{name:"Probar resumen largo QA",exact:true}).click();
+    const sheet=page.getByRole("region",{name:"Contexto de prueba QA",exact:true});
+    await sheet.getByRole("button",{name:"Ampliar contexto",exact:true}).click();
+    await sheet.getByRole("button",{name:"Ampliar contexto",exact:true}).click();
+    const body=sheet.locator('.mobile-v3-sheet-body');
+    assert.ok(await body.evaluate(n=>n.clientHeight>=44),"Expanded body needs a usable scroll window when summary exceeds available height");
+    await sheet.evaluate(n=>scrollTo(0,n.getBoundingClientRect().top+scrollY-56));
+    await sheet.getByRole("button",{name:"Acción local de contenido QA",exact:true}).click();
+    assert.equal(await page.getByLabel("Acciones locales de hoja QA").textContent(),"1");
+    assert.equal(await body.evaluate(n=>n.scrollTop>0),true,"Body action must be reached by its independent scroll");
+    assert.deepEqual(requests,[]);await page.context().close();
   });
   if(process.env.QA_MAPBOX==="1")await run("Mapbox provider renders 0/1/20/100/500 units with bounded DOM markers",async()=>{
     for(const theme of ["dark","light"])for(const count of [1,0,20,100,500]){

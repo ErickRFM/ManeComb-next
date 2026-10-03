@@ -61,7 +61,7 @@
 .mobile-v3-context-sheet > :where(h2,.mobile-v3-sheet-handle,.mobile-v3-sheet-summary){flex-shrink:0}
 .mobile-v3-sheet-handle{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .mobile-v3-sheet-level{font-size:var(--mobile-v3-secondary);text-align:center;line-height:1.4}
-.mobile-v3-sheet-body{min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;display:grid;gap:12px;scrollbar-gutter:stable}
+.mobile-v3-sheet-body{min-height:44px;flex:1;overflow:auto;overscroll-behavior:contain;display:grid;gap:12px;scrollbar-gutter:stable}
 .mobile-v3-sheet-body[hidden]{display:none}
 .mobile-v3-sheet-body:focus-visible{outline:3px solid var(--mobile-v3-text);outline-offset:-3px}
 .mobile-v3-state{display:grid;gap:12px;padding:16px;border:1px solid var(--mobile-v3-border);border-radius:16px;background:var(--mobile-v3-surface-2);color:var(--mobile-v3-text);overflow-wrap:anywhere}

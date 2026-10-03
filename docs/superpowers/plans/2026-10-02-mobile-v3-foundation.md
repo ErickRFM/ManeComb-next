@@ -10,7 +10,7 @@
 
 **Spec:** [Especificación aprobada](../specs/2026-10-02-mobile-v3-design.md), secciones 2, 4, 5, 9–13. Encargo del usuario de fases 0–8: fase 1 únicamente.
 
-**Rama:** `codex/mobile-v3-foundation`, nacida de `origin/main` `4412a665b662ade31528d53ccad176e89973439e`. #25 ya integrado. Estado de este plan: escrito para revisión; ninguna tarea de producto ejecutada. Consultar nuevamente main y sus runs antes de ejecutar; un SHA nuevo requiere revisar/rebasar la documentación de base sin mezclar RC3.
+**Rama:** `codex/mobile-v3-foundation`, nacida de `origin/main` `4412a665b662ade31528d53ccad176e89973439e`. #25 ya integrado. Plan aprobado por el usuario para ejecución Native en esta sesión. Tareas 1–5 implementadas; el cierre y sus SHAs/gates se registran en `artifacts/mobile-v3-foundation/PHASE_REPORT.md`. Las listas siguientes conservan el contrato aprobado; el ledger registra cada ejecución y decisión. Consultar nuevamente main antes del PR/merge; un SHA nuevo exige revisar la base sin mezclar RC3.
 
 ## Global Constraints
 
@@ -125,4 +125,4 @@ Scope: foundation exclusivamente; acceso integrado de #25 se consume, no se dupl
 
 ## Handoff
 
-El usuario revisa este plan escrito y elige ejecución antes de implementar foundation. Native: el agente implementa las tareas en esta sesión con revisión al final. Subagent-driven: implementadores/revisores por tarea. Recomendación: Native, porque el bloque es presentación aislada, pequeño y secuencial, con gates completos y revisión de cierre; mantiene un único owner del checkout. La estrategia Git y las autorizaciones de merge condicionadas ya aportadas por el usuario se conservan.
+El usuario revisó y aprobó este plan escrito, eligiendo Native en esta sesión. El agente ejecuta las tareas con una revisión final de contexto fresco y una pasada de correcciones importantes, probadas RED→GREEN. La estrategia Git y las autorizaciones de merge condicionadas ya aportadas por el usuario se conservan. El reporte de fase distingue gates locales, remotos y pendientes físicos; no atribuye integración operativa ni gestos de fase 4 a foundation.

@@ -1,12 +1,12 @@
 # ManeComb Mobile V3 — especificación implementable
 
-Fecha: 2026-10-02, America/Mexico_City. Estado: especificación aprobada como base por el encargo de fases 0–8. Fase 0 integrada; plan de foundation para revisión. Este documento define presentación y no autoriza cambios de autoridad funcional.
+Fecha: 2026-10-02, America/Mexico_City. Estado: especificación aprobada como base por el encargo de fases 0–8. Fase 0 integrada; foundation implementado según plan aprobado Native, con cierre/gates registrados por separado. Este documento define presentación y no autoriza cambios de autoridad funcional.
 
 ## 1. Resultado y autoridad
 
 El conductor debe identificar su unidad, jornada y próxima parada desde un mapa dominante, ampliar su contexto sin abandonar el mapa y acceder a comunicación y alertas con cinco destinos estables. El acceso instalado conserva la identidad ManeComb y una superficie propia, separada del acceso comercial web.
 
-La autoridad es `main`, actualizado a `4412a665b662ade31528d53ccad176e89973439e` después del merge verificado de #25. La base previa de esta especificación fue `50540e03abab258783c0289a51d7fcab7128bc42`. Sus cambios de Admin Global RC2, Marketing V3, Evidence Lifecycle y bootstrap WebView se conservan. Antes de cada fase se vuelve a consultar `origin/main`: un SHA nuevo exige revisar la base y la dependencia, no recuperar un main histórico.
+La autoridad es `main`. Foundation nace del main `4412a665b662ade31528d53ccad176e89973439e`, resultado del merge verificado de #25. La base previa de esta especificación fue `50540e03abab258783c0289a51d7fcab7128bc42`. Sus cambios de Admin Global RC2, Marketing V3, Evidence Lifecycle y bootstrap WebView se conservan. Antes de cada fase se vuelve a consultar `origin/main`: un SHA nuevo exige revisar la base y la dependencia, no recuperar un main histórico.
 
 Dependencia de acceso: [PR #25](https://github.com/ErickRFM/ManeComb-next/pull/25), rama `fix/operation-auth-mobile-parity`, inicialmente `21e9e933089ac4858f9702cf30bf9a921f432b71`. La corrección de contraste b400bc6 y la corrección QA e4e0699 se hicieron en esa misma rama. #25 quedó completamente verde e integrado en main mediante merge 4412a66, según la estrategia autorizada. Las fases siguientes consumen esos archivos existentes; no los copian ni recrean.
 
@@ -248,4 +248,4 @@ Headless/resize no acredita teclado IME, notch físico, Doze ni GPS Android. La 
 
 ## 14. Qué entrega esta especificación
 
-Este documento prepara las fases y sus límites. El diseño y esta especificación están aprobados como base; el siguiente paso es revisar el plan concreto de foundation antes de ejecutarlo. Todavía no existe implementación V3 certificada. La fase 0 cerró contraste y gate funcional en #25, integrado en main 4412a66 con todos sus gates verdes. Foundation todavía no está implementado; su plan se revisa antes de ejecución. RC3 sigue intacto.
+Este documento prepara las fases y sus límites. El diseño, esta especificación y el plan de foundation están aprobados. La fase 0 cerró contraste y gate funcional en #25, integrado en main 4412a66 con todos sus gates verdes. Foundation entrega las primitivas en una fixture QA protegida y sus pruebas; `artifacts/mobile-v3-foundation/PHASE_REPORT.md` registra SHAs, resultados y estado de cierre. No equivale a operación V3 integrada ni a certificación física. Las fases posteriores conservan sus dependencias y gates. RC3 sigue intacto.
