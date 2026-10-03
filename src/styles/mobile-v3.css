@@ -70,3 +70,56 @@
 .mobile-v3-freshness{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:var(--mobile-v3-secondary);color:var(--mobile-v3-muted);overflow-wrap:anywhere}
 .mobile-v3-fixture-states{display:grid;gap:16px}
 @media(prefers-reduced-motion:reduce){.mobile-v3-button,.mobile-v3-nav-item,.mobile-v3-context-sheet{transition-duration:0s!important;animation-duration:0s!important}}
+
+/* Driver V3 consumes the Foundation chrome; portal/admin remain independent. */
+.driver-shell.mobile-v3-operation{background:var(--mobile-v3-background);color:var(--mobile-v3-text);padding-bottom:calc(68px + env(safe-area-inset-bottom,0px));padding-top:calc(56px + env(safe-area-inset-top,0px))}
+.mobile-v3-operation > .mobile-v3-top-bar{position:fixed;inset:0 0 auto;z-index:60;height:calc(56px + env(safe-area-inset-top,0px));gap:8px;background:var(--mobile-v3-surface);box-shadow:0 3px 12px #0002}
+.mobile-v3-operation .driver-brand{min-width:0;gap:0}
+.mobile-v3-operation .driver-brand img{width:100px;height:auto}
+.mobile-v3-operation .mobile-v3-top-title{font-weight:700;font-size:13px}
+.mobile-v3-browser-network{font-size:11px;font-weight:400;color:var(--mobile-v3-muted)}
+.mobile-v3-operation > .mobile-v3-bottom-nav{position:fixed;inset:auto 0 0;z-index:60;height:calc(68px + env(safe-area-inset-bottom,0px))}
+.mobile-v3-operation .driver-workspace{padding:12px;width:min(100%,900px);min-width:0}
+.mobile-v3-operation[data-map-home="true"] .driver-workspace{width:100%;padding:0;min-height:calc(100dvh - 124px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+.mobile-v3-operation[data-map-home="true"] :where(.driver-home,.driver-command-center){display:block}
+.mobile-v3-operation[data-map-home="true"] .driver-map-shell{position:fixed;inset:calc(56px + env(safe-area-inset-top,0px)) 0 calc(68px + env(safe-area-inset-bottom,0px));min-height:0;border:0;border-radius:0;box-shadow:none;background:var(--mobile-v3-surface-2)}
+.mobile-v3-operation .driver-map-top{inset:4px auto auto 12px;right:auto}
+.mobile-v3-operation .driver-follow{display:flex;align-items:center;gap:6px;min-width:44px;min-height:44px;height:44px;font-size:13px;line-height:1.4;background:var(--mobile-v3-surface);color:var(--mobile-v3-text)}
+.mobile-v3-operation .driver-map-shell .mapboxgl-ctrl-top-right{top:4px;right:8px}
+.mobile-v3-operation .mapboxgl-ctrl-top-right .mapboxgl-ctrl{margin:0}
+.mobile-v3-operation .mapboxgl-ctrl-group{display:flex}
+.mobile-v3-operation .mapboxgl-ctrl-group button{width:44px;height:44px}
+.mobile-v3-map-feedback{margin-top:6px;display:grid;gap:6px}
+.mobile-v3-map-feedback p{margin:0;font-size:13px;line-height:1.4;color:var(--mobile-v3-muted);overflow-wrap:anywhere}
+.mobile-v3-off-route{display:grid;gap:4px;padding:8px;border:1px solid var(--mobile-v3-danger);border-radius:12px;color:var(--mobile-v3-danger);font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.mobile-v3-operation-context{position:fixed;bottom:calc(68px + env(safe-area-inset-bottom,0px));left:8px;right:8px;z-index:40;max-width:900px;margin:auto}
+.mobile-v3-operation-context[hidden]{display:none}
+.mobile-v3-operation-context .mobile-v3-context-sheet{border-radius:24px 24px 0 0;box-shadow:0 -6px 24px #0002}
+.mobile-v3-operation-context .mobile-v3-context-sheet > h2{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.mobile-v3-map-summary{display:grid;gap:4px}
+.mobile-v3-map-identity{display:flex;align-items:start;justify-content:space-between;gap:8px;font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.mobile-v3-map-identity > span:first-child{min-width:0}
+.mobile-v3-map-identity > span:last-child{font-size:11px;color:var(--mobile-v3-muted)}
+.mobile-v3-next-stop{display:grid;gap:2px}
+.mobile-v3-next-stop small{font-size:11px;color:var(--mobile-v3-muted);line-height:1.3}
+.mobile-v3-next-stop strong{font-size:18px;line-height:1.35;overflow-wrap:anywhere}
+.mobile-v3-map-detail{display:grid;gap:12px;font-size:13px}
+.mobile-v3-map-detail .driver-live-kpis small{font-size:11px;letter-spacing:0;color:var(--mobile-v3-muted)}
+.mobile-v3-map-detail .driver-live-kpis strong{font-size:13px;color:var(--mobile-v3-text)}
+.mobile-v3-route-progress{display:grid;gap:6px}
+.mobile-v3-route-progress progress{width:100%;accent-color:var(--mobile-v3-brand)}
+.mobile-v3-map-links{display:flex;flex-wrap:wrap;gap:8px}
+.mobile-v3-operation .driver-empty-state{min-height:40dvh;margin:12px;padding:20px;font-size:15px}
+.mobile-v3-operation .driver-map-skeleton{border-radius:0;height:calc(100dvh - 124px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+.mobile-v3-operation-context :where(.btn,summary){min-height:48px}
+.mobile-v3-operation-context .driver-tools{color:var(--mobile-v3-text)}
+/* The global reduced-motion rule gives every node a nonzero duration with the
+   default transition-property:all. Keep driver palette changes instantaneous. */
+@media(prefers-reduced-motion:reduce){.mobile-v3-operation,.mobile-v3-operation *{transition-duration:0s!important;animation-duration:0s!important}}
+/* Short landscape reserves a real 48px map-control row. Long summaries scroll,
+   preserving three distinct levels and the chrome instead of covering controls. */
+@media(max-height:480px){
+  .mobile-v3-operation-context .mobile-v3-context-sheet{--mobile-v3-sheet-available:calc(100dvh - 56px - 68px - 48px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));min-height:0;height:min(var(--mobile-v3-sheet-compact),calc(var(--mobile-v3-sheet-available) * .60))}
+  .mobile-v3-operation-context .mobile-v3-context-sheet[data-level="medium"]{height:calc(var(--mobile-v3-sheet-available) * .78)}
+  .mobile-v3-operation-context .mobile-v3-context-sheet[data-level="expanded"]{height:var(--mobile-v3-sheet-available)}
+}

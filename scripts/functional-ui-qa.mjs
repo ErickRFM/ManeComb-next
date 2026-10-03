@@ -65,6 +65,63 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  await run("Mobile V3 map shell preserves optional update and off-route feedback",async()=>{
+    const obscured=[];
+    for(const theme of ['dark','light'])for(const [width,height] of [[360,800],[844,390]]){
+      const page=await pageFor('mobile_operations',{viewport:{width,height},reducedMotion:'reduce'});
+      await page.addInitScript(theme=>{
+        localStorage.setItem('manecomb.theme',theme);
+        window.androidBridge={};
+        window.Capacitor={PluginHeaders:[{name:'ManeCombLocation',methods:['appInfo','status','removeListener'].map(name=>({name,rtype:'promise'})).concat([{name:'addListener',rtype:'callback'}])}],
+          nativePromise:async(plugin,method)=>method==='appInfo'?{versionName:'QA-only',versionCode:1,nativeTrackingContractVersion:2}:method==='status'?{contractVersion:2,state:'stopped',running:false,pendingPackets:0,networkAvailable:true,lastCaptureAtMs:0,lastUploadAtMs:0,retryDelayMs:0,lastError:''}:{},
+          nativeCallback:()=>Promise.resolve('qa-native-listener')};
+      },theme);
+      let releaseCalls=0;
+      await page.route('**/api/app/releases/android',r=>{releaseCalls++;return r.fulfill({json:{release:{minimumVersionCode:1,latestVersionCode:2,forceUpdate:false,downloadUrl:'https://example.invalid/qa-update.apk'}}})});
+      await page.route('**/api/operation/navigation',r=>r.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:null},route:{id:unit.routeId,name:unit.routeName,revision:1,geometry:[],stops:[]},snapshot:{...unit,isOffRoute:true,distanceFromRouteM:125}}}));
+      await page.goto(base+'/operacion');await page.getByRole('link',{name:'Actualizar',exact:true}).waitFor();
+      const sheet=page.locator('#operation-context');await sheet.getByRole('button',{name:'Ampliar contexto'}).click();await sheet.getByRole('button',{name:'Ampliar contexto'}).click();
+      for(const target of [page.getByRole('link',{name:'Actualizar',exact:true}),page.getByText('Fuera de ruta',{exact:true})]){
+        await target.scrollIntoViewIfNeeded();if(!await target.evaluate(node=>{const r=node.getBoundingClientRect();return r.width>0&&r.height>0&&node.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}))obscured.push(`${theme} ${width}x${height}: ${await target.innerText()}`);
+      }
+      assert.equal(releaseCalls,1);assert.equal(await page.getByRole('link',{name:'Actualizar',includeHidden:true}).count(),1);
+      assert.equal(await page.getByText('Fuera de ruta',{exact:true}).count(),1);
+      assert.equal(await page.getByRole('link',{name:'Actualizar'}).getAttribute('href'),'https://example.invalid/qa-update.apk');
+      assert.deepEqual((await new AxeBuilder({page}).analyze()).violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id),[]);
+      await page.route('**/api/app/releases/android',r=>r.fulfill({json:{release:{minimumVersionCode:2,latestVersionCode:2,forceUpdate:true,downloadUrl:'https://example.invalid/qa-update.apk'}}}));
+      await page.reload();await page.getByRole('heading',{name:'Actualiza ManeComb',exact:true}).waitFor();
+      assert.ok(await page.getByRole('link',{name:'Descargar actualización'}).evaluate(node=>{const r=node.getBoundingClientRect();return node.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}),'Mandatory overlay remains above map');
+      await page.context().close();
+    }
+    assert.deepEqual(obscured,[],'Existing operational feedback must be visible and reachable');
+  });
+  await run("Mobile V3 map shell is map-first with one owner",async()=>{
+    const page=await pageFor('mobile_operations');let forbidden=0;
+    await page.route('**/api/locations/live',route=>{forbidden++;return route.fulfill({json:{units:[]}})});
+    await page.route('**/api/operation/navigation',route=>route.fulfill({json:{journey:{id:'ui-journey',vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:unit.recordedAt},route:{id:unit.routeId,name:unit.routeName,revision:1,geometry:[],stops:[]},snapshot:unit}}));
+    await page.route('**/api/journeys',route=>route.fulfill({json:{journeys:[{_id:'ui-journey',vehicleId:unit.vehicleId,state:'RUNNING'}]}}));
+    await page.goto(base+'/operacion');await page.getByText('Parada QA',{exact:true}).waitFor();
+    assert.equal(await page.locator('.driver-shell > .mobile-v3-top-bar').count(),1,'Foundation floating top bar');
+    assert.equal(await page.locator('.driver-shell > .mobile-v3-bottom-nav').count(),1,'Foundation stable bottom navigation');
+    const sheet=page.getByRole('region',{name:'Contexto de operación',exact:true});await sheet.waitFor();
+    assert.equal(await sheet.getAttribute('data-level'),'compact');
+    assert.equal(await page.locator('.driver-map-canvas').count(),1);
+    assert.equal(await page.locator('.driver-bottom-card').count(),0,'No duplicate map summary');
+    for(const name of ['Mapa','Chat','Radio','Alertas','Más'])assert.equal(await page.getByRole('navigation').getByRole('link',{name,exact:true}).count(),1);
+    for(const level of ['medium','expanded']){await sheet.getByRole('button',{name:'Ampliar contexto',exact:true}).click();assert.equal(await sheet.getAttribute('data-level'),level)}
+    await sheet.locator('summary').click();
+    assert.equal(await sheet.getByRole('button',{name:'Pausar',exact:true}).count(),1);
+    assert.equal(await page.getByRole('button',{name:'Finalizar',exact:true,includeHidden:true}).count(),1);
+    await sheet.getByRole('button',{name:'Reducir contexto',exact:true}).click();await sheet.getByRole('button',{name:'Reducir contexto',exact:true}).click();
+    await page.evaluate(()=>{window.location.hash='controles-jornada'});
+    await page.waitForFunction(()=>document.querySelector('#operation-context')?.dataset.level==='expanded',{},{timeout:2000});
+    assert.equal(await page.locator('.unit-detail-panel').count(),0);assert.equal(forbidden,0);
+    const geometry=await page.locator('.driver-map-shell').evaluate(node=>{const r=node.getBoundingClientRect();return{top:r.top,height:r.height,bottom:r.bottom,viewport:innerHeight}});
+    assert.ok(geometry.height>=geometry.viewport*.75,'Portrait map canvas dominates viewport');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1),'Map shell must not add page scroll behind its independent sheet');
+    await page.screenshot({path:'artifacts/functional-ui-qa/mobile-v3-map-shell-expanded.png',fullPage:true});
+    await page.context().close();
+  });
   await run("Mobile V3 auth announces the active access destination",async()=>{
     const page=await pageFor('mobile_operations');
     for(const path of ['/login?surface=operation','/activar?surface=operation']){
@@ -73,6 +130,83 @@ try{
       assert.equal(await nav.locator('[aria-current="page"]').getAttribute('href'),path);
     }
     await page.context().close();
+  });
+  await run("Mobile V3 map shell keeps no-unit, retry and bridge states honest",async()=>{
+    const page=await pageFor('mobile_operations');let calls=0,fail=true,assigned=false,forbidden=0;
+    await page.route('**/api/locations/live',r=>{forbidden++;return r.fulfill({json:{units:[]}})});
+    await page.route('**/api/operation/navigation',r=>{calls++;return r.fulfill({status:fail?503:200,json:fail?{error:'QA unavailable'}:{journey:assigned?{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:null,startedAt:null}:null,route:null,snapshot:assigned?unit:null}})});
+    await page.goto(base+'/operacion');await page.getByRole('button',{name:'Reintentar',exact:true}).waitFor();assert.equal(calls,1);
+    fail=false;await page.getByRole('button',{name:'Reintentar',exact:true}).click();await page.getByText('Esperando jornada',{exact:true}).waitFor();
+    assert.equal(await page.locator('.driver-map-canvas').count(),0);assert.equal(await page.getByRole('button',{name:'Iniciar jornada',includeHidden:true}).count(),0);
+    assigned=true;await page.reload();await page.getByText('Parada QA',{exact:true}).waitFor();assert.equal(await page.locator('.driver-map-canvas').count(),1);
+    await page.getByRole('navigation').getByRole('link',{name:'Más',exact:true}).click();await page.waitForURL('**/operacion/mas');
+    await page.getByRole('heading',{name:'Más',exact:true}).waitFor();
+    assert.equal(await page.locator('.mobile-v3-map-summary').count(),0,'Accepted presentation model clears on map departure');
+    assert.equal(await page.getByRole('button',{name:'Iniciar GPS',includeHidden:true}).count(),1,'Tracking owner stays mounted once');
+    assert.equal(forbidden,0);await page.context().close();
+  });
+  if(process.env.QA_MAPBOX==='1')await run("Mapbox provider Mobile V3 geometry and camera",async()=>{
+    for(const theme of ['dark','light']){
+      const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});await page.addInitScript(theme=>localStorage.setItem('manecomb.theme',theme),theme);
+      await realtime(page);
+      await page.route('**/api/operation/navigation',r=>r.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:null},route:{id:unit.routeId,name:unit.routeName,revision:1,geometry:[{latitude:19.3,longitude:-98.2},{latitude:19.31,longitude:-98.21}],stops:[]},snapshot:unit}}));
+      const provider=[],providerBodies=[];page.on('response',r=>{
+        if(!r.url().includes('api.mapbox.com'))return;
+        const record={status:r.status(),path:new URL(r.url()).pathname};provider.push(record);
+        if(record.status===404&&/^\/v4\/mapbox\.mapbox-incidents-v1\/\d+\/\d+\/\d+\.vector\.pbf$/.test(record.path))providerBodies.push(r.json().then(body=>{record.message=body.message}).catch(()=>{}));
+      });
+      await page.goto(base+'/operacion');await realMapForQa(page,'.driver-map-canvas');
+      const sheet=page.locator('#operation-context');
+      await page.evaluate(()=>{const map=window.__qaLiveMap,original=map.easeTo;window.__qaCamera=[];map.easeTo=function(options,...rest){window.__qaCamera.push(options.duration);return original.call(this,options,...rest)}});
+      for(const motion of ['no-preference','reduce']){
+        await page.emulateMedia({reducedMotion:motion});await page.evaluate(()=>{window.__qaCamera.length=0});await page.mouse.move(150,220);await page.mouse.down();await page.mouse.move(210,240,{steps:8});await page.mouse.up();
+        await page.getByRole('button',{name:/Seguir/}).waitFor();await page.getByRole('button',{name:/Seguir/}).click();
+        await page.waitForFunction(()=>window.__qaCamera.length>0);assert.equal(await page.evaluate(()=>window.__qaCamera.at(-1)),motion==='reduce'?0:420);
+      }
+      await page.emulateMedia({reducedMotion:'reduce'});
+      for(const [width,height] of [[360,800],[390,844],[412,915],[430,932],[768,900],[1024,960],[1366,960],[1440,960],[1920,960],[844,390],[915,412]]){
+        await page.setViewportSize({width,height});
+        for(const level of ['compact','medium','expanded']){
+          while(await sheet.getAttribute('data-level')!=='compact')await sheet.getByRole('button',{name:'Reducir contexto'}).click();
+          if(level!=='compact')await sheet.getByRole('button',{name:'Ampliar contexto'}).click();if(level==='expanded')await sheet.getByRole('button',{name:'Ampliar contexto'}).click();
+          assert.equal(await page.locator('.driver-map-canvas canvas').count(),1,'Single actual Mapbox canvas');
+          const geometry=await page.evaluate(()=>{
+            const map=document.querySelector('.driver-map-canvas').getBoundingClientRect(),sheet=document.querySelector('#operation-context').getBoundingClientRect();
+            const controls=[...document.querySelectorAll('.driver-follow,.mapboxgl-ctrl-group button,.mobile-v3-top-bar a,.mobile-v3-top-bar button,.mobile-v3-bottom-nav a')].map(node=>{const r=node.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2,points=[[x,y],[x,r.top+2],[x,r.bottom-2],[r.left+2,y],[r.right-2,y]];return{label:node.getAttribute('aria-label')||node.textContent.trim(),width:r.width,height:r.height,reachable:points.every(([px,py])=>node.contains(document.elementFromPoint(px,py)))}});
+            return{canvas:{x:map.x,y:map.y,width:map.width,height:map.height},uncoveredHeight:Math.max(0,sheet.top-map.top),controls,overflow:document.documentElement.scrollWidth>innerWidth+1};
+          });
+          assert.equal(geometry.overflow,false);assert.deepEqual(geometry.controls.filter(c=>c.width<44||c.height<44||!c.reachable),[],`Reachable real map/chrome controls ${theme} ${width}x${height} ${level}`);
+          const severe=(await new AxeBuilder({page}).analyze()).violations.filter(v=>['serious','critical'].includes(v.impact));assert.deepEqual(severe.map(v=>v.id),[]);
+          await page.screenshot({path:`artifacts/functional-ui-qa/mapbox-screens/v3-${theme}-${width}x${height}-${level}.png`,fullPage:true});
+          checks.push({name:'Mapbox V3 geometry',theme,width,height,level,geometry,status:'PASS'});
+        }
+      }
+      await Promise.all(providerBodies);
+      const emptyIncidentTiles=provider.filter(r=>r.status===404&&r.message==='Tile not found'&&/^\/v4\/mapbox\.mapbox-incidents-v1\/\d+\/\d+\/\d+\.vector\.pbf$/.test(r.path));
+      // Mapbox's documented missing-tile response is evidence of absent tile data,
+      // never evidence of traffic coverage. All other provider errors still fail.
+      assert.deepEqual(provider.filter(r=>r.status>=400&&!r.path.startsWith('/events/')&&!emptyIncidentTiles.includes(r)),[]);
+      assert.equal(await page.getByText(/No se pudo cargar el mapa|El mapa no está disponible/).count(),0);
+      assert.ok(await page.evaluate(()=>window.__qaLiveMap.queryRenderedFeatures().some(f=>f.layer?.source!=='manecomb-route')),'Actual basemap features render');
+      assert.ok(await page.evaluate(()=>Boolean(window.__qaLiveMap.getSource('manecomb-route'))),'Actual known route source renders');
+      checks.push({name:'Mapbox V3 provider resources',theme,emptyIncidentTiles,status:'PASS'});await page.context().close();
+    }
+  });
+  await run("Mobile V3 map shell long context and landscape stay readable",async()=>{
+    const longStop='Próxima parada con nombre extendido para lectura y traducción — '.repeat(3).trim();
+    for(const theme of ['dark','light'])for(const [width,height] of [[360,800],[844,390]]){
+      const page=await pageFor('mobile_operations',{viewport:{width,height},reducedMotion:'reduce'});await page.addInitScript(theme=>localStorage.setItem('manecomb.theme',theme),theme);
+      await page.route('**/api/operation/navigation',r=>r.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:null},route:{id:unit.routeId,name:'Ruta con nombre extendido para traducción y lectura accesible',revision:1,geometry:[],stops:[]},snapshot:{...unit,nextStop:{...unit.nextStop,name:longStop}}}}));
+      await page.goto(base+'/operacion');const sheet=page.locator('#operation-context');const stop=sheet.getByText(longStop,{exact:true});await stop.waitFor();
+      await page.getByText('El mapa no está disponible. Los datos de tu jornada siguen accesibles.',{exact:true}).waitFor();
+      await sheet.getByRole('button',{name:'Ampliar contexto'}).click();await sheet.getByRole('button',{name:'Ampliar contexto'}).click();
+      await stop.scrollIntoViewIfNeeded();
+      const read=await stop.evaluate(node=>{const r=node.getBoundingClientRect(),s=node.closest('#operation-context').getBoundingClientRect();return{width:r.width,visibleHeight:Math.max(0,Math.min(r.bottom,s.bottom)-Math.max(r.top,s.top))}});
+      assert.ok(read.width<=width&&read.visibleHeight>=44,'Long next-stop text can be reached by sheet scroll');
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+      assert.deepEqual((await new AxeBuilder({page}).analyze()).violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id),[]);
+      await page.screenshot({path:`artifacts/functional-ui-qa/v3-long-context-${theme}-${width}x${height}.png`,fullPage:true});await page.context().close();
+    }
   });
   await run("Mobile V3 auth setup and bootstrap preserve existing destinations",async()=>{
     const page=await pageFor('platform_admin');const setup={secret:'QA-ONLY-'+('A'.repeat(120)),uri:'otpauth://totp/QA-only?secret='+('A'.repeat(180))};
@@ -578,6 +712,7 @@ try{
     await page.route("**/api/operation/navigation",async route=>{await new Promise(resolve=>setTimeout(resolve,600));await route.fulfill({json:{journey:{id:"ui-journey",vehicleId:unit.vehicleId,state:"running",routeId:unit.routeId,startedAt:unit.recordedAt},route:{id:unit.routeId,name:unit.routeName,revision:1,geometry:[],stops:[]},snapshot:unit}})});
     await page.goto(base+"/operacion");await page.getByText("Parada QA",{exact:true}).waitFor();
     await page.getByText("El mapa no está disponible. Los datos de tu jornada siguen accesibles.",{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Ampliar contexto',exact:true}).click();
     await page.getByText("20 km/h",{exact:true}).waitFor();
     assert.equal(await page.getByText("No se pudo cargar la operación",{exact:true}).count(),0);
     await page.context().close();
