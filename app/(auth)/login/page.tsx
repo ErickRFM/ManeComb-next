@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { ModuleShell } from "@/src/components/module-shell";
 import { AuthForm } from "@/src/components/auth-form";
 import { Navigation } from "@/src/components/navigation";
 import { BrandLogo } from "@/src/components/brand-logo";
 import { MarketingProductPreview } from "@/src/components/marketing-product-preview";
+import { OperationAuthLayout } from "@/src/components/operation-auth-layout";
 import { getCommercialPlan } from "@/src/core/domain/commercial-plans";
 
 export default async function LoginPage({searchParams}:{searchParams:Promise<{surface?:string;plan?:string}>}){
@@ -12,11 +12,9 @@ export default async function LoginPage({searchParams}:{searchParams:Promise<{su
   const selected=!operation&&params.plan?getCommercialPlan(params.plan):null;
 
   if(operation){
-    return <ModuleShell operation title="Entrar a ManeComb" description="Accede con tu cuenta para continuar.">
-      <AuthForm mode="login" operation planCode={selected?.code}/>
-      <Link href="/recuperar-password?surface=operation">Recuperar contraseña</Link>
-      <p><Link href="/activar?surface=operation">Activar cuenta de conductor</Link></p>
-    </ModuleShell>;
+    return <OperationAuthLayout active="login" showRecovery>
+      <AuthForm mode="login" operation/>
+    </OperationAuthLayout>;
   }
 
   return <div className="shell auth-premium-shell">
