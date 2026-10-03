@@ -31,7 +31,7 @@ export function PasswordReset({token}:{token:string}){
     }
   }
 
-  return <form className="card grid" style={{maxWidth:520}} onSubmit={submit}>
+  return <form className="card grid" aria-busy={busy} style={{maxWidth:520}} onSubmit={submit}>
     <PasswordField label="Nueva contraseña" name="password" minLength={10} maxLength={128} autoComplete="new-password" placeholder="Nueva contraseña (10+)" required/>
     <PasswordField label="Confirmar contraseña" name="confirmation" minLength={10} maxLength={128} autoComplete="new-password" placeholder="Repite la contraseña" required/>
     <button className="btn" disabled={busy}>{busy?"Guardando...":"Cambiar contraseña"}</button>

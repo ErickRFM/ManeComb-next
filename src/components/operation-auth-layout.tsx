@@ -23,10 +23,11 @@ export function OperationAuthLayout({
 
       {active!=="recovery"?<nav className="operation-auth-segment" aria-label="Acceso de conductor">
         <Link className={active==="login"?"active":""} href="/login?surface=operation">Iniciar sesión</Link>
-        <Link className={active==="activate"?"active":""} href="/activar?surface=operation">Registrarse</Link>
+        <Link className={active==="activate"?"active":""} href="/activar?surface=operation">Activar cuenta</Link>
       </nav>:null}
 
       <div className="operation-auth-content">
+        {active==="login"?<div className="operation-activation-copy"><h1>Iniciar sesión</h1><p>Accede a tu operación con tu cuenta.</p></div>:null}
         {children}
         {showRecovery?<div className="operation-auth-links">
           <Link href="/recuperar-password?surface=operation">¿Olvidaste tu contraseña?</Link>

@@ -12,24 +12,25 @@
 .operation-auth-shell{
   display:flex;
   justify-content:center;
-  padding:calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 22px);
+  padding:calc(env(safe-area-inset-top) + 24px) 22px calc(env(safe-area-inset-bottom) + 24px);
 }
 
 .operation-auth-panel{
   width:min(100%,420px);
   display:flex;
   flex-direction:column;
-  min-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 40px);
+  min-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 48px);
 }
 
 .operation-auth-brand{
   display:flex;
-  align-items:flex-start;
+  align-items:center;
+  justify-content:center;
   min-height:54px;
 }
 
 .operation-auth-logo{
-  --brand-logo-width:210px!important;
+  --brand-logo-width:200px!important;
   color:#25282f;
 }
 
@@ -40,7 +41,7 @@
 }
 
 .operation-auth-artwork img{
-  width:156px;
+  width:148px;
   height:110px;
   object-fit:contain;
   display:block;
@@ -59,17 +60,17 @@
   display:grid;
   grid-template-columns:1fr 1fr;
   padding:2px;
-  border-radius:9px;
+  border-radius:12px;
   background:#eae5dd;
   overflow:hidden;
 }
 
 .operation-auth-segment a{
-  min-height:40px;
+  min-height:48px;
   display:flex;
   align-items:center;
   justify-content:center;
-  border-radius:7px;
+  border-radius:10px;
   color:#333;
   font-size:12px;
   font-weight:800;
@@ -118,7 +119,7 @@
   box-shadow:none;
 }
 
-.operation-auth-content .input::placeholder{color:#9aa0aa}
+.operation-auth-content .input::placeholder{color:#5f6570}
 .operation-auth-content .input:hover{border-color:#202020}
 .operation-auth-content .input:focus,
 .operation-auth-content .input:focus-visible{
@@ -129,6 +130,10 @@
 
 .operation-auth-content .password-visibility-toggle{
   color:#525966;
+  width:44px;
+  height:44px;
+  min-width:44px;
+  min-height:44px;
 }
 
 .operation-auth-content .password-visibility-toggle:hover{
@@ -138,7 +143,7 @@
 
 .operation-auth-content .btn{
   min-height:48px;
-  border-radius:9px;
+  border-radius:12px;
   background:#e31e24;
   color:#fff;
   font-size:16px;
@@ -159,6 +164,10 @@
 
 .operation-auth-links a,
 .operation-auth-back{
+  display:inline-flex;
+  align-items:center;
+  min-height:44px;
+  min-width:44px;
   color:#e31e24;
   font-size:12px;
   font-weight:750;
@@ -181,8 +190,8 @@
 .operation-activation-copy h1{
   margin:0;
   color:#171a20;
-  font-size:22px;
-  line-height:1.05;
+  font-size:28px;
+  line-height:1.15;
   letter-spacing:-.035em;
 }
 
@@ -252,8 +261,22 @@
 
 @keyframes operation-session-spin{to{transform:rotate(360deg)}}
 
+.operation-auth-content p,
+.operation-auth-content code{overflow-wrap:anywhere}
+.operation-auth-content .muted{color:#5f6570}
+.operation-auth-content [role="alert"]{color:#b3121e!important}
+.operation-auth-content>.grid{max-width:100%!important;min-width:0}
+.operation-auth-content>.grid>.card{background:#f5f6f8;border:1px solid #d8dce2;color:#171a20;border-radius:12px}
+.operation-auth-content summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
+.operation-auth-content a:focus-visible,
+.operation-auth-content button:focus-visible{outline:3px solid #b3121e;outline-offset:3px}
+.operation-auth-content .password-field-control .input{padding-right:56px}
+.operation-auth-brand,.operation-session-check-inner>.brand-logo{animation:operation-auth-enter 260ms ease-out both}
+.operation-auth-content{animation:operation-auth-enter 360ms ease-out both}
+@keyframes operation-auth-enter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
 @media(max-width:390px){
-  .operation-auth-shell{padding-left:16px;padding-right:16px}
+  .operation-auth-shell{padding-left:20px;padding-right:20px}
   .operation-auth-logo{--brand-logo-width:184px!important}
   .operation-auth-artwork img{width:136px;height:96px}
   .operation-auth-artwork p{font-size:14px}
@@ -270,4 +293,5 @@
 
 @media(prefers-reduced-motion:reduce){
   .operation-session-spinner{animation:none;border-top-color:#e31e24}
+  .operation-auth-shell *, .operation-session-check *{animation:none!important;transition:none!important}
 }

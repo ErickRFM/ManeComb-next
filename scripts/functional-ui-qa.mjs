@@ -65,6 +65,38 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  // Catches inaccessible small auth targets and missing operational reset/MFA composition.
+  await run("Mobile V3 auth controls stay readable and reachable",async()=>{
+    const page=await pageFor("mobile_operations");
+    await page.goto(base+"/login?surface=operation");await assertOperationAccess(page);
+    for(const [width,height] of [[360,800],[844,390]]){
+      await page.setViewportSize({width,height});
+      const issues=await page.locator('.operation-auth-shell a,.operation-auth-shell button,.operation-auth-shell input').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {text:n.getAttribute('aria-label')||n.textContent,width:r.width,height:r.height}}).filter(r=>r.width<44||r.height<44));
+      assert.deepEqual(issues,[],"Every access control needs a usable touch target");
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+      const logo=await page.locator('.operation-auth-logo').boundingBox();assert.ok(logo.width>=170&&logo.width<=205);
+      await page.getByLabel("Contraseña",{exact:true}).fill("preserved-password");await page.getByRole('button',{name:'Mostrar contraseña',exact:true}).click();
+      assert.equal(await page.getByLabel("Contraseña",{exact:true}).inputValue(),"preserved-password");
+      await page.getByRole('button',{name:'Ocultar contraseña',exact:true}).click();
+    }
+    await page.goto(base+"/login");assert.equal(await page.locator('.operation-auth-shell').count(),0);await page.locator('.auth-premium-shell').waitFor();
+    await page.context().close();
+  });
+  await run("Mobile V3 auth reset and MFA preserve authority",async()=>{
+    const page=await pageFor("mobile_operations");let calls=0;
+    await page.route('**/api/auth/reset-password',route=>{calls++;assert.deepEqual(route.request().postDataJSON(),{token:'ui-qa',password:'QA-valid-password-123'});return route.abort()});
+    await page.goto(base+'/restablecer-password?token=ui-qa&surface=operation');
+    await page.locator('.operation-auth-shell').waitFor({timeout:5000});
+    await page.getByLabel('Nueva contraseña',{exact:true}).fill('QA-valid-password-123');await page.getByLabel('Confirmar contraseña',{exact:true}).fill('QA-valid-password-123');
+    await page.getByRole('button',{name:'Cambiar contraseña',exact:true}).click();await page.locator('.operation-auth-shell p[role="alert"]').waitFor();
+    assert.equal(calls,1);assert.equal(await page.getByLabel('Nueva contraseña',{exact:true}).inputValue(),'QA-valid-password-123');
+    await page.route('**/api/auth/mfa/setup',route=>route.fulfill({status:409,json:{error:'ALREADY_CONFIGURED'}}));
+    await page.route('**/api/auth/mfa/verify',route=>{assert.deepEqual(route.request().postDataJSON(),{code:'123456'});return route.abort()});
+    await page.goto(base+'/mfa?surface=operation');await page.locator('.operation-auth-shell').waitFor({timeout:5000});
+    await page.getByLabel('Código de verificación').fill('123456');await page.getByRole('button',{name:'Verificar',exact:true}).click();await page.locator('.operation-auth-shell p[role="alert"]').waitFor();
+    assert.equal(await page.getByLabel('Código de verificación').inputValue(),'123456');assert.equal(await page.getByRole('button',{name:'Verificar',exact:true}).isEnabled(),true);
+    await page.context().close();
+  });
   // Catches token leakage into existing surfaces and unintended live announcements/network owners.
   await run("mobile foundation isolates tokens and status semantics",async()=>{
     for(const theme of ["dark","light"]){
