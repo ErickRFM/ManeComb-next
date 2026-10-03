@@ -1,8 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import {createPortal} from "react-dom";
+import {useMapFeedbackHost} from "@/src/components/mobile-ui/operation-map-context";
 import { isNativeLocationAvailable, getNativeAppInfo } from "@/src/lib/native-location";
 
 export function AppVersionGate(){
+  const feedbackHost=useMapFeedbackHost();
   const [gate,setGate]=useState<{blocked:boolean;latest:boolean;message:string;url?:string}|null>(null);
 
   useEffect(()=>{
@@ -51,7 +54,8 @@ export function AppVersionGate(){
     </div>;
   }
 
-  return <div className="card">
+  const notice=<div className="card">
     <div className="status-row"><span>{gate.message}</span>{gate.url?<a className="btn secondary" href={gate.url}>Actualizar</a>:null}</div>
   </div>;
+  return feedbackHost?createPortal(notice,feedbackHost):notice;
 }

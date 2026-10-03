@@ -65,6 +65,36 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  await run("Mobile V3 map shell preserves optional update and off-route feedback",async()=>{
+    const obscured=[];
+    for(const theme of ['dark','light'])for(const [width,height] of [[360,800],[844,390]]){
+      const page=await pageFor('mobile_operations',{viewport:{width,height},reducedMotion:'reduce'});
+      await page.addInitScript(theme=>{
+        localStorage.setItem('manecomb.theme',theme);
+        window.androidBridge={};
+        window.Capacitor={PluginHeaders:[{name:'ManeCombLocation',methods:['appInfo','status','removeListener'].map(name=>({name,rtype:'promise'})).concat([{name:'addListener',rtype:'callback'}])}],
+          nativePromise:async(plugin,method)=>method==='appInfo'?{versionName:'QA-only',versionCode:1,nativeTrackingContractVersion:2}:method==='status'?{contractVersion:2,state:'stopped',running:false,pendingPackets:0,networkAvailable:true,lastCaptureAtMs:0,lastUploadAtMs:0,retryDelayMs:0,lastError:''}:{},
+          nativeCallback:()=>Promise.resolve('qa-native-listener')};
+      },theme);
+      let releaseCalls=0;
+      await page.route('**/api/app/releases/android',r=>{releaseCalls++;return r.fulfill({json:{release:{minimumVersionCode:1,latestVersionCode:2,forceUpdate:false,downloadUrl:'https://example.invalid/qa-update.apk'}}})});
+      await page.route('**/api/operation/navigation',r=>r.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:null},route:{id:unit.routeId,name:unit.routeName,revision:1,geometry:[],stops:[]},snapshot:{...unit,isOffRoute:true,distanceFromRouteM:125}}}));
+      await page.goto(base+'/operacion');await page.getByRole('link',{name:'Actualizar',exact:true}).waitFor();
+      const sheet=page.locator('#operation-context');await sheet.getByRole('button',{name:'Ampliar contexto'}).click();await sheet.getByRole('button',{name:'Ampliar contexto'}).click();
+      for(const target of [page.getByRole('link',{name:'Actualizar',exact:true}),page.getByText('Fuera de ruta',{exact:true})]){
+        await target.scrollIntoViewIfNeeded();if(!await target.evaluate(node=>{const r=node.getBoundingClientRect();return r.width>0&&r.height>0&&node.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}))obscured.push(`${theme} ${width}x${height}: ${await target.innerText()}`);
+      }
+      assert.equal(releaseCalls,1);assert.equal(await page.getByRole('link',{name:'Actualizar',includeHidden:true}).count(),1);
+      assert.equal(await page.getByText('Fuera de ruta',{exact:true}).count(),1);
+      assert.equal(await page.getByRole('link',{name:'Actualizar'}).getAttribute('href'),'https://example.invalid/qa-update.apk');
+      assert.deepEqual((await new AxeBuilder({page}).analyze()).violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id),[]);
+      await page.route('**/api/app/releases/android',r=>r.fulfill({json:{release:{minimumVersionCode:2,latestVersionCode:2,forceUpdate:true,downloadUrl:'https://example.invalid/qa-update.apk'}}}));
+      await page.reload();await page.getByRole('heading',{name:'Actualiza ManeComb',exact:true}).waitFor();
+      assert.ok(await page.getByRole('link',{name:'Descargar actualización'}).evaluate(node=>{const r=node.getBoundingClientRect();return node.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}),'Mandatory overlay remains above map');
+      await page.context().close();
+    }
+    assert.deepEqual(obscured,[],'Existing operational feedback must be visible and reachable');
+  });
   await run("Mobile V3 map shell is map-first with one owner",async()=>{
     const page=await pageFor('mobile_operations');let forbidden=0;
     await page.route('**/api/locations/live',route=>{forbidden++;return route.fulfill({json:{units:[]}})});
