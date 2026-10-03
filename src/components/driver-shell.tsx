@@ -40,15 +40,15 @@ function DriverShellContent({children}:{children:React.ReactNode}){
   const previousJourney=useRef<string|null>(null);
   const isMap=pathname==="/operacion";
   useEffect(()=>{
-    const identity=data?.journey?.id||null;
+    const identity=data?.journey?data.journey.id+":"+data.journey.vehicleId:null;
     if(previousJourney.current&&identity&&previousJourney.current!==identity)setLevel("compact");
     if(identity)previousJourney.current=identity;
-  },[data?.journey?.id]);
+  },[data?.journey?.id,data?.journey?.vehicleId]);
   return <div className="driver-shell mobile-v3-operation" data-map-home={isMap}>
     <MobileTopBar leading={<Link href="/operacion" className="driver-brand" aria-label="ManeComb Operación"><BrandLogo size="sm"/></Link>} title={<><span>Operación</span><span className="mobile-v3-browser-network" aria-live="polite">{online===null?"Consultando red":online?"Red disponible":"Sin red"}</span></>} actions={<><Link href="/operacion/sos" className="mobile-v3-button" aria-label="Reportar emergencia SOS">SOS</Link><ThemeToggle/></>}/>
     <main id="main-content" className="driver-workspace" tabIndex={-1}>{children}
       <aside className="mobile-v3-operation-context" hidden={!isMap}>
-        <ContextSheet id="operation-context" title="Contexto de operación" level={level} onLevelChange={setLevel} summary={<><OperationMapSummary data={data}/><div ref={setFeedbackHost}/></>}>
+        <ContextSheet id="operation-context" title="Contexto de operación" level={level} onLevelChange={setLevel} resetKey={data?.journey?data.journey.id+":"+data.journey.vehicleId:null} summary={<><OperationMapSummary data={data}/><div ref={setFeedbackHost}/></>}>
           <OperationMapSummary data={data} detail/>
           <section hidden={!isMap} aria-label="Controles de jornada y GPS"><DriverTools onOpen={openContext}><JourneyPanel/><DriverConsole/><PushOptIn/></DriverTools></section>
         </ContextSheet>

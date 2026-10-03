@@ -65,6 +65,95 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  await run("Mobile V3 context sheet handle gesture and keyboard",async()=>{
+    const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});await page.goto(base+'/visual-qa/mobile-foundation');
+    const sheet=page.getByRole('region',{name:'Contexto de prueba QA',exact:true});await sheet.scrollIntoViewIfNeeded();
+    const grip=sheet.getByRole('slider',{name:'Ajustar nivel del contexto',exact:true});assert.equal(await grip.count(),1,'One named interactive grip');
+    assert.equal(await sheet.locator('.mobile-v3-sheet-measures').evaluate(n=>n.getBoundingClientRect().height),0,'Geometry probes occupy no scrollable presentation space');
+    const gripSize=await grip.boundingBox();assert.ok(gripSize.width>=44&&gripSize.height>=44,'Grip touch target is at least44px');
+    assert.equal(await sheet.getAttribute('aria-modal'),null);assert.equal(await page.getByRole('dialog').count(),0);
+    await grip.focus();for(const [key,level] of [['ArrowUp','medium'],['ArrowUp','expanded'],['Home','compact'],['End','expanded'],['ArrowDown','medium'],['Escape','compact']]){
+      await page.keyboard.press(key);assert.equal(await sheet.getAttribute('data-level'),level);assert.ok(await grip.evaluate(n=>n===document.activeElement));
+    }
+    await grip.press('Home');await sheet.scrollIntoViewIfNeeded();
+    const start=await grip.boundingBox(),initialHeight=await sheet.evaluate(n=>n.getBoundingClientRect().height),targetHeight=await sheet.locator('[data-sheet-measure="medium"]').evaluate(n=>n.getBoundingClientRect().height);
+    const before=await page.getByLabel('Callbacks de hoja QA').textContent();
+    await page.mouse.move(start.x+start.width/2,start.y+start.height/2);await page.mouse.down();
+    assert.ok(await grip.evaluate(n=>n.hasPointerCapture(1)),'Actual mouse pointer is captured only by grip');
+    await page.mouse.move(start.x+start.width/2,start.y+start.height/2-(targetHeight-initialHeight),{steps:6});
+    assert.equal(await sheet.getAttribute('data-level'),'compact');assert.equal(await page.getByLabel('Callbacks de hoja QA').textContent(),before,'Move does not publish stages');
+    await page.mouse.up();assert.equal(await sheet.getAttribute('data-level'),'medium');
+    await grip.press('Home');await sheet.scrollIntoViewIfNeeded();const cancelStart=await grip.boundingBox();
+    await page.mouse.move(cancelStart.x+cancelStart.width/2,cancelStart.y+cancelStart.height/2);await page.mouse.down();await page.mouse.move(cancelStart.x+cancelStart.width/2,cancelStart.y+cancelStart.height/2-90,{steps:3});
+    await grip.dispatchEvent('pointercancel',{pointerId:1,isPrimary:true,bubbles:true});await page.mouse.up();
+    assert.equal(await sheet.getAttribute('data-level'),'compact');assert.equal(await sheet.getAttribute('data-dragging'),null);
+    for(const cancelKind of ['lost-capture','orientation','identity']){
+      await grip.evaluate(n=>n.scrollIntoView({block:'center'}));const point=await grip.boundingBox();const callbacks=await page.getByLabel('Callbacks de hoja QA').textContent();
+      await page.mouse.move(point.x+point.width/2,point.y+point.height/2);await page.mouse.down();await page.mouse.move(point.x+point.width/2,point.y+point.height/2-60);
+      assert.equal(await sheet.getAttribute('data-dragging'),'true');
+      if(cancelKind==='lost-capture'){await grip.evaluate(n=>n.releasePointerCapture(1));await page.mouse.move(point.x+point.width/2+1,point.y+point.height/2-60)}
+      else if(cancelKind==='orientation')await page.evaluate(()=>window.dispatchEvent(new Event('orientationchange')));
+      else await page.evaluate(()=>document.querySelector('[data-qa-context-identity]').click());
+      await page.mouse.up();await page.waitForFunction(()=>!document.querySelector('#qa-context').hasAttribute('data-dragging'));assert.equal(await sheet.getAttribute('data-dragging'),null,cancelKind);assert.equal(await sheet.getAttribute('data-level'),'compact');assert.equal(await page.getByLabel('Callbacks de hoja QA').textContent(),callbacks,'Cancelled gesture never publishes an action');
+    }
+    await grip.press('End');const body=sheet.locator('.mobile-v3-sheet-body');await body.scrollIntoViewIfNeeded();const bodyPoint=await body.boundingBox();
+    await page.mouse.move(bodyPoint.x+20,bodyPoint.y+20);await page.mouse.down();await page.mouse.move(bodyPoint.x+20,bodyPoint.y+50);await page.mouse.up();assert.equal(await sheet.getAttribute('data-level'),'expanded','Body never starts sheet drag');
+    const input=sheet.getByLabel('Borrador de hoja QA');await input.fill('persistente');await input.press('Escape');assert.equal(await sheet.getAttribute('data-level'),'expanded','Input Escape remains owned by input');
+    await page.evaluate(()=>document.querySelector('[data-qa-external-collapse]').click());
+    assert.equal(await sheet.getAttribute('data-level'),'compact');assert.ok(await grip.evaluate(n=>n===document.activeElement),'External compact restores hidden-body focus to grip');
+    await grip.press('End');assert.equal(await input.inputValue(),'persistente');
+    await sheet.getByRole('button',{name:'Acción local de contenido QA'}).focus();await page.keyboard.press('Tab');assert.equal(await sheet.locator(':focus').count(),0,'No focus trap');
+    await page.context().close();
+  });
+  await run("Mobile V3 context sheet preserves owners drafts and tracking",async()=>{
+    const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});let journeyReads=0,actions=0,connections=0;
+    await page.addInitScript(()=>{window.__gpsStarts=0;window.__gpsStops=0;window.__journeyListeners=new Set();const add=window.addEventListener,remove=window.removeEventListener;window.addEventListener=function(type,listener,options){if(type==='manecomb:journey-state')window.__journeyListeners.add(listener);return add.call(this,type,listener,options)};window.removeEventListener=function(type,listener,options){if(type==='manecomb:journey-state')window.__journeyListeners.delete(listener);return remove.call(this,type,listener,options)};Object.defineProperty(navigator,'geolocation',{configurable:true,value:{watchPosition:()=>{window.__gpsStarts++;return 77},clearWatch:()=>{window.__gpsStops++}}})});
+    await page.routeWebSocket('**/socket.io/**',ws=>{connections++;ws.send('0'+JSON.stringify({sid:'sheet-qa-'+connections,upgrades:[],pingInterval:25000,pingTimeout:20000,maxPayload:1000000}));ws.onMessage(raw=>{if(String(raw)==='40')ws.send('40'+JSON.stringify({sid:'sheet-client-'+connections}))})});
+    await page.route('**/api/operation/navigation',r=>r.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:null,startedAt:null},route:null,snapshot:unit}}));
+    await page.route('**/api/journeys',r=>{if(r.request().method()==='POST'){actions++;return r.fulfill({json:{journey:{_id:unit.journeyId,vehicleId:unit.vehicleId,state:'READY'}}})}journeyReads++;return r.fulfill({json:{journeys:[{_id:unit.journeyId,vehicleId:unit.vehicleId,state:'ASSIGNED'}]}})});
+    await page.goto(base+'/operacion#controles-jornada');await page.getByLabel('Odómetro inicial (km)').fill('123.4');await page.getByRole('checkbox',{name:'Frenos',exact:true}).check();
+    await page.waitForFunction(()=>document.querySelector('.mobile-v3-map-feedback')?.textContent.includes('En línea'));
+    await page.getByRole('button',{name:'Iniciar GPS',exact:true}).click();await page.getByText('GPS web activo · mantén la pantalla encendida',{exact:true}).waitFor();
+    const baseline={reads:journeyReads,connections,listeners:await page.evaluate(()=>window.__journeyListeners.size)};assert.equal(baseline.listeners,1);const sheet=page.locator('#operation-context'),grip=sheet.getByRole('slider',{name:'Ajustar nivel del contexto'});await grip.waitFor();
+    await page.getByLabel('Odómetro inicial (km)').evaluate(n=>{window.__sheetDraftOwner=n});
+    for(const key of ['Home','End','ArrowDown','Home','End'])await grip.press(key);
+    assert.equal(await page.getByLabel('Odómetro inicial (km)').inputValue(),'123.4');assert.ok(await page.getByRole('checkbox',{name:'Frenos',exact:true}).isChecked());
+    assert.ok(await page.getByLabel('Odómetro inicial (km)').evaluate(n=>n===window.__sheetDraftOwner));assert.deepEqual({reads:journeyReads,connections,listeners:await page.evaluate(()=>window.__journeyListeners.size)},baseline);
+    assert.equal(await page.getByRole('button',{name:'Iniciar GPS',includeHidden:true}).count(),1);assert.equal(actions,0);assert.equal(await page.evaluate(()=>window.__gpsStarts),1);assert.equal(await page.evaluate(()=>window.__gpsStops),0);
+    await page.getByRole('navigation').getByRole('link',{name:'Más',exact:true}).click();await page.getByRole('heading',{name:'Más',exact:true}).waitFor();
+    await page.getByRole('link',{name:'Controles de jornada y GPS',exact:true}).click();await page.getByLabel('Odómetro inicial (km)').waitFor();
+    assert.ok(await page.getByLabel('Odómetro inicial (km)').evaluate(n=>n===window.__sheetDraftOwner));assert.equal(await page.getByLabel('Odómetro inicial (km)').inputValue(),'123.4');assert.equal(await page.evaluate(()=>window.__gpsStarts),1);
+    await page.getByRole('button',{name:'Detener',exact:true}).click();assert.equal(await page.evaluate(()=>window.__gpsStops),1);
+    for(const name of ['Llantas','Luces','Combustible','Limpieza'])await page.getByRole('checkbox',{name,exact:true}).check();
+    await page.getByRole('button',{name:'Confirmar checklist',exact:true}).click();await page.getByRole('button',{name:'Iniciar jornada',exact:true}).waitFor();assert.equal(actions,1);
+    assert.equal(await page.evaluate(()=>window.__gpsStops),1);await page.context().close();
+  });
+  await run("Mobile V3 context sheet long copy and resize",async()=>{
+    for(const theme of ['dark','light']){
+      const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});await page.addInitScript(theme=>localStorage.setItem('manecomb.theme',theme),theme);await page.goto(base+'/visual-qa/mobile-foundation');
+      await page.getByRole('button',{name:'Probar resumen largo QA'}).click();const sheet=page.locator('#qa-context'),grip=sheet.getByRole('slider',{name:'Ajustar nivel del contexto'});await grip.waitFor();
+      for(const [width,height] of [[360,800],[844,390],[915,412]]){
+        await page.setViewportSize({width,height});await sheet.scrollIntoViewIfNeeded();await grip.press('End');
+        const body=sheet.locator('.mobile-v3-sheet-body');const bodyGeometry=await body.evaluate(n=>({height:n.getBoundingClientRect().height,sheet:n.closest('.mobile-v3-context-sheet').getBoundingClientRect().height}));assert.ok(bodyGeometry.height>=44,JSON.stringify({theme,width,height,bodyGeometry}));await sheet.getByRole('button',{name:'Acción local de contenido QA'}).evaluate(n=>n.scrollIntoView({block:'center'}));
+        const hit=await sheet.getByRole('button',{name:'Acción local de contenido QA'}).evaluate(n=>{const r=n.getBoundingClientRect(),target=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),root=n.closest('.mobile-v3-context-sheet'),body=n.closest('.mobile-v3-sheet-body');return{reachable:n.contains(target),button:{y:r.y,height:r.height},target:target?.outerHTML?.slice(0,700),root:{y:root.getBoundingClientRect().y,height:root.getBoundingClientRect().height,scroll:root.scrollTop,scrollHeight:root.scrollHeight},body:{y:body.getBoundingClientRect().y,height:body.getBoundingClientRect().height,scroll:body.scrollTop},viewport:innerHeight}});assert.ok(hit.reachable,JSON.stringify({theme,width,height,hit}));
+        assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+      }
+      await page.setViewportSize({width:360,height:800});await page.addStyleTag({content:'#qa-context .mobile-v3-fixture-copy{font-size:26px!important}'});await grip.press('End');await sheet.getByRole('button',{name:'Acción local de contenido QA'}).evaluate(n=>n.scrollIntoView({block:'center'}));
+      await page.waitForFunction(()=>getComputedStyle(document.querySelector('#qa-context .mobile-v3-sheet-body p')).fontSize==='26px');
+      assert.equal(await sheet.locator('.mobile-v3-sheet-body p').first().evaluate(n=>getComputedStyle(n).fontSize),'26px','Text stress actually doubles the13px copy');
+      assert.deepEqual((await new AxeBuilder({page}).analyze()).violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>v.id),[]);
+      await grip.evaluate(n=>n.scrollIntoView({block:'center'}));const start=await grip.boundingBox();await page.mouse.move(start.x+start.width/2,start.y+start.height/2);await page.mouse.down();assert.equal(await sheet.getAttribute('data-dragging'),'true');await page.mouse.move(start.x+start.width/2,start.y+start.height/2+40);await page.setViewportSize({width:844,height:390});await page.mouse.up();assert.equal(await sheet.getAttribute('data-dragging'),null,'Resize cancels unconfirmed gesture');await page.context().close();
+    }
+  });
+  await run("Mobile V3 context sheet ordinary landscape next stop",async()=>{
+    for(const theme of ['dark','light'])for(const [width,height] of [[844,390],[915,412]]){
+      const page=await pageFor('mobile_operations',{viewport:{width,height},reducedMotion:'reduce'});await page.addInitScript(theme=>localStorage.setItem('manecomb.theme',theme),theme);
+      await page.route('**/api/operation/navigation',r=>r.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:null},route:{id:unit.routeId,name:unit.routeName,revision:1,geometry:[],stops:[]},snapshot:{...unit,nextStop:{id:'qa-next',name:'Parada QA',distanceRemainingM:0}}}}));
+      await page.goto(base+'/operacion');const sheet=page.locator('#operation-context');await sheet.locator('.mobile-v3-next-stop strong').getByText('Parada QA',{exact:true}).waitFor();
+      assert.equal(await sheet.getAttribute('data-level'),'compact');const geometry=await sheet.locator('.mobile-v3-next-stop').evaluate(n=>{const stop=n.getBoundingClientRect(),root=n.closest('.mobile-v3-context-sheet'),r=root.getBoundingClientRect();return{top:stop.top,bottom:stop.bottom,sheetTop:r.top,sheetBottom:r.bottom,scrollTop:root.scrollTop,hit:n.contains(document.elementFromPoint(stop.x+stop.width/2,stop.y+stop.height/2))}});
+      assert.ok(geometry.top>=geometry.sheetTop&&geometry.bottom<=geometry.sheetBottom&&geometry.hit,JSON.stringify({theme,width,height,geometry}));assert.equal(geometry.scrollTop,0,'Ordinary next stop is visible before scrolling');await page.context().close();
+    }
+  });
   await run("Mobile V3 map shell preserves optional update and off-route feedback",async()=>{
     const obscured=[];
     for(const theme of ['dark','light'])for(const [width,height] of [[360,800],[844,390]]){
