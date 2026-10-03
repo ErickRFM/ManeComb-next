@@ -24,6 +24,25 @@ async function pageFor(channel){
   await page.route("**/socket.io/**",route=>route.abort());
   return page;
 }
+async function assertOperationAccess(page){
+  const access=page.getByRole("navigation",{name:"Acceso de conductor",exact:true});
+  await access.waitFor();
+  assert.equal(await page.getByRole("navigation",{includeHidden:true}).count(),1,"Only conductor access navigation is allowed");
+  assert.equal(await access.getByRole("link",{name:"Iniciar sesión",exact:true}).getAttribute("href"),"/login?surface=operation");
+  assert.equal(await access.locator('a[href="/activar?surface=operation"]').count(),1,"Driver activation must retain its operation surface");
+  assert.equal(await page.getByRole("link",{name:"¿Olvidaste tu contraseña?",exact:true}).getAttribute("href"),"/recuperar-password?surface=operation");
+  assert.equal(await page.getByLabel("Correo",{exact:true}).count(),1);
+  assert.equal(await page.getByLabel("Contraseña",{exact:true}).count(),1);
+  await page.getByRole("button",{name:"Iniciar sesión",exact:true}).waitFor();
+  assert.equal(await page.locator('.marketing-nav,.auth-premium-shell,.portal-shell,.admin-shell,input[name="organizationName"]').count(),0,"Commercial and administrative surfaces must be absent");
+  assert.equal(await page.getByRole("button",{name:/crear (cuenta|empresa)|registrar empresa/i,includeHidden:true}).count(),0,"Commercial registration controls must be absent");
+  const allowed=new Set(["/login?surface=operation","/activar?surface=operation","/recuperar-password?surface=operation"]);
+  for(const href of await page.locator("a[href]").evaluateAll(links=>links.map(link=>link.getAttribute("href")))){
+    if(href==="#main-content")continue; // Preserve the root layout's accessibility skip link.
+    const destination=new URL(href,base);
+    assert.ok(destination.origin===new URL(base).origin&&allowed.has(destination.pathname+destination.search),"Non-operational destination exposed: "+href);
+  }
+}
 const unit={vehicleId:"ui-unit",economicNumber:"QA-01",status:"active",driverId:"ui-qa-user",routeId:"ui-route",journeyId:"ui-journey",latitude:19.3,longitude:-98.2,speedKmH:20,heading:0,recordedAt:new Date().toISOString(),freshness:"live",routeName:"Ruta QA",progressPercent:25,distanceFromRouteM:0,distanceRemainingM:1200,isOffRoute:false,routeState:"on_route",etaMinutes:4,etaAt:null,nextStop:{name:"Parada QA",order:1,latitude:19.31,longitude:-98.21,distanceRemainingM:1000}};
 async function realtime(page,onEvent=()=>{}){
   await page.routeWebSocket("**/socket.io/**",ws=>{
@@ -213,9 +232,36 @@ try{
     const page=await pageFor("mobile_operations");
     await page.route("**/api/auth/session",route=>route.fulfill({status:401,json:{error:"UNAUTHENTICATED"}}));
     await page.goto(base+"/app");await page.waitForURL("**/login?surface=operation");
-    assert.equal(await page.getByRole("link",{name:/registrar|crear cuenta/i}).count(),0);
-    assert.equal(await page.getByRole("navigation").count(),0);
+    await assertOperationAccess(page);
     await page.context().close();
+  });
+  await run("operation access guard rejects commercial and administrative regressions",async()=>{
+    const page=await pageFor("mobile_operations");
+    await page.goto(base+"/login?surface=operation");await assertOperationAccess(page);
+    // Mutation probes live only in this isolated QA page, never in product code.
+    const probes=[
+      {tag:"nav",label:"Navegación principal"},
+      {tag:"a",href:"/registro",label:"Crear cuenta"},
+      {tag:"a",href:"/planes",label:"Planes"},
+      {tag:"a",href:"/portal/monitoreo",label:"Portal"},
+      {tag:"a",href:"/admin/salud",label:"Administración"},
+      {tag:"a",href:"/activar",label:"Activación sin contexto operativo"},
+      {tag:"a",href:"https://example.invalid/login?surface=operation",label:"Acceso externo"},
+      {tag:"input",name:"organizationName"},
+      {tag:"button",label:"Crear empresa"}
+    ];
+    for(const probe of probes){
+      await page.evaluate(probe=>{
+        const node=document.createElement(probe.tag);node.id="qa-foreign-access";
+        if(probe.href)node.setAttribute("href",probe.href);
+        if(probe.name)node.setAttribute("name",probe.name);
+        if(probe.label){node.textContent=probe.label;node.setAttribute("aria-label",probe.label)}
+        document.body.appendChild(node);
+      },probe);
+      try{await assert.rejects(()=>assertOperationAccess(page),error=>error instanceof assert.AssertionError,"Access guard must reject "+JSON.stringify(probe))}
+      finally{await page.locator("#qa-foreign-access").evaluate(node=>node.remove())}
+    }
+    await assertOperationAccess(page);await page.context().close();
   });
   await run("installed entry recovers session request and redirects by actual channel",async()=>{
     const page=await pageFor("company_portal");let failed=true;
