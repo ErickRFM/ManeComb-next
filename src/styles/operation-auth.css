@@ -48,7 +48,7 @@
 
 .operation-auth-artwork p{
   margin:-2px 0 0;
-  color:#71788a;
+  color:#5f6570;
   font-size:15px;
   line-height:24px;
   text-align:center;
@@ -189,7 +189,7 @@
 .operation-activation-copy p{
   margin:8px auto 0;
   max-width:320px;
-  color:#71788a;
+  color:#5f6570;
   font-size:12px;
   line-height:1.5;
 }
@@ -228,7 +228,7 @@
 
 .operation-session-check p{
   margin:8px 0 0;
-  color:#71788a;
+  color:#5f6570;
   font-size:13px;
   line-height:1.5;
 }
