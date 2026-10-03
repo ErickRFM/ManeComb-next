@@ -21,6 +21,7 @@ import { PasswordRecovery } from "@/src/components/password-recovery";
 import { PasswordReset } from "@/src/components/password-reset";
 import { MfaForm } from "@/src/components/mfa-form";
 import { OperationSessionLoading } from "@/src/components/operation-session-loading";
+import { MobileMapPreview } from "../mobile-map-preview";
 
 const allowed=new Set(["portal","admin","driver","forms","marketing","operation-auth","mobile-foundation","operation-activation","operation-recovery","operation-reset","operation-mfa","operation-bootstrap"]);
 
@@ -37,7 +38,7 @@ export default async function VisualQaPage({params}:{params:Promise<{surface:str
 
   if(surface==="portal")return <PortalShell initialProfile={{name:"QA Portal",roles:["owner"]}}><VisualPortal/></PortalShell>;
   if(surface==="admin")return <AdminShell><VisualAdmin/></AdminShell>;
-  if(surface==="driver")return <DriverShell><VisualDriver/></DriverShell>;
+  if(surface==="driver")return <DriverShell><MobileMapPreview/></DriverShell>;
   if(surface==="marketing")return <VisualMarketing/>;
   if(surface==="operation-auth")return <VisualOperationAuth/>;
   return <><VisualForms/><VisualQaModal/></>;
@@ -68,12 +69,6 @@ function VisualAdmin(){
     <div className="readiness-hero good"><div><span className="eyebrow">READINESS</span><h2>Plataforma lista</h2><p>Las dependencias obligatorias responden correctamente.</p></div><div className="readiness-status"><span className="system-orb good"/><strong>OK</strong><small>18:23</small></div></div>
     <div className="service-health-grid"><div className="service-health-card good"><div className="service-health-head"><span>DB</span><small>OPERATIVO</small></div><strong>MongoDB</strong><p>Conexión activa</p></div><div className="service-health-card good"><div className="service-health-head"><span>RD</span><small>OPERATIVO</small></div><strong>Redis</strong><p>Realtime y colas disponibles</p></div><div className="service-health-card good"><div className="service-health-head"><span>RTC</span><small>TURN READY</small></div><strong>WebRTC</strong><p>turn_dynamic+stun</p></div></div>
     <div className="metric-strip admin-metrics"><div className="metric-card"><span className="metric-label">Sockets</span><div className="metric-value">87</div></div><div className="metric-card"><span className="metric-label">Error rate</span><div className="metric-value">0.2%</div></div><div className="metric-card"><span className="metric-label">API p95</span><div className="metric-value">84<small> ms</small></div></div><div className="metric-card"><span className="metric-label">GPS p95</span><div className="metric-value">310<small> ms</small></div></div></div>
-  </section>;
-}
-
-function VisualDriver(){
-  return <section className="driver-home visual-driver-fixture">
-    <div className="driver-command-center"><div className="driver-map-shell"><div className="visual-map-grid driver-visual-map" role="img" aria-label="Mapa de navegación simulado"><span className="driver-live-marker visual-marker m2">MC</span></div><div className="driver-map-top"><div className="driver-route-chip"><span className="unit-status-dot good"/><div><strong>Centro → Terminal</strong><small>Centro · Terminal Norte</small></div></div><button className="driver-follow active">◎ Siguiendo</button></div><div className="driver-progress-track"><span style={{width:"63%"}}/></div><div className="driver-bottom-card"><div className="driver-next-stop"><span className="driver-card-label">PRÓXIMA PARADA</span><strong>Mercado Norte</strong><small>420 m restantes</small></div><div className="driver-live-kpis"><div><small>ETA</small><strong>11 min</strong></div><div><small>Velocidad</small><strong>28 km/h</strong></div><div><small>GPS</small><strong>live</strong></div></div></div></div><div className="driver-action-row"><button type="button" className="driver-action-card" data-critical-action><span>↗</span><strong>Ruta</strong><small>Paradas y avance</small></button><button type="button" className="driver-action-card" data-critical-action><span>▤</span><strong>Chat</strong><small>Central</small></button><button type="button" className="driver-action-card" data-critical-action><span>◉</span><strong>Radio</strong><small>PTT</small></button><button type="button" className="driver-action-card danger" data-critical-action><span>!</span><strong>SOS</strong><small>Emergencia</small></button></div></div>
   </section>;
 }
 

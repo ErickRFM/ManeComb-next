@@ -16,7 +16,7 @@
 - Freeze API/core/lib/hooks/realtime/worker/native/android/infra/dependencies/billing and all operational handlers/effects. Camera duration respects reduced motion; no GPS changes.
 - Driver0/1 only; no portal live query or UnitDetailPanel. One map and one JourneyPanel/DriverConsole/Push owner. G01–G09 remain.
 - Preserve existing lifecycle on journey identity changes; context clears when map leaves. No fake product data; QA fixtures isolated.
-- Allowlist: this plan; src/components/driver-shell.tsx,driver-map-home.tsx,driver-tools.tsx; src/components/mobile-ui/operation-map-context.tsx,operation-map-summary.tsx; src/styles/mobile-v3.css; scripts/functional-ui-qa.mjs; app/visual-qa/[surface]/page.tsx; src/components/visual-driver.tsx if that is the existing guarded fixture owner. Read-only driver-navigation/JourneyPanel/DriverConsole in this phase.
+- Allowlist: this plan; src/components/driver-shell.tsx,driver-map-home.tsx,driver-tools.tsx; src/components/mobile-ui/operation-map-context.tsx,operation-map-summary.tsx; src/styles/mobile-v3.css; scripts/functional-ui-qa.mjs; app/visual-qa/[surface]/page.tsx,mobile-map-preview.tsx. Read-only driver-navigation/JourneyPanel/DriverConsole in this phase.
 
 ## Review Focus
 

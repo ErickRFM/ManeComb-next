@@ -84,10 +84,11 @@
 .mobile-v3-operation[data-map-home="true"] :where(.driver-home,.driver-command-center){display:block}
 .mobile-v3-operation[data-map-home="true"] .driver-map-shell{position:fixed;inset:calc(56px + env(safe-area-inset-top,0px)) 0 calc(68px + env(safe-area-inset-bottom,0px));min-height:0;border:0;border-radius:0;box-shadow:none;background:var(--mobile-v3-surface-2)}
 .mobile-v3-operation .driver-map-top{inset:4px auto auto 12px;right:auto}
-.mobile-v3-operation .driver-follow{min-width:48px;min-height:48px;height:auto;font-size:13px;background:var(--mobile-v3-surface);color:var(--mobile-v3-text)}
+.mobile-v3-operation .driver-follow{display:flex;align-items:center;gap:6px;min-width:44px;min-height:44px;height:44px;font-size:13px;line-height:1.4;background:var(--mobile-v3-surface);color:var(--mobile-v3-text)}
 .mobile-v3-operation .driver-map-shell .mapboxgl-ctrl-top-right{top:4px;right:8px}
+.mobile-v3-operation .mapboxgl-ctrl-top-right .mapboxgl-ctrl{margin:0}
 .mobile-v3-operation .mapboxgl-ctrl-group{display:flex}
-.mobile-v3-operation .mapboxgl-ctrl-group button{width:48px;height:48px}
+.mobile-v3-operation .mapboxgl-ctrl-group button{width:44px;height:44px}
 .mobile-v3-map-feedback{margin-top:6px;display:grid;gap:6px}
 .mobile-v3-map-feedback p{margin:0;font-size:13px;line-height:1.4;color:var(--mobile-v3-muted);overflow-wrap:anywhere}
 .mobile-v3-operation-context{position:fixed;bottom:calc(68px + env(safe-area-inset-bottom,0px));left:8px;right:8px;z-index:40;max-width:900px;margin:auto}
@@ -111,4 +112,13 @@
 .mobile-v3-operation .driver-map-skeleton{border-radius:0;height:calc(100dvh - 124px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
 .mobile-v3-operation-context :where(.btn,summary){min-height:48px}
 .mobile-v3-operation-context .driver-tools{color:var(--mobile-v3-text)}
-@media(max-height:480px){.mobile-v3-operation-context .mobile-v3-context-sheet{--mobile-v3-sheet-medium:min(var(--mobile-v3-sheet-available),max(calc(var(--mobile-v3-sheet-compact) + 32px),calc(var(--mobile-v3-sheet-available) * .44)))}.mobile-v3-map-feedback{max-width:calc(100% - 24px)}}
+/* The global reduced-motion rule gives every node a nonzero duration with the
+   default transition-property:all. Keep driver palette changes instantaneous. */
+@media(prefers-reduced-motion:reduce){.mobile-v3-operation,.mobile-v3-operation *{transition-duration:0s!important;animation-duration:0s!important}}
+/* Short landscape reserves a real 48px map-control row. Long summaries scroll,
+   preserving three distinct levels and the chrome instead of covering controls. */
+@media(max-height:480px){
+  .mobile-v3-operation-context .mobile-v3-context-sheet{--mobile-v3-sheet-available:calc(100dvh - 56px - 68px - 48px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));min-height:0;height:min(var(--mobile-v3-sheet-compact),calc(var(--mobile-v3-sheet-available) * .60))}
+  .mobile-v3-operation-context .mobile-v3-context-sheet[data-level="medium"]{height:calc(var(--mobile-v3-sheet-available) * .78)}
+  .mobile-v3-operation-context .mobile-v3-context-sheet[data-level="expanded"]{height:var(--mobile-v3-sheet-available)}
+}
