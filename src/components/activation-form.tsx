@@ -14,5 +14,5 @@ export function ActivationForm(){
     }catch{setError("No se pudo activar el dispositivo. Revisa la conexión y vuelve a intentar.")}
     finally{setBusy(false)}
   }
-  return <form className="card grid" style={{maxWidth:520}} onSubmit={submit}><label className="grid">Llave de activación<input className="input" name="code" autoComplete="off" placeholder="Llave de activación" required/></label>{error?<p className="danger-text" role="alert" style={{margin:0}}>{error}</p>:null}<button className="btn" disabled={busy}>{busy?"Validando...":"Activar dispositivo"}</button></form>
+  return <form className="card grid" aria-busy={busy} style={{maxWidth:520}} onSubmit={submit}><label className="grid">Llave de activación<input className="input" name="code" autoComplete="off" placeholder="Llave de activación" required/></label>{error?<p className="danger-text" role="alert" style={{margin:0}}>{error}</p>:null}<button className="btn" disabled={busy}>{busy?"Validando...":"Activar dispositivo"}</button></form>
 }

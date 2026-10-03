@@ -7,7 +7,7 @@ const output="artifacts/visual-qa";
 mkdirSync(output,{recursive:true});
 
 const viewports=[[360,800],[390,844],[412,915],[430,932],[768,900],[1024,960],[1366,960],[1440,960],[1920,960],[844,390],[915,412]];
-const surfaces=["portal","admin","driver","forms","marketing","operation-auth","mobile-foundation"];
+const surfaces=["portal","admin","driver","forms","marketing","operation-auth","mobile-foundation","operation-activation","operation-recovery","operation-reset","operation-mfa","operation-bootstrap"];
 const report={generatedAt:new Date().toISOString(),checks:[],violations:[]};
 const browser=await chromium.launch({headless:true});
 
