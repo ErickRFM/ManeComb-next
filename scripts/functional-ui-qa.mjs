@@ -65,6 +65,30 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  // Catches token leakage into existing surfaces and unintended live announcements/network owners.
+  await run("mobile foundation isolates tokens and status semantics",async()=>{
+    for(const theme of ["dark","light"]){
+      const page=await pageFor("mobile_operations");
+      await page.addInitScript(theme=>localStorage.setItem("manecomb.theme",theme),theme);
+      const requests=[];page.on("request",r=>{if(/\/api\/|\/socket\.io\//.test(r.url()))requests.push(r.url())});
+      const response=await page.goto(base+"/visual-qa/mobile-foundation");
+      assert.equal(response.status(),200,"Foundation QA surface must exist");
+      await page.getByRole("heading",{name:"Mobile V3 Foundation — fixture QA",exact:true}).waitFor();
+      await page.getByRole("heading",{name:"Estados de presentación",exact:true}).waitFor();
+      const ordinary=page.getByText("Estado de prueba QA",{exact:true});
+      assert.equal(await ordinary.locator("..").getAttribute("role"),null);
+      assert.equal(await ordinary.locator("..").getAttribute("aria-live"),null);
+      assert.equal(await page.getByRole("status").getAttribute("aria-live"),"polite");
+      const legacy=await page.evaluate(()=>{const s=getComputedStyle(document.documentElement);return {brand:s.getPropertyValue("--brand").trim(),background:s.getPropertyValue("--background").trim()}});
+      assert.deepEqual(legacy,theme==="dark"?{brand:"#e11d48",background:"#08090b"}:{brand:"#d81945",background:"#f4f6f8"});
+      for(const tone of ["success","warning","danger","neutral"]){
+        await page.getByRole("button",{name:"Probar tono "+tone,exact:true}).click();
+        assert.equal(await ordinary.locator("..").getAttribute("data-tone"),tone);
+      }
+      assert.deepEqual(requests,[],"Pure presentation must not request API or Socket.IO");
+      await page.context().close();
+    }
+  });
   if(process.env.QA_MAPBOX==="1")await run("Mapbox provider renders 0/1/20/100/500 units with bounded DOM markers",async()=>{
     for(const theme of ["dark","light"])for(const count of [1,0,20,100,500]){
       const page=await pageFor("company_portal");await page.setViewportSize({width:1366,height:900});
