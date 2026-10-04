@@ -14,7 +14,7 @@ function blobToDataUrl(blob:Blob){
   });
 }
 
-export function RadioConsole(){
+export function RadioConsole({operation=false}:{operation?:boolean}={}){
   const socket=useSocket();
   const connection=useSocketStatus(socket),online=usePresence(socket);
   const [users,setUsers]=useState<Array<{id:string;name:string}>>([]),[blockedAudio,setBlockedAudio]=useState<string|null>(null);
@@ -172,11 +172,11 @@ export function RadioConsole(){
     requesting:["Solicitando turno","Esperando disponibilidad"],
     talking:["Transmitiendo","Suelta para escuchar"],
     finishing:["Terminando transmisión","Entregando último fragmento"],
-    busy:["Canal ocupado",speaker?"Otro usuario está hablando":"Espera un momento"],
+    busy:["Canal ocupado",speaker?operation?users.find(user=>user.id===speaker)?.name||"Identidad del transmisor no disponible":"Otro usuario está hablando":"Espera un momento"],
     error:["Radio no disponible","Revisa micrófono o conexión"]
   }[state];
 
-  return <div className="radio-console">
+  return <div className={"radio-console"+(operation?" mobile-v3-radio":"")}>
     <div className="radio-console-head">
       <div><span className="eyebrow">RADIO PTT</span><h3>Canal operativo</h3></div>
       <select value={channelId} disabled={state==="talking"||state==="requesting"||state==="finishing"} onChange={e=>setChannelId(e.target.value)} className="radio-channel-select" aria-label="Canal de radio">
@@ -187,7 +187,7 @@ export function RadioConsole(){
     </div>
 
     <div className={"ptt-stage "+state}>
-      <div className="ptt-wave" aria-hidden="true">{Array.from({length:12}).map((_,index)=><span key={index}/>)}</div>
+      {!operation?<div className="ptt-wave" aria-hidden="true">{Array.from({length:12}).map((_,index)=><span key={index}/>)}</div>:null}
       <div className="ptt-orbit">
         <button className="ptt-button" disabled={connection!=="connected"||state==="connecting"||state==="busy"||state==="error"} onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);void press()}} onPointerUp={release} onPointerCancel={release} onKeyDown={event=>{if((event.key===" "||event.key==="Enter")&&!event.repeat){event.preventDefault();void press()}}} onKeyUp={event=>{if(event.key===" "||event.key==="Enter"){event.preventDefault();release()}}} onBlur={release}>
           <span className="ptt-mic"><Icon name="microphone" size={32}/></span>
@@ -204,6 +204,7 @@ export function RadioConsole(){
     </div>
     {state==="error"?<button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar radio</button>:null}
     {blockedAudio?<button className="btn secondary" onClick={()=>{void new Audio(blockedAudio).play().then(()=>setBlockedAudio(null)).catch(()=>undefined)}}>Escuchar última transmisión</button>:null}
+    {operation?<div className="mobile-v3-presence-heading"><strong>Personal de la empresa en línea</strong><p>Presencia en la empresa; no indica participación en este canal.</p></div>:null}
     <div className="radio-presence" aria-label="Personal de la empresa en línea">{online===null?<p className="muted">Consultando presencia</p>:users.filter(user=>online.has(user.id)).length?users.filter(user=>online.has(user.id)).map(user=><div key={user.id}><span>{user.name.split(/\s+/).slice(0,2).map(part=>part[0]).join("").toUpperCase()}</span><small>{user.name}</small></div>):<p className="muted">Sin otros usuarios conectados</p>}</div>
   </div>;
 }

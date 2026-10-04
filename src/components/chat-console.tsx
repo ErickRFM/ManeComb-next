@@ -6,6 +6,7 @@ import { uploadManeCombFile } from "@/src/lib/client-upload";
 import {deliverChatMessage,mergeChatMessages,type ChatMessage as Message,type ChatPacket} from "@/src/lib/chat-messages";
 import {Icon} from "@/src/components/ui/icon";
 import {usePresence} from "@/src/hooks/usePresence";
+import {messageTime} from "@/src/components/mobile-ui/communication-presentation";
 
 type ChatUser={id:string;name:string;channel:string;roles:string[]};
 type Attachment=Awaited<ReturnType<typeof uploadManeCombFile>>;
@@ -14,7 +15,7 @@ function directChannel(self:string,target:string){
   return "direct:"+[self,target].sort().join(":");
 }
 
-export function ChatConsole(){
+export function ChatConsole({operation=false}:{operation?:boolean}={}){
   const socket=useSocket();
   const connection=useSocketStatus(socket);
   const onlineUsers=usePresence(socket);
@@ -89,8 +90,8 @@ export function ChatConsole(){
   },[socket,self,channelId,target?.id,retry]);
 
   useEffect(()=>{
-    scrollRef.current?.scrollTo({top:scrollRef.current.scrollHeight,behavior:"smooth"});
-  },[messages]);
+    scrollRef.current?.scrollTo({top:scrollRef.current.scrollHeight,behavior:operation&&window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});
+  },[messages,operation]);
 
   async function deliver(packet:ChatPacket){
     const id=packet.clientMessageId!;if(inFlight.current.has(id))return;
@@ -151,9 +152,9 @@ export function ChatConsole(){
     return a.name.localeCompare(b.name);
   }),[users]);
 
-  return <div className={"chat-shell "+(mobileConversation?"conversation-open":"")}>
+  return <div className={"chat-shell "+(mobileConversation?"conversation-open":"")+(operation?" mobile-v3-chat":"")}>
     <aside className="chat-directory">
-      <div className="chat-directory-head"><div><strong>Mensajes</strong><small>{self?users.length+1:"—"} conversaciones</small></div><span className="live-badge">{connection==="connected"?"En línea":"Reconectando"}</span></div>
+      <div className="chat-directory-head"><div><strong>{operation?"Directorio":"Mensajes"}</strong><small>{self?operation?users.length:users.length+1:"—"} {operation?"personas":"conversaciones"}</small></div><span className="live-badge">{connection==="connected"?"En línea":"Reconectando"}</span></div>
       {error?<p role="alert">{error} <button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar chat</button></p>:null}
       <button className={"conversation-row "+(!selected?"active":"")} onClick={()=>choose(null)} disabled={!self}>
         <span className="conversation-avatar brand-avatar">MC</span><span className="conversation-copy"><strong>Central de despacho</strong><small>Canal operativo general</small></span>
@@ -184,7 +185,7 @@ export function ChatConsole(){
             {!own?<span className="message-avatar">{target?target.name.charAt(0).toUpperCase():"C"}</span>:null}
             <div className={"message-bubble "+(own?"own":"")}>
               {message.kind==="image"?<a href={imageUrl} target="_blank" rel="noreferrer"><img className="message-image" src={imageUrl} alt="Adjunto del chat"/></a>:<p>{message.body}</p>}
-              <small>{message.createdAt?new Date(message.createdAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"ahora"}{own?" · enviado":""}</small>
+              <small>{operation?messageTime(message.createdAt):message.createdAt?new Date(message.createdAt).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}):"ahora"}{own?" · enviado":""}</small>
             </div>
           </div>;
         })}
