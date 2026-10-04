@@ -176,7 +176,7 @@ export function ChatConsole({operation=false}:{operation?:boolean}={}){
         <span className="chat-state" role="status">{state|| (connection==="connected"?"En línea":connection==="connecting"?"Conectando…":"Reconectando")}</span>
       </header>
 
-      <div className="chat-messages" ref={scrollRef} role="log" aria-label="Mensajes" aria-live="polite" aria-busy={loading}>
+      <div className="chat-messages" ref={scrollRef} role="log" aria-label="Mensajes" aria-live="polite" aria-busy={loading} tabIndex={operation?0:undefined}>
         {error?<button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar historial</button>:null}
         {!messages.length?<div className="chat-empty"><Icon name="chat"/><strong>{loading?"Cargando conversación…":error?"Historial no disponible":"Comienza la conversación"}</strong><p>{error||"Los mensajes enviados se guardan y se sincronizan en tiempo real."}</p></div>:messages.map((message,index)=>{
           const own=String(message.senderUserId)===String(self?.id);
