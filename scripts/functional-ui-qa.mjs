@@ -11,7 +11,7 @@ if(!base||!process.env.AUTH_SECRET)throw new Error("Use scripts/test-local-visua
 const browser=await chromium.launch({headless:true,args:["--use-fake-ui-for-media-stream","--use-fake-device-for-media-stream",...(process.env.QA_MAPBOX?["--use-gl=angle","--use-angle=swiftshader","--enable-unsafe-swiftshader"]:[])]});
 const checks=[];
 const failures=[];
-async function run(name,fn){if(process.env.QA_FILTER&&!name.includes(process.env.QA_FILTER))return;await fn();checks.push({name,status:"PASS"});console.log("PASS "+name)}
+async function run(name,fn){if(process.env.QA_FILTER&&!name.includes(process.env.QA_FILTER))return;try{await fn();checks.push({name,status:"PASS"});console.log("PASS "+name)}catch(error){failures.push({name,error:String(error.stack||error)});throw error}}
 async function settleVisualState(page){
   await page.evaluate(async()=>{
     await document.fonts.ready;
@@ -75,6 +75,27 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  if(process.env.QA_V3_MATRIX==='1')await run(process.env.QA_MAPBOX==='1'?'Mapbox provider Mobile V3 final matrix':'Mobile V3 final matrix',async()=>{
+    const {runMobileV3Matrix}=await import('./mobile-v3-matrix-qa.mjs');
+    await runMobileV3Matrix({pageFor,realtime,settleVisualState,base,unit,realMapForQa});
+  });
+  await run("Mobile V3 context sheet ignores secondary pointer cancellation",async()=>{
+    const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});
+    await page.route('**/api/operation/navigation',r=>r.fulfill({json:{journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:null},route:{id:unit.routeId,name:unit.routeName,revision:1,geometry:[],stops:[]},snapshot:unit}}));
+    await page.goto(base+'/operacion');const sheet=page.locator('#operation-context'),grip=sheet.getByRole('slider',{name:'Ajustar nivel del contexto'});await sheet.getByText(unit.nextStop.name,{exact:true}).waitFor();await settleVisualState(page);
+    for(const type of ['pointercancel','lostpointercapture']){
+      await grip.press('Home');await settleVisualState(page);const point=await grip.boundingBox();
+      await page.mouse.move(point.x+point.width/2,point.y+point.height/2);await page.mouse.down();await page.mouse.move(point.x+point.width/2,point.y+point.height/2-40);
+      assert.equal(await sheet.getAttribute('data-dragging'),'true');assert.equal(await grip.evaluate(n=>n.hasPointerCapture(1)),true);
+      await grip.dispatchEvent(type,{pointerId:2,isPrimary:false,bubbles:true});
+      await mkdir('artifacts/mobile-v3-final-qa/secondary-pointer-diagnostic',{recursive:true});await page.screenshot({path:'artifacts/mobile-v3-final-qa/secondary-pointer-diagnostic/'+type+'.png'});
+      assert.equal(await sheet.getAttribute('data-dragging'),'true','Secondary '+type+' must not cancel captured primary drag');
+      assert.equal(await grip.evaluate(n=>n.hasPointerCapture(1)),true,'Secondary event cannot release primary capture');
+      await grip.dispatchEvent('pointercancel',{pointerId:1,isPrimary:true,bubbles:true});await page.mouse.up();
+      assert.equal(await sheet.getAttribute('data-dragging'),null);assert.equal(await sheet.getAttribute('data-level'),'compact');
+    }
+    await page.context().close();
+  });
   await run("Mobile V3 alerts real severity and grouped More",async()=>{
     const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});await realtime(page);
     const reports=[
@@ -830,14 +851,21 @@ try{
   });
   // Catches SSR timezone text retained after hydration even though the supplied timestamp is unchanged.
   await run("mobile foundation renders stable timestamps in the browser timezone",async()=>{
+    for(const cpuRate of [1,20]){
     const page=await pageFor("mobile_operations",{timezoneId:"Asia/Tokyo"});const hydration=[];
     page.on("console",message=>{if(message.type()==="error"&&/hydrat/i.test(message.text()))hydration.push(message.text())});
+    if(cpuRate>1){const cdp=await page.context().newCDPSession(page);await cdp.send('Emulation.setCPUThrottlingRate',{rate:cpuRate})}
     await page.goto(base+"/visual-qa/mobile-foundation",{waitUntil:"networkidle"});
     const time=page.locator('[data-qa-freshness="live"] time');
     assert.equal(await time.getAttribute("datetime"),"2026-10-02T12:00:00.000Z");
+    // Network idle can precede React's mounted effect. Bound readiness by the
+    // actual localized DOM, then retain the independent exact Tokyo assertion.
+    await page.waitForFunction(()=>{const node=document.querySelector('[data-qa-freshness="live"] time');return node&&node.textContent!==node.getAttribute('datetime')},{},{timeout:15000});
     const text=await time.textContent();
-    assert.match(text,/(9:00:00\s*p\.\s*m\.|21:00:00)/u,"12:00Z must initially display 21:00 in Tokyo without a prop change");
+    assert.match(text,/(9:00:00\s*p\.\s*m\.|21:00:00)/u,"12:00Z must display 21:00 in Tokyo after hydration without a prop change");
     assert.deepEqual(hydration,[]);await page.context().close();
+    console.log('HYDRATION Tokyo exact datetime/hour PASS CPU'+cpuRate);
+    }
   });
   // Catches expanded content being permanently clipped inside a zero-height scroll body.
   await run("mobile foundation keeps oversized summaries and body actions reachable",async()=>{

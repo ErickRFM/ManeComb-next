@@ -35,6 +35,9 @@ export function ContextSheet({id,title,level,summary,children,onLevelChange,rese
     const current=drag.current;if(!current||event.pointerId!==current.pointerId)return;
     const next=closestSheetLevel(heightAt(event.clientY,current),current.targets,current.previous);cancel();if(next!==level)onLevelChange(next);
   }
+  function cancelPointer(event:PointerEvent<HTMLSpanElement>){
+    if(drag.current?.pointerId===event.pointerId)cancel();
+  }
   function key(event:KeyboardEvent<HTMLSpanElement>){
     const levels:SheetLevel[]=["compact","medium","expanded"],index=levels.indexOf(level);
     const next=event.key==="Home"||event.key==="Escape"?"compact":event.key==="End"?"expanded":event.key==="ArrowUp"?levels[Math.min(2,index+1)]:event.key==="ArrowDown"?levels[Math.max(0,index-1)]:null;
@@ -59,7 +62,7 @@ export function ContextSheet({id,title,level,summary,children,onLevelChange,rese
   },[cancel]);
   return <section ref={sheet} id={id} className="mobile-v3-context-sheet" data-level={level} data-dragging={dragHeight===null?undefined:true} style={dragHeight===null?undefined:{height:dragHeight,transitionProperty:"none"}} role="region" aria-label={title} onKeyDown={event=>{if(event.key!=="Escape"||event.defaultPrevented)return;const target=event.target;if(!(target instanceof HTMLElement)||target.closest('input,textarea,select,[contenteditable="true"],[role="dialog"],dialog'))return;if(target.closest('.mobile-v3-sheet-handle')||target===body.current){event.preventDefault();cancel();if(level!=="compact")onLevelChange("compact")}}}>
     <h2 className="mobile-v3-section-title">{title}</h2>
-    <SheetHandle level={level} controlsId={id} onLevelChange={onLevelChange} gripRef={grip} gripProps={{onPointerDown:down,onPointerMove:move,onPointerUp:up,onPointerCancel:cancel,onLostPointerCapture:cancel,onKeyDown:key}}/>
+    <SheetHandle level={level} controlsId={id} onLevelChange={onLevelChange} gripRef={grip} gripProps={{onPointerDown:down,onPointerMove:move,onPointerUp:up,onPointerCancel:cancelPointer,onLostPointerCapture:cancelPointer,onKeyDown:key}}/>
     <div className="mobile-v3-sheet-summary">{summary}</div>
     <div ref={body} className="mobile-v3-sheet-body" hidden={level==="compact"} tabIndex={level==="compact"?undefined:0} role="region" aria-label={`Contenido de ${title}`} onFocusCapture={event=>{bodyFocus.current=event.target as HTMLElement}} onBlurCapture={event=>{if(event.relatedTarget instanceof Node&&!body.current?.contains(event.relatedTarget))bodyFocus.current=null}}>{children}</div>
     <div className="mobile-v3-sheet-measures" aria-hidden="true">{(["compact","medium","expanded"] as const).map(target=><span key={target} data-sheet-measure={target}/>)}</div>
