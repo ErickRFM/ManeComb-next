@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from "react";
 import {useSocket,useSocketStatus} from "@/src/hooks/useSocket";
 type Signal={type:"offer"|"answer";sdp:RTCSessionDescriptionInit}|{type:"ice";candidate:RTCIceCandidateInit}|{type:"hangup"};
-export function RtcConsole(){
+export function RtcConsole({operation=false}:{operation?:boolean}={}){
   const socket=useSocket(),connection=useSocketStatus(socket);
   const [targetUserId,setTargetUserId]=useState("");
   const [users,setUsers]=useState<Array<{id:string;name:string}>>([]);
@@ -58,13 +58,14 @@ export function RtcConsole(){
     const disconnected=()=>hangup(false);socket.on("rtc:signal",handler);socket.on("disconnect",disconnected);
     return()=>{socket.off("rtc:signal",handler);socket.off("disconnect",disconnected);clearMedia()};
   },[socket,loading,configError]);
-  return <div className="card grid"><strong>Llamada de audio</strong>
+  return <div className={"card grid"+(operation?" mobile-v3-rtc":"")}><strong>Llamada de audio</strong>
     <span role="status">{loading?"Cargando llamadas…":connection==="connected"?"En línea":"Reconectando"}</span>
     {configError?<p role="alert">{configError} <button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar llamadas</button></p>:null}
     <label>Persona para llamar<select className="input" value={targetUserId} disabled={active||loading} onChange={event=>setTargetUserId(event.target.value)}><option value="">Selecciona una persona</option>{users.map(user=><option value={user.id} key={user.id}>{user.name}</option>)}</select></label>
     {!loading&&!configError&&!users.length?<p>No hay personas disponibles en el directorio.</p>:null}
     <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button className="btn" disabled={!targetUserId||active||loading||Boolean(configError)||connection!=="connected"} onClick={()=>void call()}>Llamar</button><button className="btn secondary" disabled={!active} onClick={()=>hangup()}>Colgar</button></div>
     <span className="muted" role="status">{state}</span>{error?<p role="alert">{error}</p>:null}
-    {!loading&&!configError&&!turn?<p className="muted">La conectividad entre redes requiere validar el servicio TURN.</p>:null}<audio ref={remoteAudioRef} autoPlay playsInline controls aria-label="Audio de la llamada"/>
+    {!loading&&!configError&&operation?<div className="mobile-v3-turn"><strong>{turn?"TURN habilitado en configuración":"TURN no habilitado en configuración"}</strong><p>La conectividad entre redes requiere validación.</p></div>:null}
+    {!loading&&!configError&&!turn&&!operation?<p className="muted">La conectividad entre redes requiere validar el servicio TURN.</p>:null}<audio ref={remoteAudioRef} autoPlay playsInline controls aria-label="Audio de la llamada"/>
   </div>;
 }

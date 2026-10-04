@@ -125,6 +125,45 @@
 .mobile-v3-operation .mobile-v3-route-stop [aria-current="step"]{font-weight:700;color:var(--mobile-v3-text)}
 .mobile-v3-route-progress{display:grid;gap:6px}
 .mobile-v3-route-progress progress{width:100%;accent-color:var(--mobile-v3-brand)}
+/* Operation communication consumes existing directory, delivery and media state. */
+.mobile-v3-chat{height:max(440px,calc(100dvh - 260px));min-height:0;background:var(--mobile-v3-surface);border-color:var(--mobile-v3-border);border-radius:16px}
+.driver-shell .mobile-v3-chat :where(.chat-directory,.chat-header,.chat-composer){background:var(--mobile-v3-surface)}
+.driver-shell .mobile-v3-chat :where(.chat-directory-head,.chat-header){height:auto;min-height:64px;gap:8px;flex-wrap:wrap}
+.mobile-v3-chat .conversation-list{min-height:0}
+.mobile-v3-chat .conversation-row{min-height:64px}
+.driver-shell .mobile-v3-chat :where(.conversation-copy strong,.chat-person strong){font-size:15px;white-space:normal;overflow-wrap:anywhere}
+.driver-shell .mobile-v3-chat :where(.conversation-copy small,.chat-person small,.chat-directory-head small,.conversation-divider,.chat-state){font-size:12px;color:var(--mobile-v3-muted);line-height:1.5}
+.mobile-v3-chat .conversation-avatar{width:44px;height:44px;font-size:13px}
+.mobile-v3-chat .chat-conversation{min-height:0}
+.mobile-v3-chat .chat-messages{padding:12px;background:var(--mobile-v3-surface-2);min-height:0}
+.mobile-v3-chat .message-bubble{background:var(--mobile-v3-surface);color:var(--mobile-v3-text);border-color:var(--mobile-v3-border)}
+.mobile-v3-chat .message-bubble p{font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.mobile-v3-chat .message-bubble small{font-size:11px;color:var(--mobile-v3-muted);line-height:1.5}
+.mobile-v3-chat .message-bubble.own{background:#bb1620;border-color:#bb1620;color:#fff}
+.mobile-v3-chat .message-bubble.own small{color:#fff}
+.mobile-v3-chat .message-bubble .btn{margin-top:8px;min-height:44px}
+.driver-shell .mobile-v3-chat :where(.chat-empty strong,.chat-composer input,.composer-send){font-size:15px}
+.mobile-v3-chat .chat-empty p{font-size:13px;line-height:1.5}
+.mobile-v3-chat .chat-composer{padding:8px;gap:6px}
+.mobile-v3-chat .chat-composer>input{min-width:0;height:48px;padding:0 10px}
+.driver-shell .mobile-v3-chat :where(.composer-action,.composer-send){min-height:48px}
+.mobile-v3-chat .composer-send{background:#bb1620;padding:0 10px}
+.mobile-v3-radio,.mobile-v3-rtc{padding:16px;border-color:var(--mobile-v3-border);background:var(--mobile-v3-surface);color:var(--mobile-v3-text);border-radius:16px;min-width:0;overflow-wrap:anywhere}
+.mobile-v3-radio .radio-console-head{flex-wrap:wrap;align-items:center}
+.mobile-v3-radio .radio-channel-select{min-height:48px;font-size:14px;max-width:100%}
+.mobile-v3-radio .ptt-stage{min-height:280px}
+.mobile-v3-radio .ptt-stage.error .ptt-button{background:var(--mobile-v3-surface-2)}
+.mobile-v3-radio .radio-state-card{grid-template-columns:auto minmax(0,1fr);gap:10px}
+.mobile-v3-radio .radio-state-card strong{font-size:15px}
+.driver-shell .mobile-v3-radio :where(.radio-state-card small,.radio-last,.radio-presence small){font-size:13px;color:var(--mobile-v3-muted);line-height:1.5}
+.mobile-v3-radio .radio-last{grid-column:2;text-align:left}
+.mobile-v3-presence-heading{margin-top:20px;font-size:14px}
+.mobile-v3-presence-heading p,.mobile-v3-turn p{font-size:13px;color:var(--mobile-v3-muted);line-height:1.5;margin:6px 0 0}
+.mobile-v3-radio .radio-presence{justify-content:flex-start}
+.mobile-v3-rtc{font-size:15px;gap:16px}
+.driver-shell .mobile-v3-rtc :where(select,.btn){min-height:48px;max-width:100%}
+.mobile-v3-rtc audio{width:100%;min-width:0}
+.mobile-v3-turn{padding:12px;border:1px solid var(--mobile-v3-border);border-radius:12px;background:var(--mobile-v3-surface-2);font-size:13px}
 .mobile-v3-map-links{display:flex;flex-wrap:wrap;gap:8px}
 .mobile-v3-operation .driver-empty-state{min-height:40dvh;margin:12px;padding:20px;font-size:15px}
 .mobile-v3-operation .driver-map-skeleton{border-radius:0;height:calc(100dvh - 124px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}

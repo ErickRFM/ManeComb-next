@@ -1,6 +1,7 @@
 // Browser regression tests exercise real pages with isolated API responses, never product fixtures.
 import assert from "node:assert/strict";
 import {mkdir,writeFile} from "node:fs/promises";
+import {execFileSync} from "node:child_process";
 import {chromium} from "playwright";
 import {SignJWT} from "jose";
 import AxeBuilder from "@axe-core/playwright";
@@ -74,6 +75,113 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  await run("Mobile V3 communication actual presentation and protocol states",async()=>{
+    const issues=[],expect=(condition,label)=>{if(!condition)issues.push(label)};
+    const waitForEvent=async condition=>{const deadline=Date.now()+5000;while(!condition()&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,20));assert.ok(condition(),'Expected actual protocol event')};
+    const page=await pageFor('mobile_operations',{reducedMotion:'reduce'}),packets=[];let wire,heldAck;
+    await page.addInitScript(()=>{window.__chatScroll=[];const original=Element.prototype.scrollTo;Element.prototype.scrollTo=function(options,...rest){if(this.classList.contains('chat-messages'))window.__chatScroll.push(options);return original.call(this,options,...rest)}});
+    await page.route('**/api/chat/users',r=>r.fulfill({json:{users:[{id:'other',name:'Persona QA',channel:'mobile_operations',roles:['driver']}]}}));
+    await page.route('**/api/chat/messages?**',r=>r.fulfill({json:{messages:[]}}));
+    await page.route('**/api/uploads/cloudinary/signature',r=>r.fulfill({json:{apiKey:'qa',timestamp:1,folder:'qa',signature:'qa',cloudName:'qa',allowedFormats:'png',type:'authenticated'}}));
+    await page.route('https://api.cloudinary.com/**',r=>r.fulfill({json:{secure_url:'https://example.invalid/qa.png',public_id:'qa-image',resource_type:'image',bytes:68}}));
+    await page.routeWebSocket('**/socket.io/**',ws=>{ws.send('0'+JSON.stringify({sid:'v3-chat',upgrades:[],pingInterval:25000,pingTimeout:20000,maxPayload:1000000}));ws.onMessage(raw=>{
+      const frame=String(raw);if(frame==='40'){ws.send('40'+JSON.stringify({sid:'v3-chat-socket'}));return}const match=frame.match(/^42(\d*)(\[.*)$/);if(!match)return;const [event,payload]=JSON.parse(match[2]);
+      if(event==='chat:join')wire=ws;
+      if(event==='chat:message'){packets.push(payload);heldAck=ok=>ws.send('43'+match[1]+JSON.stringify([ok?{ok:true,message:{...payload,_id:'saved-'+packets.length,senderUserId:'ui-qa-user',createdAt:new Date().toISOString()}}:{ok:false,error:'QA_REJECTED'}]))}
+      else if(match[1])ws.send('43'+match[1]+JSON.stringify([{ok:true}]));
+    })});
+    await page.goto(base+'/operacion/chat');await page.getByRole('button',{name:/Persona QA/}).waitFor();
+    expect((await page.locator('.chat-directory-head').innerText()).includes('Directorio'),'Chat must identify directory, not fabricated conversation count');
+    expect(!(await page.locator('.chat-directory-head').innerText()).includes('conversaciones'),'No fabricated inbox count');
+    expect(await page.locator('.conversation-copy small').first().evaluate(node=>parseFloat(getComputedStyle(node).fontSize))>=11,'Operation directory caption must be readable at least11px');
+    await page.getByRole('button',{name:/Central de despacho/}).click();
+    await page.waitForFunction(()=>document.querySelector('[role="log"]')?.getAttribute('aria-busy')==='false');
+    wire.send('42'+JSON.stringify(['chat:message',{_id:'missing-time',senderUserId:'other',channelId:'dispatch',kind:'text',body:'Fecha no suministrada'}]));
+    await page.getByText('Fecha no suministrada',{exact:true}).waitFor();await page.waitForFunction(()=>window.__chatScroll.length>0);
+    expect(await page.locator('.chat-person small').evaluate(node=>parseFloat(getComputedStyle(node).fontSize))>=11,'Operation conversation caption must be readable at least11px');
+    expect((await page.getByText('Fecha no suministrada',{exact:true}).locator('..').innerText()).includes('Hora no disponible'),'Missing timestamp must remain unknown');
+    expect(!(await page.evaluate(()=>window.__chatScroll.some(call=>call?.behavior==='smooth'))),'Reduced-motion actual chat scroll must not be smooth');
+    await page.getByRole('textbox',{name:'Mensaje',exact:true}).fill('Borrador central QA');await page.getByRole('button',{name:'Volver a conversaciones'}).click();await page.getByRole('button',{name:/Persona QA/}).click();
+    assert.equal(await page.getByRole('textbox',{name:'Mensaje',exact:true}).inputValue(),'');await page.getByRole('textbox',{name:'Mensaje',exact:true}).fill('Borrador directo QA');
+    await page.getByRole('button',{name:'Volver a conversaciones'}).click();await page.getByRole('button',{name:/Central de despacho/}).click();assert.equal(await page.getByRole('textbox',{name:'Mensaje',exact:true}).inputValue(),'Borrador central QA');
+    await page.getByRole('button',{name:'Enviar',exact:true}).click();await page.getByText('Enviando…',{exact:true}).waitFor();await waitForEvent(()=>packets.length===1);heldAck(false);await page.getByText('Envío sin confirmar',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Reintentar envío',exact:true}).click();await page.getByText('Enviando…',{exact:true}).waitFor();await waitForEvent(()=>packets.length===2);assert.equal(packets.length,2);assert.equal(packets[0].clientMessageId,packets[1].clientMessageId);heldAck(true);
+    await page.getByRole('button',{name:'Reintentar envío',exact:true}).waitFor({state:'detached'});
+    await page.locator('.chat-composer input[type=file]').setInputFiles({name:'qa.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aV1sAAAAASUVORK5CYII=','base64')});
+    await page.getByText('Imagen adjunta',{exact:true}).waitFor();await waitForEvent(()=>packets.length===3);assert.equal(packets.at(-1).kind,'image');assert.equal(packets.at(-1).attachment.publicId,'qa-image');heldAck(false);await page.getByRole('button',{name:'Reintentar envío',exact:true}).waitFor();
+    await mkdir('artifacts/functional-ui-qa/communication-screens',{recursive:true});await settleVisualState(page);await page.screenshot({path:'artifacts/functional-ui-qa/communication-screens/chat.png',fullPage:true});await page.context().close();
+
+    const radio=await pageFor('mobile_operations');let radioWire,joinAck,floorAck,audioAck,holdAudio=true;
+    await radio.route('**/api/chat/users',r=>r.fulfill({json:{users:[{id:'other',name:'Persona QA'}]}}));
+    await radio.route('**/api/rtc/config',r=>r.fulfill({json:{iceServers:[],turnEnabled:false}}));
+    await radio.routeWebSocket('**/socket.io/**',ws=>{ws.send('0'+JSON.stringify({sid:'v3-radio',upgrades:[],pingInterval:25000,pingTimeout:20000,maxPayload:1000000}));ws.onMessage(raw=>{const frame=String(raw);if(frame==='40'){ws.send('40'+JSON.stringify({sid:'v3-radio-socket'}));return}const match=frame.match(/^42(\d*)(\[.*)$/);if(!match)return;const [event]=JSON.parse(match[2]),ack=ok=>ws.send('43'+match[1]+JSON.stringify([{ok}]));if(event==='radio:join'){radioWire=ws;joinAck=()=>ack(true)}else if(event==='radio:request-floor')floorAck=ack;else if(event==='radio:audio'){if(holdAudio)audioAck=()=>ack(true);else ack(true)}else if(event==='presence:join')ws.send('42'+JSON.stringify(['presence:snapshot',{onlineUserIds:['other'],timestamp:new Date().toISOString()}]));else if(match[1])ack(true)})});
+    await radio.goto(base+'/operacion/radio');await radio.getByText('Conectando',{exact:true}).waitFor();await waitForEvent(()=>Boolean(joinAck));joinAck();await radio.getByText('Listo para transmitir',{exact:true}).waitFor();
+    expect(await radio.locator('.ptt-wave').count()===0,'Operation PTT must omit synthetic amplitude waveform');expect((await radio.locator('.radio-console').innerText()).includes('Personal de la empresa'),'Presence must visibly identify company scope');
+    expect(await radio.locator('.radio-state-card small').evaluate(node=>parseFloat(getComputedStyle(node).fontSize))>=13,'Operation PTT secondary status must be readable at least13px');
+    const ptt=radio.getByRole('button',{name:/PULSA Y HABLA/});await ptt.focus();await radio.keyboard.down('Space');await radio.getByText('Solicitando turno',{exact:true}).waitFor();await waitForEvent(()=>Boolean(floorAck));floorAck(true);await radio.getByText('Transmitiendo',{exact:true}).waitFor();await radio.waitForTimeout(160);await radio.keyboard.up('Space');await radio.getByText('Terminando transmisión',{exact:true}).waitFor();
+    const deadline=Date.now()+3000;while(!audioAck&&Date.now()<deadline)await radio.waitForTimeout(20);assert.ok(audioAck,'Actual final recorded clip must await ACK');holdAudio=false;audioAck();await radio.getByText('Listo para transmitir',{exact:true}).waitFor();
+    radioWire.send('42'+JSON.stringify(['radio:floor',{channelId:'general',userId:'other',active:true}]));await radio.getByText('Canal ocupado',{exact:true}).waitFor();expect((await radio.locator('.radio-state-card').innerText()).includes('Persona QA'),'Display only supplied actual transmitter identity');
+    radioWire.send('42'+JSON.stringify(['radio:floor',{channelId:'general',userId:'other',active:false}]));await radio.getByText('Listo para transmitir',{exact:true}).waitFor();floorAck=null;await ptt.focus();await radio.keyboard.down('Space');await radio.getByText('Solicitando turno',{exact:true}).waitFor();await waitForEvent(()=>Boolean(floorAck));floorAck(false);await radio.getByText('Radio no disponible',{exact:true}).waitFor();await radio.keyboard.up('Space');
+    await settleVisualState(radio);await radio.screenshot({path:'artifacts/functional-ui-qa/communication-screens/radio-error.png',fullPage:true});await radio.context().close();
+    for(const kind of ['enabled','disabled','error']){
+      const rtc=await pageFor('mobile_operations');await realtime(rtc);let releaseConfig;
+      await rtc.route('**/api/rtc/config',async r=>{await new Promise(resolve=>releaseConfig=resolve);await r.fulfill({status:kind==='error'?503:200,json:{iceServers:[],turnEnabled:kind==='enabled'}})});
+      await rtc.goto(base+'/operacion/radio');await rtc.getByText('Cargando llamadas…',{exact:true}).waitFor();expect(await rtc.getByText(/TURN (habilitado|no habilitado) en configuración/).count()===0,'Loading cannot certify TURN');await waitForEvent(()=>Boolean(releaseConfig));releaseConfig();
+      if(kind==='error'){await rtc.getByRole('button',{name:'Reintentar llamadas'}).waitFor();expect(await rtc.getByText(/TURN (habilitado|no habilitado) en configuración/).count()===0,'Failed config cannot certify TURN')}
+      else{await rtc.getByText('Sin llamada',{exact:true}).waitFor();await rtc.getByText('Cargando llamadas…',{exact:true}).waitFor({state:'detached'});expect(await rtc.getByText(kind==='enabled'?'TURN habilitado en configuración':'TURN no habilitado en configuración',{exact:true}).count()===1,'Display actual TURN configuration: '+kind)}
+      await settleVisualState(rtc);await rtc.screenshot({path:`artifacts/functional-ui-qa/communication-screens/rtc-${kind}.png`,fullPage:true});await rtc.context().close();
+    }
+    assert.deepEqual(issues,[],issues.join('; '));
+  });
+  await run("Mobile V3 communication populated layout matrix",async()=>{
+    const cells=[],sourceSha=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim();
+    const person={id:'other',name:'Conductor QA con nombre y apellidos muy largos para comprobar lectura y navegación',channel:'mobile_operations',roles:['driver']};
+    const longMessage=('Mensaje operativo largo con datos suministrados por QA. '+ 'PalabraSinEspacios'.repeat(12)+'\n').repeat(8);
+    const viewports=[[360,800],[390,844],[412,915],[430,932],[768,900],[1024,960],[1366,960],[1440,960],[1920,960],[844,390],[915,412]];
+    await mkdir('artifacts/functional-ui-qa/communication-matrix-screens',{recursive:true});
+    async function actionable(page,control){
+      async function settledScroll(){await control.evaluate(node=>new Promise((resolve,reject)=>{let last='',stable=0;const deadline=performance.now()+5000;function sample(){const r=node.getBoundingClientRect(),value=JSON.stringify([scrollX,scrollY,r.x,r.y,document.querySelector('.chat-messages')?.scrollTop]);stable=value===last?stable+1:0;last=value;if(stable>=12)return resolve();if(performance.now()>deadline)return reject(new Error('Native focus/keyboard scroll did not settle'));requestAnimationFrame(sample)}requestAnimationFrame(sample)}))}
+      await settledScroll();await control.evaluate(node=>node.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'}));await settleVisualState(page);await settledScroll();
+      const box=await control.boundingBox();assert.ok(box&&box.width>=44&&box.height>=44,'Actual control target44px');
+      const reachable=await control.evaluate(node=>{const r=node.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight+1&&r.left>=0&&r.right<=innerWidth+1&&node.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))});
+      if(!reachable){console.log('CONTROL GEOMETRY '+JSON.stringify(await control.evaluate(node=>{const r=node.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),before={box:r.toJSON(),scrollY,maxScroll:document.documentElement.scrollHeight-innerHeight,hit:hit?.outerHTML.slice(0,300)};node.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});const next=node.getBoundingClientRect();return {before,manualCenter:{box:next.toJSON(),scrollY,hit:node.contains(document.elementFromPoint(next.x+next.width/2,next.y+next.height/2))}}})));await page.screenshot({path:'artifacts/functional-ui-qa/communication-control-diagnostic.png',fullPage:true})}
+      assert.equal(reachable,true,'Control must be reachable above chrome and own its center hit');
+    }
+    const selectedViewports=process.env.QA_COMMUNICATION_VIEWPORT?viewports.filter(([width,height])=>`${width}x${height}`===process.env.QA_COMMUNICATION_VIEWPORT):viewports;
+    assert.ok(selectedViewports.length,'Focused viewport must be an approved matrix cell');
+    for(const [width,height] of selectedViewports)for(const theme of ['light','dark'])for(const motion of ['no-preference','reduce']){
+      const cell={width,height,theme,motion,sourceSha,checks:[],screens:[],violations:[],status:'PASS'},stem=`${width}x${height}-${theme}-${motion}`;
+      const page=await pageFor('mobile_operations',{viewport:{width,height},reducedMotion:motion});await page.addInitScript(theme=>localStorage.setItem('manecomb.theme',theme),theme);
+      await page.route('**/api/chat/users',r=>r.fulfill({json:{users:[person]}}));
+      await page.route('**/api/chat/messages?**',r=>{const channelId=new URL(r.request().url()).searchParams.get('channelId');return r.fulfill({json:{messages:Array.from({length:12},(_,index)=>({_id:'long-'+index,senderUserId:'other',channelId,kind:'text',body:longMessage,createdAt:'2026-10-03T21:00:00.000Z'}))}})});
+      await page.route('**/api/rtc/config',r=>r.fulfill({json:{iceServers:[],turnEnabled:true}}));
+      let floorWire;const sent=[];
+      await page.routeWebSocket('**/socket.io/**',ws=>{ws.send('0'+JSON.stringify({sid:'matrix',upgrades:[],pingInterval:25000,pingTimeout:20000,maxPayload:1000000}));ws.onMessage(raw=>{
+        const frame=String(raw);if(frame==='40'){ws.send('40'+JSON.stringify({sid:'matrix-socket'}));return}const match=frame.match(/^42(\d*)(\[.*)$/);if(!match)return;const [event,payload]=JSON.parse(match[2]);
+        if(event==='radio:join')floorWire=ws;
+        if(event==='presence:join')ws.send('42'+JSON.stringify(['presence:snapshot',{onlineUserIds:['other'],timestamp:new Date().toISOString()}]));
+        if(event==='chat:message'){sent.push(payload);ws.send('43'+match[1]+JSON.stringify([{ok:true,message:{...payload,_id:'sent',senderUserId:'ui-qa-user',createdAt:new Date().toISOString()}}]))}
+        else if(match[1])ws.send('43'+match[1]+JSON.stringify([{ok:true}]));
+      })});
+      async function capture(name){
+        await settleVisualState(page);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true,'No document horizontal overflow');
+        const result=await new AxeBuilder({page}).analyze(),violations=result.violations.filter(v=>['serious','critical'].includes(v.impact)).map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)}));cell.violations.push(...violations);assert.deepEqual(violations,[],'Actual populated console Axe');
+        const path=`artifacts/functional-ui-qa/communication-matrix-screens/${stem}-${name}.png`;await page.screenshot({path,fullPage:true});cell.screens.push(path);
+      }
+      await page.goto(base+'/operacion/chat');const directory=page.getByRole('button',{name:new RegExp(person.name)});await directory.waitFor();await actionable(page,directory);await directory.click();
+      await page.waitForFunction(()=>document.querySelector('[role="log"]')?.getAttribute('aria-busy')==='false');assert.equal(await page.locator('.message-bubble').count(),12);
+      const log=page.getByRole('log',{name:'Mensajes'});assert.equal(await log.evaluate(n=>n.scrollHeight>n.clientHeight),true,'Long actual conversation must scroll');
+      await log.focus();assert.equal(await log.evaluate(n=>document.activeElement===n),true,'Conversation scroll must accept keyboard focus');await log.press('Home');await log.press('PageDown');await page.waitForFunction(()=>document.querySelector('.chat-messages')?.scrollTop>0);cell.checks.push('chat-keyboard-scroll');
+      const composer=page.getByRole('textbox',{name:'Mensaje',exact:true});await composer.fill('Envío desde matriz '+stem);const send=page.getByRole('button',{name:'Enviar',exact:true});await actionable(page,send);cell.checks.push('composer-center-hit');await send.click();await page.getByText('Envío desde matriz '+stem,{exact:true}).waitFor();
+      assert.equal(sent.length,1);assert.equal(sent[0].recipientUserId,'other');assert.equal(sent[0].channelId,'direct:other:ui-qa-user');await page.getByText('Enviando…',{exact:true}).waitFor({state:'detached'});cell.checks.push('chat-real-ACK-send');await capture('chat');
+      await page.goto(base+'/operacion/radio');await page.getByText('Listo para transmitir',{exact:true}).waitFor();await actionable(page,page.getByRole('button',{name:/PULSA Y HABLA/}));
+      floorWire.send('42'+JSON.stringify(['radio:floor',{channelId:'general',userId:'other',active:true}]));await page.getByText('Canal ocupado',{exact:true}).waitFor();await page.locator('.radio-state-card').getByText(person.name,{exact:true}).waitFor();assert.equal(await page.locator('.radio-presence').getByText(person.name,{exact:true}).count(),1);
+      await page.locator('.radio-state-card').scrollIntoViewIfNeeded();cell.checks.push('radio-actual-floor');await capture('radio');
+      await page.getByLabel('Persona para llamar').selectOption('other');await actionable(page,page.getByRole('button',{name:'Llamar',exact:true}));assert.equal(await page.getByRole('button',{name:'Llamar',exact:true}).isEnabled(),true);await page.getByText('TURN habilitado en configuración',{exact:true}).waitFor();cell.checks.push('rtc-populated-selection');await capture('rtc');
+      cells.push(cell);await writeFile('artifacts/functional-ui-qa/communication-matrix.json',JSON.stringify({sourceSha,cells},null,2));console.log('COMMUNICATION MATRIX '+stem+' PASS');await page.context().close();
+    }
+    assert.equal(cells.length,selectedViewports.length*4);
+  });
   await run("Mobile V3 journey presents six confirmed states and permitted actions",async()=>{
     const states=[['ASSIGNED','Preparando jornada',['Confirmar checklist']],['READY','Lista para iniciar',['Iniciar jornada']],['RUNNING','En ruta',['Pausar','Finalizar']],['PAUSED','Jornada pausada',['Reanudar','Finalizar']],['FINISHED','Jornada finalizada',[]],['CANCELLED','Jornada cancelada',[]]];
     for(const [state,label,actions] of states){
