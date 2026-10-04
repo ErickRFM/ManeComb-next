@@ -185,6 +185,8 @@
 /* The global reduced-motion rule gives every node a nonzero duration with the
    default transition-property:all. Keep driver palette changes instantaneous. */
 @media(prefers-reduced-motion:reduce){.mobile-v3-operation,.mobile-v3-operation *{transition-duration:0s!important;animation-duration:0s!important}}
+/* A stationary pointer at a CTA edge must not toggle its hit area every frame. */
+@media(prefers-reduced-motion:reduce){.operation-auth-shell .btn:hover{transform:none}}
 /* Short landscape reserves a real 48px map-control row. Long summaries scroll,
    preserving three distinct levels and the chrome instead of covering controls. */
 @media(max-height:480px){
