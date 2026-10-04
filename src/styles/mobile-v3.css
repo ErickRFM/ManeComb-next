@@ -165,6 +165,19 @@
 .mobile-v3-rtc audio{width:100%;min-width:0}
 .mobile-v3-turn{padding:12px;border:1px solid var(--mobile-v3-border);border-radius:12px;background:var(--mobile-v3-surface-2);font-size:13px}
 .mobile-v3-map-links{display:flex;flex-wrap:wrap;gap:8px}
+.driver-shell :where(.mobile-v3-alerts,.mobile-v3-more){font-size:15px;line-height:1.5;min-width:0;overflow-wrap:anywhere}
+.driver-shell :where(.mobile-v3-alerts,.mobile-v3-more) h1{font-size:var(--mobile-v3-heading);font-weight:750;line-height:1.2;margin:0}
+.mobile-v3-alert-group,.mobile-v3-more-group{min-width:0}
+.driver-shell :where(.mobile-v3-alert-group,.mobile-v3-more-group) h2{font-size:18px;font-weight:700;line-height:1.35;margin:0 0 12px}
+.mobile-v3-alert-group[data-severity-group="Críticas"] h2{color:var(--mobile-v3-danger)}
+.mobile-v3-alert-group[data-severity-group="Operativas"] h2{color:var(--mobile-v3-warning)}
+.driver-shell .mobile-v3-alert-group .card{border-color:var(--mobile-v3-border);background:var(--mobile-v3-surface);color:var(--mobile-v3-text);gap:12px;min-width:0}
+.mobile-v3-alert-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.driver-shell .mobile-v3-alert-meta .badge{font-size:12px;line-height:1.5;max-width:100%;white-space:normal}
+.driver-shell .mobile-v3-alert-group p{font-size:15px;line-height:1.5;margin:0;overflow-wrap:anywhere}
+.driver-shell .mobile-v3-alert-date{font-size:13px;color:var(--mobile-v3-muted);overflow-wrap:anywhere}
+.driver-shell .mobile-v3-more-group a.card{display:flex;align-items:center;min-height:64px;border-color:var(--mobile-v3-border);background:var(--mobile-v3-surface);color:var(--mobile-v3-text);font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.driver-shell :where(.mobile-v3-alerts,.mobile-v3-more) .btn{min-height:48px;max-width:100%}
 .mobile-v3-operation .driver-empty-state{min-height:40dvh;margin:12px;padding:20px;font-size:15px}
 .mobile-v3-operation .driver-map-skeleton{border-radius:0;height:calc(100dvh - 124px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
 .mobile-v3-operation-context :where(.btn,summary){min-height:48px}
