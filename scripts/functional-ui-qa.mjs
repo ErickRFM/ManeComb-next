@@ -75,6 +75,70 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  await run("Mobile V3 alerts real severity and grouped More",async()=>{
+    const page=await pageFor('mobile_operations',{reducedMotion:'reduce'});await realtime(page);
+    const reports=[
+      {_id:'critical',type:'sos',severity:'critical',status:'open',message:'Reporte crítico real suministrado a QA',createdAt:'2026-10-03T20:00:00.000Z'},
+      {_id:'high',type:'mechanical',severity:'high',status:'acknowledged',message:'Reporte alto'},
+      {_id:'medium',type:'traffic',severity:'medium',status:'resolved',message:'Reporte operativo'},
+      {_id:'low',type:'other',severity:'low',status:'open',message:'Reporte informativo'},
+      {_id:'unknown',type:'other',severity:'future',status:'future',message:'Reporte sin prioridad conocida'},
+      {_id:'null',type:'other',severity:null,status:null,message:'Reporte sin estado confirmado',createdAt:null},
+      {_id:'missing',message:'Reporte incompleto suministrado a QA'}
+    ];let response=reports,fail=false,reads=0;
+    await page.route('**/api/incidents',route=>{reads++;return route.fulfill({status:fail?503:200,json:fail?{error:'UNAVAILABLE'}:{incidents:response}})});
+    await mkdir('artifacts/functional-ui-qa/alerts-more-actual-screens',{recursive:true});
+    await page.goto(base+'/operacion/mas');await page.getByRole('heading',{name:'Más',exact:true}).waitFor();await settleVisualState(page);
+    await page.screenshot({path:'artifacts/functional-ui-qa/alerts-more-actual-screens/more.png',fullPage:true});
+    const headingFonts=await page.locator('.mobile-v3-more h1,.mobile-v3-more h2').evaluateAll(nodes=>nodes.map(node=>({name:node.textContent,size:parseFloat(getComputedStyle(node).fontSize),weight:parseFloat(getComputedStyle(node).fontWeight)})));
+    assert.ok(headingFonts[0]?.size>=26&&headingFonts.every(font=>font.weight>=650),'Page/group heading hierarchy '+JSON.stringify(headingFonts));
+    await page.goto(base+'/operacion/alertas');await page.getByText(reports[0].message,{exact:true}).waitFor();await settleVisualState(page);
+    await page.screenshot({path:'artifacts/functional-ui-qa/alerts-more-actual-screens/alerts.png',fullPage:true});
+    for(const [heading,count] of [['Críticas',2],['Operativas',1],['Informativas',1],['Reportes',3]]){const group=page.getByRole('region',{name:heading,exact:true});assert.equal(await group.count(),1,'Severity group '+heading);assert.equal(await group.locator('article').count(),count)}
+    assert.equal(await page.getByRole('region',{name:'Críticas',exact:true}).locator('article').first().getByText('SOS',{exact:true}).count(),1);
+    await page.getByText('Estado no disponible',{exact:true}).first().waitFor();await page.getByText('Fecha no disponible',{exact:true}).first().waitFor();await page.getByText('Tipo no disponible',{exact:true}).waitFor();
+    assert.equal(await page.locator('time').count(),1,'Only valid supplied dates receive time semantics');assert.equal(await page.getByText('Invalid Date',{exact:true}).count(),0);
+    assert.equal(await page.getByText(/GPS perdido|GPS recuperado|checkpoint|ruta actualizada/i).count(),0);
+    fail=true;await page.getByRole('button',{name:'Actualizar',exact:true}).click();await page.locator('.mobile-v3-alerts').getByRole('alert').waitFor();assert.equal(await page.locator('article').count(),reports.length,'Genuine reports remain on refresh failure');
+    fail=false;response=[];await page.getByRole('button',{name:'Actualizar',exact:true}).click();await page.getByText('Sin alertas reportadas',{exact:true}).waitFor();assert.equal(await page.locator('article').count(),0);assert.ok(reads>=3);
+    await page.goto(base+'/operacion/mas');for(const name of ['Operación','Emergencia','Sesión'])await page.getByRole('heading',{name,exact:true}).waitFor();
+    assert.equal(await page.locator('a[href="/operacion/navegacion"]').count(),1);assert.equal(await page.locator('a[href="/operacion#controles-jornada"]').count(),1);
+    assert.equal(await page.getByRole('button',{name:'Cerrar sesión',exact:true}).count(),1);
+    assert.equal(await page.locator('a[href*="perfil"],a[href*="ticket"],a[href*="storage"],a[href*="documento"]').count(),0);
+    await page.getByRole('link',{name:'Controles de jornada y GPS',exact:true}).click();await page.waitForURL('**/operacion#controles-jornada');await page.locator('#controles-jornada[open]').waitFor();assert.equal(await page.locator('#controles-jornada').count(),1);
+    await page.context().close();
+  });
+  await run("Mobile V3 alerts and More populated layout matrix",async()=>{
+    const sourceSha=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),cells=[];
+    await mkdir('artifacts/functional-ui-qa/alerts-more-screens',{recursive:true});
+    for(const [width,height] of [[360,800],[390,844],[412,915],[430,932],[768,900],[1024,960],[1366,960],[1440,960],[1920,960],[844,390],[915,412]])for(const theme of ['dark','light'])for(const motion of ['no-preference','reduce']){
+      const page=await pageFor('mobile_operations',{viewport:{width,height},reducedMotion:motion});await page.addInitScript(theme=>localStorage.setItem('manecomb.theme',theme),theme);await realtime(page);
+      const supplied=['critical','high','medium','low','future',null].map((severity,index)=>({_id:'actual-'+index,severity,type:index===0?'sos':'mechanical',status:index===5?null:'open',message:'Reporte suministrado '+index+' '+('Descripción extensa de la incidencia '.repeat(12)),createdAt:index===5?null:'2026-10-03T20:00:00.000Z'}));let response=supplied,fail=false;
+      await page.route('**/api/incidents',route=>route.fulfill({status:fail?503:200,json:fail?{error:'UNAVAILABLE'}:{incidents:response}}));
+      await page.goto(base+'/operacion/alertas');await page.getByRole('region',{name:'Críticas',exact:true}).waitFor();await settleVisualState(page);
+      for(const heading of ['Críticas','Operativas','Informativas','Reportes'])assert.equal(await page.getByRole('region',{name:heading,exact:true}).count(),1);
+      assert.equal(await page.locator('article').count(),6);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+1),false);
+      const axe=await new AxeBuilder({page}).analyze();assert.deepEqual(axe.violations.filter(v=>['serious','critical'].includes(v.impact)),[],JSON.stringify({width,height,theme,motion}));
+      const prefix=width+'x'+height+'-'+theme+'-'+motion,screens=[];
+      async function capture(state){const path='artifacts/functional-ui-qa/alerts-more-screens/'+prefix+'-'+state+'.png';await page.screenshot({path,fullPage:true});screens.push(path)}
+      await capture('reports');fail=true;await page.getByRole('button',{name:'Actualizar',exact:true}).click();await page.locator('.mobile-v3-alerts').getByRole('alert').waitFor();assert.equal(await page.locator('article').count(),6);await capture('refresh-error');
+      fail=false;response=[];await page.getByRole('button',{name:'Actualizar',exact:true}).click();await page.getByText('Sin alertas reportadas',{exact:true}).waitFor();await capture('empty');
+      await page.goto(base+'/operacion/mas');await page.getByRole('heading',{name:'Sesión',exact:true}).waitFor();await settleVisualState(page);
+      for(const heading of ['Operación','Emergencia','Sesión'])assert.equal(await page.getByRole('heading',{name:heading,exact:true}).count(),1);
+      const headings=await page.locator('.mobile-v3-more h1,.mobile-v3-more h2').evaluateAll(nodes=>nodes.map(node=>({size:parseFloat(getComputedStyle(node).fontSize),weight:parseFloat(getComputedStyle(node).fontWeight)})));assert.ok(headings[0].size>=26&&headings.every(font=>font.weight>=650));
+      assert.equal(await page.getByRole('button',{name:/Usar tema/}).count(),1);assert.equal(await page.getByRole('button',{name:'Cerrar sesión',exact:true}).count(),1);
+      for(const target of [page.locator('a[href="/operacion/navegacion"]'),page.locator('a[href="/operacion#controles-jornada"]'),page.getByRole('button',{name:'Cerrar sesión',exact:true})]){
+        await target.evaluate(node=>node.scrollIntoView({block:'center',behavior:'instant'}));await page.evaluate(()=>new Promise(resolve=>{let frames=0;const next=()=>++frames===12?resolve():requestAnimationFrame(next);requestAnimationFrame(next)}));
+        const geometry=await target.evaluate(node=>{const r=node.getBoundingClientRect();return {w:r.width,h:r.height,inView:r.top>=0&&r.bottom<=innerHeight,hit:node.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}});
+        assert.ok(geometry.w>=44&&geometry.h>=44&&geometry.inView&&geometry.hit,JSON.stringify({width,height,theme,motion,geometry}));
+      }
+      const moreAxe=await new AxeBuilder({page}).analyze();assert.deepEqual(moreAxe.violations.filter(v=>['serious','critical'].includes(v.impact)),[]);await capture('more');
+      cells.push({sourceSha,viewport:{width,height},theme,motion,status:'PASS',states:['critical','high','medium','low','unknown','missing-fields','refresh-error-retained','empty','more-grouped'],screens});checks.push({name:'alerts-more '+prefix,status:'PASS'});await page.context().close();
+    }
+    assert.equal(cells.length,44);await writeFile('artifacts/functional-ui-qa/alerts-more-matrix.json',JSON.stringify({sourceSha,cells,status:'PASS'},null,2));
+  });
+
+
   await run("Mobile V3 communication actual presentation and protocol states",async()=>{
     const issues=[],expect=(condition,label)=>{if(!condition)issues.push(label)};
     const waitForEvent=async condition=>{const deadline=Date.now()+5000;while(!condition()&&Date.now()<deadline)await new Promise(resolve=>setTimeout(resolve,20));assert.ok(condition(),'Expected actual protocol event')};
