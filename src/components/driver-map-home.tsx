@@ -122,7 +122,7 @@ export function DriverMapHome(){
     {error?<p role="alert">{error} <button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Reintentar</button></p>:null}
     {mapError?<p role="status">{mapError}</p>:null}
     <p role="status">{connection==="connected"?"En línea":connection==="connecting"?"Conectando…":"Reconectando. Se muestran los últimos datos recibidos."}</p>
-    {snapshot?.isOffRoute?<div className="mobile-v3-off-route"><strong>Fuera de ruta</strong><span>{snapshot.distanceFromRouteM??0} m fuera del corredor autorizado.</span></div>:null}
+    {snapshot?.isOffRoute?<div className="mobile-v3-off-route"><strong>Fuera de ruta</strong><span>{snapshot.distanceFromRouteM==null||!Number.isFinite(snapshot.distanceFromRouteM)?"Distancia al corredor no disponible":snapshot.distanceFromRouteM+" m fuera del corredor autorizado."}</span></div>:null}
     </div>,feedbackHost):null}<div className="driver-map-shell">
       <div ref={mapContainer} className="driver-map-canvas"/>
       <div className="driver-map-top">

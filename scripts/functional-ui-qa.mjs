@@ -74,6 +74,77 @@ async function realMapForQa(page,selector){
   await page.waitForFunction(()=>window.__qaLiveMap.isStyleLoaded(),{},{timeout:30000});
 }
 try{
+  await run("Mobile V3 journey presents six confirmed states and permitted actions",async()=>{
+    const states=[['ASSIGNED','Preparando jornada',['Confirmar checklist']],['READY','Lista para iniciar',['Iniciar jornada']],['RUNNING','En ruta',['Pausar','Finalizar']],['PAUSED','Jornada pausada',['Reanudar','Finalizar']],['FINISHED','Jornada finalizada',[]],['CANCELLED','Jornada cancelada',[]]];
+    for(const [state,label,actions] of states){
+      const page=await pageFor('mobile_operations');await realtime(page);
+      await page.route('**/api/journeys',r=>r.fulfill({json:{journeys:[{_id:unit.journeyId,vehicleId:unit.vehicleId,state}]}}));
+      await page.goto(base+'/operacion#controles-jornada');const panel=page.locator('.driver-tools .card').filter({has:page.getByText('Jornada',{exact:true})});
+      await panel.getByText(label,{exact:true}).first().waitFor();
+      for(const action of ['Confirmar checklist','Iniciar jornada','Pausar','Reanudar','Finalizar'])assert.equal(await panel.getByRole('button',{name:action,exact:true}).count(),actions.includes(action)?1:0,state+' action '+action);
+      await page.context().close();
+    }
+  });
+  await run("Mobile V3 journey busy rejection and confirmed native actions stay authoritative",async()=>{
+    const page=await pageFor('mobile_operations');await realtime(page);
+    await page.addInitScript(()=>{
+      window.__qaNative={start:0,stop:0};window.androidBridge={};
+      window.Capacitor={PluginHeaders:[{name:'ManeCombLocation',methods:[{name:'appInfo',rtype:'promise'},{name:'status',rtype:'promise'},{name:'start',rtype:'promise'},{name:'stop',rtype:'promise'},{name:'removeListener',rtype:'promise'},{name:'addListener',rtype:'callback'}]}],
+        nativePromise:async(plugin,method)=>{if(method==='start'){window.__qaNative.start++;return {started:true,contractVersion:2}}if(method==='stop'){window.__qaNative.stop++;return {stopped:true,contractVersion:2}}return method==='appInfo'?{versionName:'QA-only',versionCode:1,nativeTrackingContractVersion:2}:method==='status'?{contractVersion:2,state:'stopped',running:false,pendingPackets:0,networkAvailable:true,lastCaptureAtMs:0,lastUploadAtMs:0,retryDelayMs:0,lastError:''}:{}},
+        nativeCallback:()=> 'qa-native-listener'};
+    });
+    let state='ASSIGNED',held=false,release,reject=false;const posts=[];
+    await page.route('**/api/auth/device-session',r=>r.fulfill({json:{token:'QA-only-device-token'}}));
+    await page.route('**/api/journeys',async r=>{
+      if(r.request().method()!=='POST')return r.fulfill({json:{journeys:[{_id:unit.journeyId,vehicleId:unit.vehicleId,state}]}});
+      const body=r.request().postDataJSON();posts.push(body);if(held)await new Promise(resolve=>release=resolve);
+      if(reject)return r.fulfill({status:409,json:{error:'QA rejected unchanged state'}});
+      state={ready:'READY',start:'RUNNING',pause:'PAUSED',resume:'RUNNING',finish:'FINISHED'}[body.action];
+      await r.fulfill({json:{journey:{_id:unit.journeyId,vehicleId:unit.vehicleId,state}}});
+    });
+    await page.goto(base+'/operacion#controles-jornada');const panel=page.locator('.driver-tools .card').filter({has:page.getByText('Jornada',{exact:true})});
+    await panel.getByText('Preparando jornada',{exact:true}).first().waitFor();
+    for(const name of ['Frenos','Llantas','Luces','Combustible','Limpieza'])await panel.getByLabel(name,{exact:false}).check();await panel.getByLabel('Odómetro inicial (km)').fill('0');
+    await panel.getByRole('button',{name:'Confirmar checklist',exact:true}).click();await panel.getByRole('button',{name:'Iniciar jornada',exact:true}).waitFor();
+    assert.deepEqual(await page.evaluate(()=>window.__qaNative),{start:0,stop:1});held=true;reject=true;
+    await panel.getByRole('button',{name:'Iniciar jornada',exact:true}).click();await panel.getByText('Actualizando jornada…',{exact:true}).waitFor();
+    assert.equal(await panel.getByRole('button',{name:'Iniciar jornada',exact:true}).isDisabled(),true);assert.deepEqual(await page.evaluate(()=>window.__qaNative),{start:0,stop:1});
+    await panel.getByText('Lista para iniciar',{exact:true}).first().waitFor();release();await panel.getByRole('alert').filter({hasText:'QA rejected unchanged state'}).waitFor();
+    assert.deepEqual(await page.evaluate(()=>window.__qaNative),{start:0,stop:1});held=false;reject=false;
+    for(const [action,label,next,counts] of [['start','Iniciar jornada','Pausar',{start:1,stop:1}],['pause','Pausar','Reanudar',{start:1,stop:2}],['resume','Reanudar','Pausar',{start:2,stop:2}],['finish','Finalizar',null,{start:2,stop:3}]]){
+      await panel.getByRole('button',{name:label,exact:true}).click();if(next)await panel.getByRole('button',{name:next,exact:true}).waitFor();else await panel.getByText('Jornada finalizada',{exact:true}).first().waitFor();
+      await page.waitForFunction(expected=>window.__qaNative.start===expected.start&&window.__qaNative.stop===expected.stop,counts);assert.equal(posts.filter(body=>body.action===action).length,action==='start'?2:1);
+    }
+    assert.equal(posts.filter(body=>body.action==='ready').length,1);assert.equal(posts[0].checklist.odometerStartKm,0);assert.equal(posts.length,6);await page.context().close();
+  });
+  await run("Mobile V3 journey route null zero partial and next stop hierarchy",async()=>{
+    for(const kind of ['full','partial','null','zero','off-route']){
+      const page=await pageFor('mobile_operations');await realtime(page);let snapshot={...unit,routeState:'ON_ROUTE'};
+      let route={id:unit.routeId,name:unit.routeName,origin:'Terminal QA',destination:'Hospital QA',revision:7,geometry:[],stops:[{order:2,name:'Última QA'},{order:1,name:'Parada QA',radiusM:0}]};
+      if(kind==='partial'){route={...route,origin:null,destination:null};snapshot={...snapshot,etaMinutes:null,nextStop:null,progressPercent:null,distanceRemainingM:null}}
+      if(kind==='null'){route=null;snapshot=null}if(kind==='zero')snapshot={...snapshot,etaMinutes:0,distanceRemainingM:0,nextStop:{...unit.nextStop,distanceRemainingM:0},progressPercent:0};
+      if(kind==='off-route')snapshot={...snapshot,isOffRoute:true,distanceFromRouteM:null};
+      const navigation={journey:{id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING',routeId:unit.routeId,startedAt:null},route,snapshot};
+      await page.route('**/api/operation/navigation',r=>r.fulfill({json:navigation}));await page.route('**/api/journeys',r=>r.fulfill({json:{journeys:[{_id:unit.journeyId,vehicleId:unit.vehicleId,state:'RUNNING'}]}}));
+      await page.goto(base+'/operacion');await page.locator('.mobile-v3-next-stop').waitFor();
+      if(kind==='full'||kind==='zero'){
+        const next=page.locator('.mobile-v3-next-stop strong');assert.equal(await next.textContent(),'Parada QA');
+        const box=await next.boundingBox();assert.ok(box&&box.width>100);assert.ok(await next.evaluate(node=>parseFloat(getComputedStyle(node).fontSize))>=20,'Next stop prominence');
+      }else if(kind==='partial'||kind==='null')await page.getByText('Sin siguiente parada proyectada',{exact:true}).first().waitFor();
+      await page.getByRole('button',{name:'Ampliar contexto'}).click();await page.locator('.mobile-v3-map-detail').waitFor();
+      if(kind==='zero'){await page.getByText('0 min',{exact:true}).first().waitFor();await page.getByText('0 m',{exact:true}).first().waitFor()}
+      if(kind==='partial'||kind==='null')await page.getByText('Sin estimación',{exact:true}).first().waitFor();
+      if(kind==='off-route')await page.getByText('Distancia al corredor no disponible',{exact:true}).waitFor();
+      await page.goto(base+'/operacion/navegacion');await page.getByText(kind==='null'?'Sin ruta asignada':unit.routeName,{exact:true}).first().waitFor();
+      if(kind==='full'||kind==='partial'||kind==='zero'){
+        const stops=page.locator('.mobile-v3-route-stop');assert.deepEqual(await stops.locator('span:first-child').allTextContents(),['2. Parada QA','3. Última QA']);
+        await stops.first().getByText('0 m',{exact:true}).waitFor();await stops.last().getByText('Radio no disponible',{exact:true}).waitFor();
+        assert.equal(await stops.locator('[aria-current="step"]').count(),snapshot?.nextStop?1:0);assert.equal(await page.getByText('50 m',{exact:true}).count(),0);
+      }
+      if(kind==='partial'||kind==='null')await page.getByText('Sin estimación',{exact:true}).waitFor();
+      await page.context().close();
+    }
+  });
   await run("Mobile V3 QA settles palette before accessibility",async()=>{
     const page=await pageFor('platform_admin');await page.addInitScript(()=>localStorage.setItem('manecomb.theme','dark'));
     await page.goto(base+'/admin/pagos-manuales');const head=page.locator('.admin-payment-head');await head.waitFor();
