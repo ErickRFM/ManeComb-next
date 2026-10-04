@@ -3,6 +3,7 @@ import { useCallback, useEffect,useRef, useState } from "react";
 import { useSocket } from "@/src/hooks/useSocket";
 import type { OperationalUnitSnapshot } from "@/src/core/contracts/telemetry";
 import {mergeSnapshots} from "@/src/lib/fleet-snapshots";
+import {distanceLabel,journeyStateLabel,orderedStops,routeStateLabel} from "./mobile-ui/journey-presentation";
 
 export function DriverNavigation(){
   const socket=useSocket();
@@ -38,23 +39,23 @@ export function DriverNavigation(){
   const snapshot:OperationalUnitSnapshot|null=data.snapshot;
   const route=data.route;
 
-  return <div className="grid">
+  return <div className="grid mobile-v3-route-context">
     {error?<p role="alert">{error} <button className="btn secondary" onClick={()=>void load()}>Consultar ruta</button></p>:null}
     <div className="card">
-      <div className="status-row"><div><strong>{route?.name||"Sin ruta"}</strong><p className="muted" style={{marginBottom:0}}>{route?.origin||"Origen"} → {route?.destination||"Destino"}</p></div><span className="badge">{data.journey.state}</span></div>
+      <div className="status-row"><div><strong>{route?.name||"Sin ruta asignada"}</strong><p className="muted" style={{marginBottom:0}}>{route?.origin||"Origen no disponible"} → {route?.destination||"Destino no disponible"}</p>{route&&Number.isFinite(route.revision)?<small>Revisión {route.revision}</small>:null}</div><span className="badge">{journeyStateLabel(data.journey.state)}</span></div>
     </div>
     <div className="grid grid-3">
       <div className="card"><span className="muted">Avance</span><div className="kpi">{snapshot?.progressPercent==null?"—":snapshot.progressPercent.toFixed(1)+"%"}</div></div>
-      <div className="card"><span className="muted">ETA</span><div className="kpi">{snapshot?.etaMinutes==null?"—":snapshot.etaMinutes+" min"}</div></div>
-      <div className="card"><span className="muted">Ruta</span><div className="kpi" style={{fontSize:20}}>{snapshot?.isOffRoute?"FUERA DE RUTA":snapshot?.routeState||"—"}</div></div>
+      <div className="card"><span className="muted">ETA</span><div className="kpi">{snapshot?.etaMinutes==null||!Number.isFinite(snapshot.etaMinutes)?"Sin estimación":snapshot.etaMinutes+" min"}</div></div>
+      <div className="card"><span className="muted">Ruta</span><div className="kpi" style={{fontSize:20}}>{snapshot?.isOffRoute?"Fuera de ruta":routeStateLabel(snapshot?.routeState)}</div></div>
     </div>
     <div className="card">
       <strong>Próxima parada</strong>
-      {snapshot?.nextStop?<><div className="kpi" style={{fontSize:26,marginTop:8}}>{snapshot.nextStop.name}</div><p className="muted">{snapshot.nextStop.distanceRemainingM} m restantes</p></>:<p className="muted">No hay una siguiente parada proyectada.</p>}
+      {snapshot?.nextStop?<><div className="kpi" style={{fontSize:26,marginTop:8}}>{snapshot.nextStop.name}</div><p className="muted">{distanceLabel(snapshot.nextStop.distanceRemainingM)} restantes</p></>:<p className="muted">Sin siguiente parada proyectada</p>}
     </div>
     <div className="card">
       <strong>Paradas de la ruta</strong>
-      <div className="grid" style={{marginTop:12}}>{(route?.stops||[]).sort((a:any,b:any)=>a.order-b.order).map((stop:any)=><div className="status-row" key={stop.order+"-"+stop.name}><span>{stop.order+1}. {stop.name}</span><span className="muted">{stop.radiusM||50} m</span></div>)}</div>
+      <div className="grid" style={{marginTop:12}}>{orderedStops<any>(route?.stops||[]).map((stop:any)=><div className="status-row mobile-v3-route-stop" key={stop.order+"-"+stop.name}><span aria-current={snapshot?.nextStop?.order===stop.order?"step":undefined}>{stop.order+1}. {stop.name}</span><span className="muted">{stop.radiusM==null||!Number.isFinite(stop.radiusM)?"Radio no disponible":distanceLabel(stop.radiusM)}</span></div>)}</div>
     </div>
   </div>
 }

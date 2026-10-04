@@ -108,10 +108,21 @@
 .mobile-v3-map-identity > span:last-child{font-size:11px;color:var(--mobile-v3-muted)}
 .mobile-v3-next-stop{display:grid;gap:2px}
 .mobile-v3-next-stop small{font-size:11px;color:var(--mobile-v3-muted);line-height:1.3}
-.mobile-v3-next-stop strong{font-size:18px;line-height:1.35;overflow-wrap:anywhere}
+.mobile-v3-next-stop strong{font-size:20px;line-height:1.35;overflow-wrap:anywhere}
 .mobile-v3-map-detail{display:grid;gap:12px;font-size:13px}
 .mobile-v3-map-detail .driver-live-kpis small{font-size:11px;letter-spacing:0;color:var(--mobile-v3-muted)}
 .mobile-v3-map-detail .driver-live-kpis strong{font-size:13px;color:var(--mobile-v3-text)}
+.mobile-v3-map-identity > span:first-child{display:grid;gap:2px}
+.mobile-v3-map-identity > span:first-child strong{font-size:15px}
+.mobile-v3-map-identity small{font-size:11px;color:var(--mobile-v3-muted)}
+.mobile-v3-route-metadata{display:grid;gap:4px;color:var(--mobile-v3-muted);overflow-wrap:anywhere}
+.mobile-v3-route-metadata p{margin:0}
+.mobile-v3-operation .mobile-v3-journey-panel{min-width:0;overflow-wrap:anywhere}
+.mobile-v3-operation .mobile-v3-journey-panel .badge{white-space:normal;text-align:right}
+.mobile-v3-operation .mobile-v3-journey-actions{flex-wrap:wrap}
+.mobile-v3-operation .mobile-v3-journey-actions .btn{flex:1;min-height:44px}
+.mobile-v3-operation .mobile-v3-route-context :where(.kpi,.badge,.status-row){overflow-wrap:anywhere}
+.mobile-v3-operation .mobile-v3-route-stop [aria-current="step"]{font-weight:700;color:var(--mobile-v3-text)}
 .mobile-v3-route-progress{display:grid;gap:6px}
 .mobile-v3-route-progress progress{width:100%;accent-color:var(--mobile-v3-brand)}
 .mobile-v3-map-links{display:flex;flex-wrap:wrap;gap:8px}

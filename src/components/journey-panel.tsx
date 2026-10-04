@@ -2,6 +2,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import {useSocket} from "@/src/hooks/useSocket";
 import {isNativeLocationAvailable,startNativeLocation,stopNativeLocation} from "@/src/lib/native-location";
+import {journeyStateLabel} from "./mobile-ui/journey-presentation";
 
 type Journey={_id:string;vehicleId:string;state:"ASSIGNED"|"READY"|"RUNNING"|"PAUSED"|"FINISHED"|"CANCELLED";checklist?:any};
 
@@ -76,8 +77,8 @@ export function JourneyPanel(){
 
   if(!journey) return <div className="card"><strong role="status">{state}</strong><p className="muted">El despacho debe asignar conductor y unidad antes de iniciar.</p><button className="btn secondary" onClick={()=>setRetry(value=>value+1)}>Consultar jornada</button></div>;
 
-  return <div className="card grid">
-    <div className="status-row"><strong>Jornada</strong><span className="badge">{journey.state}</span></div>
+  return <div className="card grid mobile-v3-journey-panel" aria-busy={busy}>
+    <div className="status-row"><strong>Jornada</strong><span className="badge">{journeyStateLabel(journey.state)}</span></div>
     {error?<p role="alert">{error}</p>:null}
     <fieldset disabled={busy} className="route-editor-fields">
     {journey.state==="ASSIGNED"?<form className="grid" onSubmit={ready}>
@@ -87,8 +88,8 @@ export function JourneyPanel(){
       <button className="btn">Confirmar checklist</button>
     </form>:null}
     {journey.state==="READY"?<button className="btn" onClick={()=>void action("start")}>Iniciar jornada</button>:null}
-    {journey.state==="RUNNING"?<div style={{display:"flex",gap:8}}><button className="btn secondary" onClick={()=>void action("pause")}>Pausar</button><button className="btn" onClick={()=>void action("finish")}>Finalizar</button></div>:null}
-    {journey.state==="PAUSED"?<div style={{display:"flex",gap:8}}><button className="btn" onClick={()=>void action("resume")}>Reanudar</button><button className="btn secondary" onClick={()=>void action("finish")}>Finalizar</button></div>:null}
-    </fieldset><span className="muted" role="status">{busy?"Actualizando jornada…":state}</span>
+    {journey.state==="RUNNING"?<div className="mobile-v3-journey-actions" style={{display:"flex",gap:8}}><button className="btn secondary" onClick={()=>void action("pause")}>Pausar</button><button className="btn" onClick={()=>void action("finish")}>Finalizar</button></div>:null}
+    {journey.state==="PAUSED"?<div className="mobile-v3-journey-actions" style={{display:"flex",gap:8}}><button className="btn" onClick={()=>void action("resume")}>Reanudar</button><button className="btn secondary" onClick={()=>void action("finish")}>Finalizar</button></div>:null}
+    </fieldset><span className="muted" role="status">{busy?"Actualizando jornada…":state.startsWith("Jornada ")?journeyStateLabel(journey.state)+(state.includes(" · GPS nativo activo")?" · GPS nativo activo":""):state}</span>
   </div>
 }
