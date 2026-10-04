@@ -1,0 +1,12 @@
+{
+  "auth": ["default", "focus", "error-long", "loading", "activation-default", "activation-pending", "activation-error", "recovery-default", "recovery-pending", "recovery-error", "reset-default", "reset-pending", "reset-error", "mfa-default", "mfa-pending", "mfa-error", "bootstrap-loading", "bootstrap-error", "bootstrap-retry"],
+  "map": ["zero-unit", "one-unit", "provider-real", "provider-failure", "recenter", "manual-camera", "motion-policy"],
+  "sheet": ["compact", "medium", "expanded", "drag", "snap", "cancel-primary", "cancel-secondary", "keyboard", "focus", "long-content", "body-scroll"],
+  "journey": ["ASSIGNED", "READY", "RUNNING", "PAUSED", "FINISHED", "CANCELLED", "busy", "error", "actual-text-200-percent", "actual-action-reachability"],
+  "route": ["full", "partial", "null-ETA", "zero-distance", "no-next-stop", "off-route-existing"],
+  "chat": ["empty", "conversation", "draft", "send", "pending", "failure", "retry-same-id", "attachment"],
+  "radio": ["connecting", "listening", "requesting", "talking", "finishing", "busy", "error", "floor-lost", "reconnect"],
+  "rtc": ["loading", "config-error", "idle", "calling", "connected-real-peers", "hangup-cleanup", "TURN-enabled-config", "TURN-disabled-config"],
+  "alerts": ["critical", "high", "medium", "low", "unknown", "missing-fields", "empty", "error-retained"],
+  "more": ["journey-GPS", "route", "SOS", "logout", "theme-single-owner", "push-single-existing-owner"]
+}

@@ -1,0 +1,13 @@
+# Mobile V3 final browser state coverage
+
+The tracked inventory contains 92 states. Each runs at eleven viewports, both themes and both motion preferences: 44 cells per state, 4048 state rows. The general runner supplies 87 states (3828 rows); the real Mapbox runner supplies five states (220 rows). This supplements all original visual, functional, responsive, accessibility and native regression gates.
+
+Enable `QA_V3_MATRIX=1` and `QA_FILTER=Mobile V3 final matrix`, then run `node scripts/test-local-visual.mjs --functional`. For real Mapbox use the authorized local public token through `node --env-file=.env.local scripts/test-local-visual.mjs --mapbox`. No token is recorded. Optional `QA_V3_FAMILY`, `QA_V3_VIEWPORT`, `QA_V3_THEME` and `QA_V3_MOTION` are diagnostics only. Dirty source or any filter makes the report ineligible for final certification.
+
+Each report records source SHA, actual state assertions, viewport, theme, motion, Axe findings and PNG. Runs preserve their individual reports and screenshots under `artifacts/mobile-v3-final-qa/matrix-runs` and `matrix-screens`. The independent certificate consumer refuses missing/duplicate rows, wrong SHA, diagnostics, failed assertions, missing screenshots or serious/critical Axe violations.
+
+Access tests hold actual submit requests, render long errors in the existing response fields and retain existing redirect contracts. Operational tests exercise the mounted sheet and journey owner, real pointer capture and keyboard controls, confirmed server states and 200 percent text on the actual operation page. Communication tests exercise the existing client callbacks, ACK/retry identity, floor lifecycle, recorder cleanup and real browser peer connections through isolated transport adapters. Alert severity uses supplied incidents. More reaches only existing handlers and destinations; notification/location permissions are never granted by this suite.
+
+API, Socket.IO, attachment storage and fake Chrome microphone input are isolated QA adapters, never production data or a replacement contract. Real Mapbox rows require the actual SDK and rendered basemap features; its controlled failure row injects a style HTTP failure to test the existing fallback. An exact optional missing incidents tile denotes absent tile data, never traffic coverage. TURN configuration is not network traversal evidence.
+
+Physical multitouch, audio, IME, notch/safe areas, GPS/Doze, live email/payment/storage, native startup UI readiness, human reading time and RC3 APK/web SHA parity retain their separate gates. Activity smoke alone does not certify native rendering. UI_DATA_GAP G01–G09 remains unchanged. This document defines coverage, not a claim that an unfinished or diagnostic run passed.
